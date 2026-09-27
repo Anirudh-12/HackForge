@@ -48,6 +48,10 @@ a:hover { color: var(--accent); }
   border-right: 1px solid var(--border);
   padding: 20px 16px;
   flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
 }
 .sidebar .brand { display: block; margin-bottom: 28px; padding: 0 8px; }
 .nav-section { font-size: 11px; letter-spacing: 0.08em; color: var(--text-muted); padding: 16px 8px 6px; }

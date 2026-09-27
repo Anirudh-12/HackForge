@@ -185,7 +185,7 @@ def _write_toml(db: Session) -> None:
 base_url = "http://localhost:8080"
 
 [tiers]
-claimed = ["T1"]
+claimed = ["T1", "T2"]
 pitch = "Run your hackathon without the spreadsheet chaos."
 
 [auth]

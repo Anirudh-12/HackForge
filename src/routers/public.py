@@ -1,14 +1,14 @@
-from __future__ import annotations
-
+import random
 from fastapi import APIRouter, Depends, Request
+from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 from src.auth import get_current_user, membership_for
 from src.context import base_context, role_for
 from src.db import get_db
 from src.templating import templates
-from src.models import Event, Project, User, Track
-from src.queries import default_event, event_tracks, gallery_projects
+from src.models import Event, Project, User, Track, Vote, Comment, TeamMember
+from src.queries import default_event, event_tracks, gallery_projects, user_team
 
 router = APIRouter()
 
@@ -96,6 +96,78 @@ def join_event(event_id: str, request: Request, db: Session = Depends(get_db), u
     db.commit()
     
     return RedirectResponse(f"/participant/{event_id}/dashboard", status_code=303)
+
+
+@router.get("/events/{event_id}/register")
+def registration_wizard(event_id: str, request: Request, db: Session = Depends(get_db), user: User | None = Depends(get_current_user)):
+    if not user:
+        return RedirectResponse(f"/login?next=/events/{event_id}/register", status_code=303)
+        
+    event = db.get(Event, event_id)
+    if not event:
+        raise HTTPException(status_code=404)
+        
+    # Check if already registered
+    membership = membership_for(db, user, event.id)
+    if membership:
+        return RedirectResponse(f"/participant/{event_id}/dashboard", status_code=303)
+        
+    return templates.TemplateResponse(request=request, name="register_wizard.html", context=
+        base_context(request=request, event=event, user=user, role="visitor")
+    )
+
+
+from fastapi import Form
+
+@router.post("/events/{event_id}/register")
+def submit_registration_wizard(
+    event_id: str, 
+    request: Request, 
+    skills_offered: str = Form(""),
+    looking_for_team: bool = Form(False),
+    team_action: str = Form("solo"),
+    team_name: str = Form(""),
+    invite_token: str = Form(""),
+    db: Session = Depends(get_db), 
+    user: User | None = Depends(get_current_user)
+):
+    if not user:
+        return RedirectResponse(f"/login?next=/events/{event_id}/register", status_code=303)
+        
+    event = db.get(Event, event_id)
+    if not event:
+        raise HTTPException(status_code=404)
+    
+    # 1. Register User
+    from src.queries import upsert_membership
+    member = upsert_membership(db, event_id, user.id, "participant")
+    member.skills_offered = skills_offered
+    member.looking_for_team = looking_for_team
+    db.commit()
+    
+    # 2. Handle Team
+    if team_action == "create" and team_name:
+        from src.seed import new_id
+        from src.models import Team, TeamMember
+        team = Team(id=new_id("team"), event_id=event_id, name=team_name)
+        db.add(team)
+        db.add(TeamMember(team_id=team.id, user_id=user.id))
+        db.commit()
+        
+    elif team_action == "join" and invite_token:
+        from src.models import Team, TeamMember
+        # Clean token (in case they pasted full URL)
+        invite_token = invite_token.split('/')[-1]
+        team = db.query(Team).filter_by(event_id=event_id, invite_token=invite_token).first()
+        if team:
+            existing = db.query(TeamMember).filter_by(team_id=team.id, user_id=user.id).first()
+            if not existing and len(team.members) < 4:
+                db.add(TeamMember(team_id=team.id, user_id=user.id))
+                db.commit()
+                    
+    import urllib.parse
+    query = urllib.parse.urlencode({"msg": "Registration successful! Welcome to the hackathon.", "msg_type": "success"})
+    return RedirectResponse(f"/participant/{event_id}/dashboard?{query}", status_code=303)
 
 
 @router.get("/explore")
@@ -191,6 +263,7 @@ def gallery(
     track: str | None = None,
     event_id: str | None = None,
     tech: str | None = None,
+    sort: str | None = None,
     db: Session = Depends(get_db),
     user: User | None = Depends(get_current_user),
 ):
@@ -211,7 +284,15 @@ def gallery(
         query = query.filter(Project.tech_stack.ilike(like_tech))
 
     projects = query.order_by(Project.title.asc()).all()
-    
+
+    # Ballot Randomization: if sort == "random", shuffle deterministically per session/user
+    if sort == "random":
+        user_seed = user.id if user else (request.client.host if request.client else "seed")
+        rng = random.Random(user_seed)
+        shuffled = list(projects)
+        rng.shuffle(shuffled)
+        projects = shuffled
+
     events = db.query(Event).order_by(Event.name.asc()).all()
     tracks = db.query(Track).order_by(Track.name.asc()).all()
 
@@ -222,12 +303,47 @@ def gallery(
             all_techs.add(t.strip())
     techs = sorted(list(t for t in all_techs if t))
 
+    # Real counts
+    vote_counts = dict(
+        db.query(Vote.project_id, func.count(Vote.id)).group_by(Vote.project_id).all()
+    )
+    comment_counts = dict(
+        db.query(Comment.project_id, func.count(Comment.id)).group_by(Comment.project_id).all()
+    )
+
+    # Results hiding logic
+    can_see_votes = {}
+    for e in events:
+        if e.results_published:
+            can_see_votes[e.id] = True
+        elif user:
+            u_role = role_for(membership_for(db, user, e.id))
+            can_see_votes[e.id] = u_role in ("organizer", "admin")
+        else:
+            can_see_votes[e.id] = False
+
+    user_voted_project_ids = set()
+    user_team_project_ids = set()
+    if user:
+        user_voted_project_ids = set(
+            p[0] for p in db.query(Vote.project_id).filter(Vote.user_id == user.id).all()
+        )
+        user_teams = db.query(TeamMember.team_id).filter(TeamMember.user_id == user.id).subquery()
+        user_team_project_ids = set(
+            p[0] for p in db.query(Project.id).filter(Project.team_id.in_(user_teams)).all()
+        )
+
+    current_role = "visitor"
+    if user:
+        cur_event = default_event(db)
+        current_role = role_for(membership_for(db, user, cur_event.id if cur_event else None))
+
     return templates.TemplateResponse(request=request, name="gallery.html", context=
         base_context(
             request=request,
             event=default_event(db),
             user=user,
-            role="visitor",
+            role=current_role,
             projects=projects,
             events=events,
             tracks=tracks,
@@ -236,6 +352,12 @@ def gallery(
             selected_track=track or "",
             selected_event=event_id or "",
             selected_tech=tech or "",
+            selected_sort=sort or "",
+            vote_counts=vote_counts,
+            comment_counts=comment_counts,
+            can_see_votes=can_see_votes,
+            user_voted_project_ids=user_voted_project_ids,
+            user_team_project_ids=user_team_project_ids,
         ),
     )
 
@@ -255,25 +377,80 @@ def project_detail(
     )
     event = project.event if project else default_event(db)
     members = []
-    if project and project.team:
-        members = [m.user for m in project.team.members]
-        # load users
-        from src.models import TeamMember, User as U
+    comments = []
+    user_voted = False
+    is_own_project = False
+    can_vote = False
+    vote_reason = None
+    vote_count = None
+    results_hidden = True
 
-        members = (
-            db.query(U)
-            .join(TeamMember, TeamMember.user_id == U.id)
-            .filter(TeamMember.team_id == project.team_id)
+    if project:
+        if project.team:
+            from src.models import TeamMember, User as U
+            members = (
+                db.query(U)
+                .join(TeamMember, TeamMember.user_id == U.id)
+                .filter(TeamMember.team_id == project.team_id)
+                .all()
+            )
+
+        # Comments
+        comments = (
+            db.query(Comment)
+            .options(joinedload(Comment.user))
+            .filter(Comment.project_id == project.id)
+            .order_by(Comment.created_at.asc())
             .all()
         )
+
+        user_role = role_for(membership_for(db, user, event.id) if (user and event) else None)
+        results_hidden = not (event and event.results_published) and user_role not in ("organizer", "admin")
+
+        if not results_hidden:
+            vote_count = db.query(Vote).filter(Vote.project_id == project.id).count()
+
+        if user and event:
+            u_team = user_team(db, user.id, event.id)
+            is_own_project = bool(u_team and u_team.id == project.team_id)
+
+            user_voted = (
+                db.query(Vote)
+                .filter(Vote.user_id == user.id, Vote.project_id == project.id)
+                .first()
+                is not None
+            )
+
+            if event.results_published:
+                can_vote = False
+                vote_reason = "Voting is closed (results published)"
+            elif is_own_project:
+                can_vote = False
+                vote_reason = "Cannot vote for your own team's project"
+            elif user_role not in ("participant", "admin"):
+                can_vote = False
+                vote_reason = "Only registered participants can vote"
+            else:
+                can_vote = True
+        else:
+            can_vote = False
+            vote_reason = "Log in as a participant to vote"
+
     return templates.TemplateResponse(request=request, name="project_detail.html", context=
         base_context(
             request=request,
             event=event,
             user=user,
-            role=role_for(membership_for(db, user, event.id) if event else None),
+            role=role_for(membership_for(db, user, event.id) if (event and user) else None),
             project=project,
             members=members,
+            comments=comments,
+            user_voted=user_voted,
+            is_own_project=is_own_project,
+            can_vote=can_vote,
+            vote_reason=vote_reason,
+            vote_count=vote_count,
+            results_hidden=results_hidden,
         ),
         status_code=200 if project else 404,
     )

@@ -31,12 +31,12 @@ API. This event is an attempt to build what organisers actually need.
 ================================================================
 
 Thu 24 Sep 2026            Spec published. No project code yet.
-Fri 25 Sep 2026, 18:00     Kickoff. The clock starts. Nothing new is
+Fri 26 Sep 2026, 18:00     Kickoff. The clock starts. Nothing new is
                            released, because nothing is held back.
-Mon 28 Sep 2026, 18:00     Code freeze. Submissions due.
-28 Sep to 8 Oct 2026       Judging window.
-Sun 5 Oct 2026, 18:00      Write Up Quest closes.
-Fri 9 Oct 2026             Winners announced, with the adoption decision.
+Mon 29 Sep 2026, 18:00     Code freeze. Submissions due.
+29 Sep to 9 Oct 2026       Judging window.
+Sun 6 Oct 2026, 18:00      Write Up Quest closes.
+Fri 10 Oct 2026             Winners announced, with the adoption decision.
 
 Before kickoff you may plan, read, sketch schemas and form a team.
 You may not write project code before Friday 18:00 UTC.

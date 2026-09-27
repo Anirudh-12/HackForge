@@ -64,6 +64,7 @@
       <th class="norm-col sortable" data-sort="norm" style="cursor: pointer;">Normalized Score ↕</th>
       <th class="elo-col sortable" data-sort="elo" style="cursor: pointer; display: none;">ELO Rating ↕</th>
       <th>Reviews</th>
+      <th>Community Votes</th>
     </tr>
   </thead>
   <tbody>
@@ -89,10 +90,15 @@
         <strong>{{ "%.0f"|format(r.elo_score) }}</strong>
       </td>
       <td>{{ r.reviews_count }}</td>
+      <td>
+        <span class="badge" style="background: rgba(244, 63, 94, 0.08); color: #f43f5e; font-weight: 600;">
+          ❤️ {{ r.community_votes }}
+        </span>
+      </td>
     </tr>
     {% else %}
     <tr>
-      <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 32px 0;">No scored projects found.</td>
+      <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 32px 0;">No scored projects found.</td>
     </tr>
     {% endfor %}
   </tbody>

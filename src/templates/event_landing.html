@@ -95,9 +95,7 @@
         {% if role and role != 'visitor' %}
           <a href="/{{ role }}/{{ event.id }}/dashboard" class="btn btn-primary">Go to Dashboard</a>
         {% else %}
-          <form method="post" action="/events/{{ event.id }}/join" style="margin: 0;">
-             <button type="submit" class="btn btn-primary">Join Hackathon</button>
-          </form>
+          <button onclick="document.getElementById('register-modal').style.display='flex'" class="btn btn-primary">Join Hackathon</button>
         {% endif %}
       {% else %}
         <a href="/login?next=/events/{{ event.id }}" class="btn btn-primary">Join Hackathon</a>
@@ -143,6 +141,173 @@
   </div>
 </div>
 
+<!-- REGISTRATION MODAL -->
+<style>
+  .modal-overlay {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5); z-index: 9999;
+    display: none; align-items: center; justify-content: center;
+    backdrop-filter: blur(4px);
+  }
+  .wizard-container {
+    width: 100%; max-width: 600px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 32px;
+    box-shadow: 0 10px 25px -5px rgba(0,0,0,0.2);
+    position: relative;
+    max-height: 90vh; overflow-y: auto;
+  }
+  .close-btn {
+    position: absolute; top: 16px; right: 16px;
+    background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted);
+  }
+  .step-indicator {
+    display: flex; justify-content: space-between; margin-bottom: 32px; position: relative;
+  }
+  .step-indicator::before {
+    content: ''; position: absolute; top: 50%; left: 0; right: 0;
+    height: 2px; background: var(--border); z-index: 1;
+  }
+  .step-dot {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--surface); border: 2px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: bold; color: var(--text-muted); z-index: 2; position: relative;
+    transition: all 0.3s;
+  }
+  .step-dot.active {
+    border-color: var(--accent); color: var(--accent);
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.2);
+  }
+  .step-dot.completed {
+    background: var(--accent); border-color: var(--accent); color: white;
+  }
+  .wizard-step {
+    display: none; animation: fadeIn 0.3s ease-out forwards;
+  }
+  .wizard-step.active { display: block; }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .btn-group {
+    display: flex; justify-content: space-between; margin-top: 32px;
+    padding-top: 24px; border-top: 1px solid var(--border);
+  }
+  .team-option-card {
+    border: 1px solid var(--border); padding: 16px; border-radius: 8px; margin-bottom: 16px;
+    cursor: pointer; transition: all 0.2s; display: block;
+  }
+  .team-option-card:hover {
+    border-color: var(--accent); background: rgba(37, 99, 235, 0.05);
+  }
+  .team-option-card input[type="radio"] { margin-right: 12px; }
+</style>
+
+<div class="modal-overlay" id="register-modal">
+  <div class="wizard-container">
+    <button class="close-btn" onclick="document.getElementById('register-modal').style.display='none'">&times;</button>
+    <h1 style="margin-top: 0; text-align: center;">Join {{ event.name }}</h1>
+    <p style="text-align: center; color: var(--text-muted); margin-bottom: 32px;">Complete your registration to access the hackathon dashboard.</p>
+
+    <div class="step-indicator">
+      <div class="step-dot active" id="dot-1">1</div>
+      <div class="step-dot" id="dot-2">2</div>
+      <div class="step-dot" id="dot-3">3</div>
+    </div>
+
+    <form method="post" action="/events/{{ event.id }}/register" id="wizard-form">
+      
+      <!-- STEP 1: Your Details -->
+      <div class="wizard-step active" id="step-1">
+        <h2 style="margin-top: 0;">Step 1: Your Hacker Profile</h2>
+        <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 24px;">Tell us a bit about yourself so teams can find you (optional).</p>
+        
+        <div style="margin-bottom: 24px;">
+          <label style="display: block; margin-bottom: 8px; font-weight: 500;">Skills & Technologies</label>
+          <input type="text" name="skills_offered" class="input" placeholder="e.g. React, Python, UI Design, APIs">
+        </div>
+        
+        <div style="margin-bottom: 24px;">
+          <label style="display: flex; align-items: flex-start; gap: 12px; cursor: pointer;">
+            <input type="checkbox" name="looking_for_team" value="true" checked style="margin-top: 4px;">
+            <div>
+              <div style="font-weight: 500;">I'm looking for a team</div>
+              <div style="font-size: 0.85rem; color: var(--text-muted);">List my profile on the Matchmaking board so other hackers can invite me.</div>
+            </div>
+          </label>
+        </div>
+
+        <div class="btn-group" style="justify-content: flex-end;">
+          <button type="button" class="btn btn-primary" onclick="goToStep(2)">Next Step &rarr;</button>
+        </div>
+      </div>
+
+      <!-- STEP 2: Team Selection -->
+      <div class="wizard-step" id="step-2">
+        <h2 style="margin-top: 0;">Step 2: Team Setup</h2>
+        <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 24px;">How do you want to participate? You can always change this later.</p>
+        
+        <label class="team-option-card">
+          <div style="display: flex; align-items: center; font-weight: 500; font-size: 1.1rem; margin-bottom: 4px;">
+            <input type="radio" name="team_action" value="solo" checked onchange="toggleTeamInputs()">
+            Participate Solo (or decide later)
+          </div>
+          <div style="font-size: 0.9rem; color: var(--text-muted); margin-left: 28px;">You can use the Matchmaking board to find a team after registration.</div>
+        </label>
+        
+        <label class="team-option-card">
+          <div style="display: flex; align-items: center; font-weight: 500; font-size: 1.1rem; margin-bottom: 4px;">
+            <input type="radio" name="team_action" value="create" onchange="toggleTeamInputs()">
+            Create a New Team
+          </div>
+          <div style="font-size: 0.9rem; color: var(--text-muted); margin-left: 28px;">You will be the team leader and can invite others.</div>
+          
+          <div id="create-team-input" style="display: none; margin-left: 28px; margin-top: 12px;">
+            <input type="text" name="team_name" class="input" placeholder="Enter team name...">
+          </div>
+        </label>
+        
+        <label class="team-option-card">
+          <div style="display: flex; align-items: center; font-weight: 500; font-size: 1.1rem; margin-bottom: 4px;">
+            <input type="radio" name="team_action" value="join" onchange="toggleTeamInputs()">
+            Join an Existing Team
+          </div>
+          <div style="font-size: 0.9rem; color: var(--text-muted); margin-left: 28px;">If you have an invite link or token from a friend.</div>
+          
+          <div id="join-team-input" style="display: none; margin-left: 28px; margin-top: 12px;">
+            <input type="text" name="invite_token" class="input" placeholder="Paste invite token or full link...">
+          </div>
+        </label>
+
+        <div class="btn-group">
+          <button type="button" class="btn btn-secondary" onclick="goToStep(1)">&larr; Back</button>
+          <button type="button" class="btn btn-primary" onclick="goToStep(3)">Review & Confirm &rarr;</button>
+        </div>
+      </div>
+
+      <!-- STEP 3: Review -->
+      <div class="wizard-step" id="step-3">
+        <h2 style="margin-top: 0; text-align: center;">Ready to Hack!</h2>
+        <div style="text-align: center; margin: 32px 0;">
+          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="color: var(--accent); margin-bottom: 16px;">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+          </svg>
+          <p style="font-size: 1.1rem; color: var(--text-color);">You are about to register for <strong>{{ event.name }}</strong>.</p>
+          <p style="color: var(--text-muted);">By clicking Confirm, you agree to the hackathon rules and code of conduct.</p>
+        </div>
+
+        <div class="btn-group">
+          <button type="button" class="btn btn-secondary" onclick="goToStep(2)">&larr; Back</button>
+          <button type="submit" class="btn btn-primary" style="background: var(--accent);">Confirm Registration!</button>
+        </div>
+      </div>
+      
+    </form>
+  </div>
+</div>
+
 <script src="/static/marked.min.js"></script>
 <script type="text/markdown" id="raw-description">{{ event.description_markdown or 'No description provided.' }}</script>
 <script type="text/markdown" id="raw-rules">{{ event.rules_markdown or 'No rules provided.' }}</script>
@@ -165,6 +330,28 @@
       content.style.display = "block";
       btn.classList.add("active");
     }
+  }
+  function goToStep(stepNumber) {
+    document.querySelectorAll('.wizard-step').forEach(el => el.classList.remove('active'));
+    document.getElementById('step-' + stepNumber).classList.add('active');
+    
+    document.querySelectorAll('.step-dot').forEach((el, index) => {
+      el.classList.remove('active', 'completed');
+      if (index + 1 < stepNumber) el.classList.add('completed');
+      if (index + 1 === stepNumber) el.classList.add('active');
+    });
+  }
+  
+  function toggleTeamInputs() {
+    const action = document.querySelector('input[name="team_action"]:checked').value;
+    const createInput = document.getElementById('create-team-input');
+    const joinInput = document.getElementById('join-team-input');
+    
+    createInput.style.display = action === 'create' ? 'block' : 'none';
+    joinInput.style.display = action === 'join' ? 'block' : 'none';
+    
+    if (action === 'create') document.querySelector('input[name="team_name"]').focus();
+    if (action === 'join') document.querySelector('input[name="invite_token"]').focus();
   }
 </script>
 {% endblock %}

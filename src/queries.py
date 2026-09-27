@@ -1,8 +1,8 @@
-from __future__ import annotations
-
+import random
+from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
-from src.models import Event, EventMember, Project, Team, TeamMember, Track, User
+from src.models import Event, EventMember, Project, Team, TeamMember, Track, User, Vote, Comment
 
 
 def default_event(db: Session) -> Event | None:
@@ -22,7 +22,14 @@ def user_team(db: Session, user_id: str, event_id: str) -> Team | None:
     )
 
 
-def gallery_projects(db: Session, event_id: str, q: str | None = None, track_id: str | None = None):
+def gallery_projects(
+    db: Session,
+    event_id: str,
+    q: str | None = None,
+    track_id: str | None = None,
+    sort: str | None = None,
+    user_seed: str | None = None,
+):
     query = (
         db.query(Project)
         .options(joinedload(Project.team), joinedload(Project.track))
@@ -33,7 +40,14 @@ def gallery_projects(db: Session, event_id: str, q: str | None = None, track_id:
         query = query.filter(Project.title.ilike(like) | Project.summary.ilike(like))
     if track_id:
         query = query.filter(Project.track_id == track_id)
-    return query.order_by(Project.title.asc()).all()
+
+    projects = query.order_by(Project.title.asc()).all()
+    if sort == "random":
+        rng = random.Random(user_seed) if user_seed else random.Random()
+        shuffled = list(projects)
+        rng.shuffle(shuffled)
+        return shuffled
+    return projects
 
 
 def event_tracks(db: Session, event_id: str) -> list[Track]:
@@ -127,6 +141,14 @@ def compute_results(db: Session, event_id: str):
             elo_scores[comp.winner_project_id] = r_win + K * (1 - p_win)
             elo_scores[comp.loser_project_id] = r_lose + K * (0 - p_lose)
 
+    # Community votes per project
+    community_votes_map = dict(
+        db.query(Vote.project_id, func.count(Vote.id))
+        .filter(Vote.event_id == event_id)
+        .group_by(Vote.project_id)
+        .all()
+    )
+
     results = []
     for p in projects:
         p_raw_scores = project_judge_raw.get(p.id, {})
@@ -152,7 +174,8 @@ def compute_results(db: Session, event_id: str):
             "normalized_score": avg_norm,
             "elo_score": elo_scores[p.id],
             "reviews_count": len(p_raw_list),
-            "judge_raw_scores": p_raw_scores
+            "judge_raw_scores": p_raw_scores,
+            "community_votes": community_votes_map.get(p.id, 0),
         })
         
     return sorted(results, key=lambda x: x["normalized_score"], reverse=True)

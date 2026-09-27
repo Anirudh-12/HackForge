@@ -1,23 +1,274 @@
 {% extends "base_app.html" %}
-{% block title %}Overview{% endblock %}
+{% block title %}{{ event.name }} - Overview{% endblock %}
+
 {% block content %}
-<h1>{{ event.name }}</h1>
-<div class="card">
-  <h2>Your submission</h2>
-  {% if project %}
-    <h3>{{ project.title }}</h3>
-    <p class="secondary">{{ project.track.name if project.track else '' }}</p>
-    <p class="status-pill"><span class="dot {% if project.is_draft %}dot-draft{% else %}dot-submitted{% endif %}"></span>{% if project.is_draft %}Draft{% else %}Submitted{% endif %}</p>
-    <a class="btn btn-primary" href="/participant/{{ event.id }}/submit">Edit submission →</a>
-  {% else %}
-    <p class="secondary">You have not submitted a project yet.</p>
-    <a class="btn btn-primary" href="/participant/{{ event.id }}/submit">Create submission →</a>
-  {% endif %}
+<style>
+  .workspace-layout {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 32px;
+    align-items: start;
+    margin-top: 16px;
+  }
+  
+  .event-header {
+    margin-bottom: 32px;
+  }
+  .event-header h1 {
+    font-size: 2.2rem;
+    margin: 0 0 8px 0;
+  }
+  .event-header p {
+    color: var(--text-muted);
+    font-size: 1.1rem;
+    margin: 0;
+  }
+  
+  .progress-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-top: 24px;
+  }
+  
+  .progress-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+  
+  .progress-item.completed {
+    border-color: var(--success);
+    background: rgba(22, 163, 74, 0.05);
+  }
+  .progress-item.completed .p-icon {
+    color: var(--success);
+    background: rgba(22, 163, 74, 0.1);
+  }
+  
+  .progress-item.active {
+    border-color: var(--accent);
+    background: rgba(37, 99, 235, 0.05);
+  }
+  .progress-item.active .p-icon {
+    color: var(--accent);
+    background: rgba(37, 99, 235, 0.1);
+  }
+  
+  .progress-item.pending {
+    opacity: 0.7;
+  }
+  .progress-item.pending .p-icon {
+    color: var(--text-muted);
+    background: var(--surface-hover);
+  }
+  
+  .p-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    flex-shrink: 0;
+  }
+  
+  .p-content {
+    flex-grow: 1;
+  }
+  .p-title {
+    font-weight: 500;
+    margin-bottom: 4px;
+  }
+  .p-desc {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+  }
+  
+  .info-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-bottom: 24px;
+  }
+  .info-card h3 {
+    margin: 0 0 16px 0;
+    font-size: 1.1rem;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+</style>
+
+<div class="workspace-layout">
+  
+  <!-- Left Column: Progress -->
+  <div>
+    <div class="event-header">
+      <h1>{{ event.name }}</h1>
+      <p>Your event workspace.</p>
+    </div>
+    
+    <h2>Your Progress</h2>
+    <div class="progress-list">
+      
+      <!-- 1. Registered -->
+      <div class="progress-item completed">
+        <div class="p-icon">✓</div>
+        <div class="p-content">
+          <div class="p-title">Registered</div>
+          <div class="p-desc">You are registered for this event.</div>
+        </div>
+      </div>
+      
+      <!-- 2. Team Formed -->
+      {% if team %}
+      <div class="progress-item completed">
+        <div class="p-icon">✓</div>
+        <div class="p-content">
+          <div class="p-title">Team formed</div>
+          <div class="p-desc">You are participating with team <strong>{{ team.name }}</strong>.</div>
+        </div>
+        <a href="/participant/{{ event.id }}/team" class="btn btn-secondary">View Team</a>
+      </div>
+      {% else %}
+      <div class="progress-item active">
+        <div class="p-icon">→</div>
+        <div class="p-content">
+          <div class="p-title">Form a team</div>
+          <div class="p-desc">Create or join a team (1-4 members) to submit a project.</div>
+        </div>
+        <a href="/participant/{{ event.id }}/team" class="btn btn-primary">Form Team</a>
+      </div>
+      {% endif %}
+      
+      <!-- 3. Submit Project -->
+      {% if not team %}
+      <div class="progress-item pending">
+        <div class="p-icon">○</div>
+        <div class="p-content">
+          <div class="p-title">Submit project</div>
+          <div class="p-desc">You need a team before submitting.</div>
+        </div>
+      </div>
+      {% elif project and not project.is_draft %}
+      <div class="progress-item completed">
+        <div class="p-icon">✓</div>
+        <div class="p-content">
+          <div class="p-title">Project submitted</div>
+          <div class="p-desc"><strong>{{ project.title }}</strong> has been submitted.</div>
+        </div>
+        <a href="/participant/{{ event.id }}/submit" class="btn btn-secondary">View</a>
+      </div>
+      {% elif project and project.is_draft %}
+      <div class="progress-item active">
+        <div class="p-icon">→</div>
+        <div class="p-content">
+          <div class="p-title">Submit project</div>
+          <div class="p-desc">Your draft <strong>{{ project.title }}</strong> is incomplete.</div>
+        </div>
+        <a href="/participant/{{ event.id }}/submit" class="btn btn-primary">Continue</a>
+      </div>
+      {% else %}
+      <div class="progress-item active">
+        <div class="p-icon">→</div>
+        <div class="p-content">
+          <div class="p-title">Submit project</div>
+          <div class="p-desc">Create your project submission before the deadline.</div>
+        </div>
+        <a href="/participant/{{ event.id }}/submit" class="btn btn-primary">Start</a>
+      </div>
+      {% endif %}
+      
+      <!-- 4. Judging -->
+      {% if event.results_published %}
+      <div class="progress-item completed">
+        <div class="p-icon">✓</div>
+        <div class="p-content">
+          <div class="p-title">Judging complete</div>
+        </div>
+      </div>
+      {% elif not event.submissions_open and not event.results_published %}
+      <div class="progress-item active">
+        <div class="p-icon">→</div>
+        <div class="p-content">
+          <div class="p-title">Judging in progress</div>
+          <div class="p-desc">Judges are currently reviewing projects.</div>
+        </div>
+      </div>
+      {% else %}
+      <div class="progress-item pending">
+        <div class="p-icon">○</div>
+        <div class="p-content">
+          <div class="p-title">Judging</div>
+          <div class="p-desc">Begins after submissions close.</div>
+        </div>
+      </div>
+      {% endif %}
+      
+      <!-- 5. Results -->
+      {% if event.results_published %}
+      <div class="progress-item completed">
+        <div class="p-icon">✓</div>
+        <div class="p-content">
+          <div class="p-title">Results available</div>
+        </div>
+        <a href="/projects?event_id={{ event.id }}" class="btn btn-primary">View Results</a>
+      </div>
+      {% else %}
+      <div class="progress-item pending">
+        <div class="p-icon">○</div>
+        <div class="p-content">
+          <div class="p-title">Results</div>
+          <div class="p-desc">Waiting for final results.</div>
+        </div>
+      </div>
+      {% endif %}
+      
+    </div>
+  </div>
+  
+  <!-- Right Column: Info & Deadlines -->
+  <div>
+    <div class="info-card">
+      <h3>Key Deadlines</h3>
+      
+      <div style="margin-bottom: 16px;">
+        <div style="font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; margin-bottom: 4px;">Submissions Close</div>
+        <div style="font-weight: 500; font-size: 1.1rem; color: var(--text-primary);">
+          {% if event.submissions_close %}
+            {{ event.submissions_close.strftime('%b %d, %Y') }}<br>
+            <span style="color: var(--text-muted); font-size: 0.95rem;">{{ event.submissions_close.strftime('%H:%M UTC') }}</span>
+          {% else %}
+            TBA
+          {% endif %}
+        </div>
+      </div>
+      
+      <div>
+        <div style="font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; margin-bottom: 4px;">Judging Closes</div>
+        <div style="font-weight: 500; font-size: 1.1rem; color: var(--text-primary);">
+          {% if event.judging_close %}
+            {{ event.judging_close.strftime('%b %d, %Y') }}<br>
+            <span style="color: var(--text-muted); font-size: 0.95rem;">{{ event.judging_close.strftime('%H:%M UTC') }}</span>
+          {% else %}
+            TBA
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    
+    <div class="info-card">
+      <h3>Need help?</h3>
+      <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 16px;">If you have any issues with your submission or team, contact the organizer.</p>
+      <a href="#" class="btn btn-outline" style="width: 100%; justify-content: center;">Contact Organizer</a>
+    </div>
+  </div>
+  
 </div>
-<p>Your team: {{ team.name if team else 'None' }}</p>
-{% if team %}
-  <p class="secondary">Members: {% for m in team.members %}{{ m.user.email }}{% if not loop.last %} · {% endif %}{% endfor %}</p>
-{% endif %}
-<a href="/participant/{{ event.id }}/team">Manage team</a>
-<p class="meta">Deadline {{ event.submissions_close }} UTC</p>
 {% endblock %}

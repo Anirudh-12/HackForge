@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.db import Base
@@ -143,6 +143,8 @@ class Project(Base):
     event: Mapped[Event] = relationship(back_populates="projects")
     team: Mapped[Team] = relationship(back_populates="project")
     track: Mapped[Track | None] = relationship(back_populates="projects")
+    votes: Mapped[list[Vote]] = relationship(back_populates="project", cascade="all, delete-orphan")
+    comments: Mapped[list[Comment]] = relationship(back_populates="project", cascade="all, delete-orphan")
 
 
 class RubricCriteria(Base):
@@ -185,7 +187,7 @@ class AuditLog(Base):
     event_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     actor_id: Mapped[str | None] = mapped_column(String, nullable=True)
     message: Mapped[str] = mapped_column(Text, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=func.now(), nullable=False)
 
 
 class JudgeInvitation(Base):
@@ -207,7 +209,7 @@ class Notification(Base):
     message: Mapped[str] = mapped_column(Text, nullable=False)
     action_link: Mapped[str | None] = mapped_column(String, nullable=True)
     is_read: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=func.now(), nullable=False)
 
     user: Mapped[User] = relationship()
 
@@ -220,4 +222,34 @@ class PairwiseComparison(Base):
     winner_project_id: Mapped[str] = mapped_column(ForeignKey("projects.id"), nullable=False)
     loser_project_id: Mapped[str] = mapped_column(ForeignKey("projects.id"), nullable=False)
     criteria_id: Mapped[str | None] = mapped_column(ForeignKey("rubric_criteria.id"), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=func.now(), nullable=False)
+
+
+class Vote(Base):
+    __tablename__ = "votes"
+    __table_args__ = (UniqueConstraint("user_id", "project_id", name="uq_vote_user_project"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    event_id: Mapped[str] = mapped_column(ForeignKey("events.id"), nullable=False, index=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    project_id: Mapped[str] = mapped_column(ForeignKey("projects.id"), nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=func.now(), nullable=False)
+
+    user: Mapped[User] = relationship()
+    project: Mapped[Project] = relationship(back_populates="votes")
+    event: Mapped[Event] = relationship()
+
+
+class Comment(Base):
+    __tablename__ = "comments"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    event_id: Mapped[str] = mapped_column(ForeignKey("events.id"), nullable=False, index=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    project_id: Mapped[str] = mapped_column(ForeignKey("projects.id"), nullable=False, index=True)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=func.now(), nullable=False)
+
+    user: Mapped[User] = relationship()
+    project: Mapped[Project] = relationship(back_populates="comments")
+    event: Mapped[Event] = relationship()

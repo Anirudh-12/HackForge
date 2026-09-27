@@ -28,7 +28,7 @@ def create_app() -> FastAPI:
 
     app.mount("/static", StaticFiles(directory=str(ROOT / "static")), name="static")
 
-    from src.routers import admin, auth, judge, organizer, participant, public, notifications
+    from src.routers import admin, auth, judge, notifications, organizer, participant, public, voting
 
     app.include_router(auth.router)
     app.include_router(participant.router)
@@ -37,6 +37,7 @@ def create_app() -> FastAPI:
     app.include_router(admin.router)
     app.include_router(public.router)
     app.include_router(notifications.router)
+    app.include_router(voting.router)
 
     @app.exception_handler(StarletteHTTPException)
     async def http_exc(request: Request, exc: StarletteHTTPException):

@@ -69,6 +69,34 @@
   .gradient-4 { background: linear-gradient(135deg, #0284c7, #4f46e5); }
   .gradient-5 { background: linear-gradient(135deg, #475569, #1e293b); }
   .gradient-6 { background: linear-gradient(135deg, #65a30d, #059669); }
+
+  .vote-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    z-index: 2;
+  }
+  .vote-btn:hover {
+    border-color: #f43f5e;
+    color: #f43f5e;
+    background: rgba(244, 63, 94, 0.06);
+    transform: scale(1.05);
+  }
+  .vote-btn.voted {
+    background: #f43f5e;
+    border-color: #f43f5e;
+    color: white;
+    box-shadow: 0 2px 6px rgba(244, 63, 94, 0.35);
+  }
 </style>
 
 <div class="gallery-header">
@@ -125,10 +153,10 @@
       </div>
       
       <div class="filter-item">
-        <label>Sort by</label>
-        <select name="sort">
-          <option value="recent">Most Recent</option>
-          <option value="popular">Most Popular</option>
+        <label>Ordering</label>
+        <select name="sort" onchange="this.form.submit()">
+          <option value="" {% if not selected_sort %}selected{% endif %}>Alphabetical (A–Z)</option>
+          <option value="random" {% if selected_sort == 'random' %}selected{% endif %}>🎲 Randomized Ballot (Anti-Abuse)</option>
         </select>
       </div>
     </div>
@@ -194,21 +222,70 @@
       
       <div class="stats-action">
         <div class="social-stats">
-          <div class="stat-item">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
-            {{ (project.id|length * 7) % 150 + 12 }}
+          <div class="stat-item" title="Community Votes">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" stroke="currentColor" stroke-width="1"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+            {% if can_see_votes.get(project.event_id) %}
+              <span>{{ vote_counts.get(project.id, 0) }} votes</span>
+            {% else %}
+              <span style="font-size: 11px; opacity: 0.8;" title="Results hidden during voting window">Votes hidden</span>
+            {% endif %}
           </div>
-          <div class="stat-item">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-            {{ (project.id|length * 3) % 40 + 2 }}
+          <div class="stat-item" title="Comments">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+            <span>{{ comment_counts.get(project.id, 0) }}</span>
           </div>
         </div>
-        <div class="view-link">
-          View Project <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-        </div>
+
+        {% if role in ['participant', 'admin'] and not project.event.results_published %}
+          {% if project.id in user_team_project_ids %}
+            <span class="badge" style="background: rgba(148, 163, 184, 0.15); color: #64748b; font-size: 11px; padding: 4px 8px;" title="Cannot vote for your own team">Your Team</span>
+          {% else %}
+            <button type="button" class="vote-btn {% if project.id in user_voted_project_ids %}voted{% endif %}" data-project-id="{{ project.id }}" onclick="toggleVote(event, '{{ project.id }}', this)">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="{% if project.id in user_voted_project_ids %}currentColor{% else %}none{% endif %}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+              <span>{% if project.id in user_voted_project_ids %}Voted{% else %}Vote{% endif %}</span>
+            </button>
+          {% endif %}
+        {% else %}
+          <div class="view-link">
+            View Project <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+          </div>
+        {% endif %}
       </div>
     </div>
   </a>
   {% endfor %}
 </div>
+
+<script>
+async function toggleVote(evt, projectId, btn) {
+  evt.preventDefault();
+  evt.stopPropagation();
+  try {
+    const res = await fetch(`/api/projects/${projectId}/vote`, {
+      method: 'POST',
+      headers: { 'Accept': 'application/json' }
+    });
+    if (res.status === 401) {
+      window.location.href = `/login?next=/projects`;
+      return;
+    }
+    const data = await res.json();
+    if (res.ok && data.success) {
+      if (data.voted) {
+        btn.classList.add('voted');
+        btn.querySelector('span').textContent = 'Voted';
+        btn.querySelector('svg').setAttribute('fill', 'currentColor');
+      } else {
+        btn.classList.remove('voted');
+        btn.querySelector('span').textContent = 'Vote';
+        btn.querySelector('svg').setAttribute('fill', 'none');
+      }
+    } else {
+      alert(data.detail || 'Could not update vote');
+    }
+  } catch (err) {
+    console.error('Vote error:', err);
+  }
+}
+</script>
 {% endblock %}

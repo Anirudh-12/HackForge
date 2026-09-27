@@ -76,7 +76,9 @@
     <div class="app-main">
       <div class="topbar">
         <div style="position: relative;">
-          {% if all_events %}
+          {% if request and ('/participant/home' in request.url.path or '/explore' in request.url.path or '/profile' in request.url.path) %}
+          <div style="font-weight: 500;">Hackforge</div>
+          {% elif all_events %}
           <div style="cursor: pointer; display: flex; align-items: center; gap: 4px; font-weight: 500;" onclick="const d = document.getElementById('eventDropdown'); d.style.display = d.style.display === 'none' ? 'block' : 'none'; event.stopPropagation();">
             {{ event.name if event else 'Hackforge' }}
             <span style="font-size: 10px;">🔻</span>
