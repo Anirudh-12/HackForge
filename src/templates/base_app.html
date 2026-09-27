@@ -67,6 +67,7 @@
           <div class="nav-section">CURRENT HACKATHON</div>
           <a href="/participant/{{ event.id }}/dashboard" {% if request and 'dashboard' in request.url.path %}class="active"{% endif %}>Overview</a>
           <a href="/participant/{{ event.id }}/team" {% if request and 'team' in request.url.path %}class="active"{% endif %}>Team</a>
+          <a href="/participant/{{ event.id }}/matchmaking" {% if request and 'matchmaking' in request.url.path %}class="active"{% endif %}>Find a Team</a>
           <a href="/participant/{{ event.id }}/submit" {% if request and 'submit' in request.url.path %}class="active"{% endif %}>Submission</a>
           {% endif %}
         {% endif %}

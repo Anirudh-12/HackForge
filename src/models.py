@@ -78,6 +78,8 @@ class EventMember(Base):
     event_id: Mapped[str] = mapped_column(ForeignKey("events.id"), nullable=False, index=True)
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
     role: Mapped[str] = mapped_column(String, nullable=False)
+    looking_for_team: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    skills_offered: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     event: Mapped[Event] = relationship(back_populates="members")
     user: Mapped[User] = relationship(back_populates="memberships")

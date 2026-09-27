@@ -150,6 +150,83 @@ def participant_dashboard(
     )
 
 
+@router.get("/participant/{event_id}/matchmaking")
+def matchmaking_page(
+    event_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_role("participant", "organizer", "admin")),
+):
+    event = db.get(Event, event_id)
+    if event is None:
+        raise HTTPException(status_code=404, detail="event not found")
+        
+    team = user_team(db, user.id, event_id)
+    membership = db.query(EventMember).filter(EventMember.user_id == user.id, EventMember.event_id == event_id).first()
+    
+    # Solo users looking for team
+    solo_users = db.query(EventMember).options(joinedload(EventMember.user)).filter(
+        EventMember.event_id == event_id,
+        EventMember.looking_for_team == True,
+        EventMember.user_id != user.id
+    ).all()
+    
+    # Teams looking for members (Teams with < 4 members)
+    all_teams = db.query(Team).options(joinedload(Team.members)).filter(Team.event_id == event_id).all()
+    open_teams = [t for t in all_teams if len(t.members) < 4 and (not team or t.id != team.id)]
+
+    return templates.TemplateResponse(request=request, name="participant/matchmaking.html", context=
+        base_context(request=request, event=event, user=user, role="participant", team=team, 
+                     membership=membership, solo_users=solo_users, open_teams=open_teams),
+    )
+
+@router.post("/participant/{event_id}/matchmaking")
+def update_matchmaking(
+    event_id: str,
+    request: Request,
+    looking_for_team: bool = Form(False),
+    skills_offered: str = Form(""),
+    db: Session = Depends(get_db),
+    user: User = Depends(require_role("participant", "organizer", "admin")),
+):
+    membership = db.query(EventMember).filter(EventMember.user_id == user.id, EventMember.event_id == event_id).first()
+    if membership:
+        membership.looking_for_team = looking_for_team
+        membership.skills_offered = skills_offered
+        db.commit()
+    return RedirectResponse(f"/participant/{event_id}/matchmaking", status_code=303)
+
+@router.post("/participant/{event_id}/invite_user")
+def invite_user_to_team(
+    event_id: str,
+    target_user_id: str = Form(...),
+    db: Session = Depends(get_db),
+    user: User = Depends(require_role("participant", "organizer", "admin")),
+):
+    event = db.get(Event, event_id)
+    team = user_team(db, user.id, event_id)
+    if not team:
+        return RedirectResponse(f"/participant/{event_id}/matchmaking", status_code=303)
+        
+    from src.seed import new_id
+    from src.models import Notification
+    import uuid
+    
+    # Ensure team has an invite token
+    if not team.invite_token:
+        team.invite_token = uuid.uuid4().hex
+        
+    db.add(Notification(
+        id=new_id("notif"),
+        user_id=target_user_id,
+        message=f"{user.name} has invited you to join their team '{team.name}'.",
+        action_link=f"/join/{team.invite_token}"
+    ))
+    db.commit()
+    
+    return RedirectResponse(f"/participant/{event_id}/matchmaking", status_code=303)
+
+
 @router.get("/participant/{event_id}/team")
 def team_page(
     event_id: str,

@@ -1,0 +1,131 @@
+{% extends "base_app.html" %}
+{% block title %}Matchmaking{% endblock %}
+{% block content %}
+<style>
+  .match-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+    margin-top: 24px;
+  }
+  .match-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .match-card h3 {
+    margin: 0 0 4px 0;
+    font-size: 1.1rem;
+  }
+  .match-card p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+  }
+  .match-card .skills {
+    margin-top: 8px;
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .match-card .skill-tag {
+    background: rgba(var(--primary-rgb), 0.1);
+    color: var(--primary);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+  .status-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-bottom: 32px;
+  }
+</style>
+
+<div class="dashboard-header" style="margin-top: 16px;">
+  <h1 style="font-size: 2.2rem; margin: 0 0 8px 0;">Find a Team</h1>
+  <p style="color: var(--text-muted); font-size: 1.1rem; margin: 0;">Match with other hackers and form the ultimate squad.</p>
+</div>
+
+<div class="status-box">
+  <h2 style="margin-top: 0;">My Matchmaking Status</h2>
+  <form method="post" action="/participant/{{ event.id }}/matchmaking" style="display: flex; flex-direction: column; gap: 16px; max-width: 500px;">
+    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+      <input type="checkbox" name="looking_for_team" value="true" {% if membership and membership.looking_for_team %}checked{% endif %}>
+      <span>I am actively looking for a team</span>
+    </label>
+    
+    <div>
+      <label style="display: block; margin-bottom: 4px; font-weight: 500;">Skills Offered (e.g. React, Python, UI/UX)</label>
+      <input type="text" name="skills_offered" class="input" value="{{ membership.skills_offered or '' }}" placeholder="List your skills...">
+    </div>
+    
+    <button type="submit" class="btn btn-primary" style="align-self: flex-start;">Update Status</button>
+  </form>
+</div>
+
+<div class="match-grid">
+  <!-- Solo Users Column -->
+  <div>
+    <h2 style="margin-top: 0; margin-bottom: 16px;">Solo Hackers</h2>
+    {% if not solo_users %}
+      <p style="color: var(--text-muted);">No solo hackers looking for a team right now.</p>
+    {% else %}
+      {% for member in solo_users %}
+        <div class="match-card">
+          <div>
+            <h3>{{ member.user.name }}</h3>
+            <p>{{ member.user.email }}</p>
+            {% if member.skills_offered %}
+              <div class="skills">
+                {% for skill in member.skills_offered.split(',') %}
+                  <span class="skill-tag">{{ skill.strip() }}</span>
+                {% endfor %}
+              </div>
+            {% endif %}
+          </div>
+          {% if team %}
+            <form method="post" action="/participant/{{ event.id }}/invite_user" style="margin: 0;">
+              <input type="hidden" name="target_user_id" value="{{ member.user.id }}">
+              <button type="submit" class="btn btn-secondary">Invite to Team</button>
+            </form>
+          {% endif %}
+        </div>
+      {% endfor %}
+    {% endif %}
+  </div>
+
+  <!-- Open Teams Column -->
+  <div>
+    <h2 style="margin-top: 0; margin-bottom: 16px;">Open Teams</h2>
+    {% if not open_teams %}
+      <p style="color: var(--text-muted);">No open teams looking for members right now.</p>
+    {% else %}
+      {% for t in open_teams %}
+        <div class="match-card">
+          <div>
+            <h3>{{ t.name }}</h3>
+            <p>{{ t.members|length }} / 4 members</p>
+          </div>
+          {% if not team %}
+            <form method="post" action="/participant/{{ event.id }}/team" style="margin: 0;">
+              <!-- Using the same Join logic, wait, they need the invite token. So we need to show Request to Join or we just give them the link? -->
+              <!-- For now, we will just send an email/notification to the team leader. Let's build a quick request feature, or just show them. -->
+              <span style="color: var(--text-muted); font-size: 0.9rem;">Reach out to join</span>
+            </form>
+          {% endif %}
+        </div>
+      {% endfor %}
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}

@@ -5,9 +5,9 @@ import hmac
 import os
 from typing import Callable
 
+import bcrypt
 from fastapi import Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
-from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
 from src.db import get_db
@@ -15,7 +15,6 @@ from src.models import EventMember, User
 
 SESSION_COOKIE = "session"
 SESSION_SECRET = os.environ.get("SESSION_SECRET", "hackforge-dev-secret")
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 ROLE_RANK = {
     "visitor": 0,
@@ -27,7 +26,7 @@ ROLE_RANK = {
 
 
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 
 def verify_password(password: str, password_hash: str | None) -> bool:
@@ -35,7 +34,7 @@ def verify_password(password: str, password_hash: str | None) -> bool:
     if password_hash is None:
         return True
     try:
-        return pwd_context.verify(password, password_hash)
+        return bcrypt.checkpw(password.encode("utf-8"), password_hash.encode("utf-8"))
     except Exception:
         return False
 
@@ -88,7 +87,9 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> User | 
     return db.get(User, user_id)
 
 
-def membership_for(db: Session, user: User | None, event_id: str | None) -> EventMember | None:
+def membership_for(
+    db: Session, user: User | None, event_id: str | None
+) -> EventMember | None:
     if user is None or not event_id:
         return None
     return (
