@@ -13,7 +13,7 @@ from src.templating import templates
 from src.models import AuditLog, Event, Project, Team, Track, User
 from src.queries import event_tracks
 from src.seed import new_id
-from src.timeutil import parse_iso_utc, utcnow
+from src.timeutil import as_utc, parse_iso_utc, utcnow
 
 router = APIRouter()
 
@@ -104,77 +104,84 @@ def dashboard(
     
     # Progress Dashboard Stats
     tracks = event_tracks(db, event_id)
+    track_map = {t.id: t for t in tracks}
+    
     judge_tracks = db.query(JudgeTrack).filter_by(event_id=event_id).all()
-    judges = db.query(User).filter(User.id.in_([jt.judge_id for jt in judge_tracks])).all() if judge_tracks else []
+    # Map track_id to list of judge_ids
+    track_judges = {}
+    for jt in judge_tracks:
+        track_judges.setdefault(jt.track_id, []).append(jt.judge_id)
+        
+    unique_judges = set(jt.judge_id for jt in judge_tracks)
     
     scores = db.query(Score).filter_by(event_id=event_id).all()
     
-    # How many judges have submitted at least one score
-    judges_with_scores = set(s.judge_id for s in scores)
+    # Pre-calculate who scored what: (project_id, judge_id) -> bool
+    scored_pairs = set((s.project_id, s.judge_id) for s in scores)
     
-    # For each track, compute progress
-    track_stats = []
+    total_reviews_assigned = 0
+    total_reviews_completed = 0
     
-    total_projects = 0
-    total_fully_scored = 0
+    project_stats = []
     
-    for t in tracks:
-        t_projects = [p for p in projects if p.track_id == t.id and not p.is_draft and not p.is_disqualified]
-        t_judges = [jt.judge_id for jt in judge_tracks if jt.track_id == t.id]
+    submitted_projects = [p for p in projects if not p.is_draft and not p.is_disqualified]
+    
+    for p in submitted_projects:
+        p_track = track_map.get(p.track_id)
+        p_judges = track_judges.get(p.track_id, [])
         
-        fully_scored = 0
-        for p in t_projects:
-            # A project is fully scored if ALL assigned judges have scored it
-            # We count distinct criteria? No, "at least one score" is usually enough to say a judge has scored a project.
-            p_scores = [s for s in scores if s.project_id == p.id]
-            p_judges_who_scored = set(s.judge_id for s in p_scores)
+        reviews_total = len(p_judges)
+        reviews_done = sum(1 for j in p_judges if (p.id, j) in scored_pairs)
+        
+        total_reviews_assigned += reviews_total
+        total_reviews_completed += reviews_done
+        
+        if reviews_total == 0:
+            status = "No judges"
+        elif reviews_done == reviews_total:
+            status = "Complete"
+        else:
+            status = f"Awaiting {reviews_total - reviews_done}"
             
-            # If every judge assigned to this track has scored it
-            if t_judges and all(j in p_judges_who_scored for j in t_judges):
-                fully_scored += 1
-            elif not t_judges:
-                # If no judges assigned, it can't be scored
-                pass
-                
-        # For each judge in this track, their completion count
-        j_stats = []
-        for j_id in t_judges:
-            j_name = next((j.name for j in judges if j.id == j_id), j_id)
-            # How many projects in this track did this judge score?
-            j_scored = sum(1 for p in t_projects if any(s.project_id == p.id and s.judge_id == j_id for s in scores))
-            j_stats.append({"name": j_name, "scored": j_scored, "total": len(t_projects)})
-            
-        track_stats.append({
-            "track": t,
-            "project_count": len(t_projects),
-            "fully_scored": fully_scored,
-            "unscored": len(t_projects) - fully_scored,
-            "judge_stats": j_stats,
-            "no_judges": len(t_judges) == 0
+        project_stats.append({
+            "project": p,
+            "track_name": p_track.name if p_track else "Untracked",
+            "reviews_done": reviews_done,
+            "reviews_total": reviews_total,
+            "status": status,
+            "complete": reviews_done == reviews_total and reviews_total > 0
         })
         
-        total_projects += len(t_projects)
-        total_fully_scored += fully_scored
+    # Sort projects: incomplete first, then by track
+    project_stats.sort(key=lambda x: (x["complete"], x["track_name"], x["project"].title))
+    
+    reviews_percent = int((total_reviews_completed / total_reviews_assigned * 100)) if total_reviews_assigned > 0 else 0
+    reviews_awaiting = total_reviews_assigned - total_reviews_completed
+    
+    now = utcnow()
+    subs_complete = event.submissions_close and now > as_utc(event.submissions_close)
+    assign_complete = total_reviews_assigned > 0
+    judging_complete = total_reviews_assigned > 0 and total_reviews_completed == total_reviews_assigned
 
     return templates.TemplateResponse(
         request=request,
         name="organizer/dashboard.html",
-        context=base_context(all_events=db.query(Event).all(), 
+        context=base_context(
+            all_events=db.query(Event).all(), 
             request=request,
             event=event,
             user=user,
             role="organizer",
-            project_count=len(projects),
-            submitted_count=submitted,
-            draft_count=len(projects) - submitted,
-            team_count=teams,
-            tracks=tracks,
-            track_stats=track_stats,
-            total_projects=total_projects,
-            total_fully_scored=total_fully_scored,
-            percent_complete=int((total_fully_scored / total_projects * 100) if total_projects else 0),
-            total_judges=len(judges),
-            judges_active=len(judges_with_scores)
+            project_count=len(submitted_projects),
+            judge_count=len(unique_judges),
+            total_reviews_assigned=total_reviews_assigned,
+            total_reviews_completed=total_reviews_completed,
+            reviews_percent=reviews_percent,
+            reviews_awaiting=reviews_awaiting,
+            project_stats=project_stats,
+            subs_complete=subs_complete,
+            assign_complete=assign_complete,
+            judging_complete=judging_complete,
         ),
     )
 

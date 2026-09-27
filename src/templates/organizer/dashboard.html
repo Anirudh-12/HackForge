@@ -1,94 +1,365 @@
 {% extends "base_app.html" %}
-{% block title %}Dashboard{% endblock %}
+{% block title %}Judging Progress{% endblock %}
 {% block content %}
-<div style="display: flex; justify-content: space-between; align-items: baseline;">
-  <h1>Dashboard</h1>
-  <p class="secondary">{{ event.name }}</p>
+<style>
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+}
+.header-titles {
+  display: flex;
+  flex-direction: column;
+}
+.workspace-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+.header-titles h1 {
+  margin: 0;
+  font-size: 2.25rem;
+  font-weight: 700;
+}
+.header-titles .subtitle {
+  color: var(--text-muted);
+  font-size: 1rem;
+  margin-top: 4px;
+}
+.stat-cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 32px;
+}
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+.stat-card .value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+.stat-card .label {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+.stat-card .icon {
+  color: var(--text-muted);
+  font-size: 1.25rem;
+}
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 24px;
+}
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+}
+.panel h2 {
+  margin: 0 0 4px 0;
+  font-size: 1.25rem;
+  display: flex;
+  justify-content: space-between;
+}
+.panel .panel-subtitle {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin: 0 0 16px 0;
+}
+.progress-bar-container {
+  height: 8px;
+  background: var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+.progress-bar-fill {
+  height: 100%;
+  background: var(--primary);
+  border-radius: 4px;
+}
+.status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+}
+.status-dot.green { background: var(--success); }
+.status-dot.yellow { background: var(--warning); }
+.status-dot.red { background: var(--danger); }
+.status-dot.gray { background: var(--border); }
+
+.stepper {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.step {
+  display: flex;
+  gap: 16px;
+  position: relative;
+}
+.step:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 24px;
+  bottom: -16px;
+  width: 2px;
+  background: var(--border);
+}
+.step-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--border);
+  margin-top: 6px;
+  position: relative;
+  z-index: 2;
+}
+.step.complete .step-dot { background: var(--success); }
+.step.in-progress .step-dot { background: var(--primary); border: 2px solid var(--surface); box-shadow: 0 0 0 2px var(--primary); width: 8px; height: 8px; margin-left: 2px; }
+.step-content {
+  flex: 1;
+}
+.step-title {
+  font-weight: 600;
+  margin: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.step-desc {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin: 2px 0 0 0;
+}
+.badge-soft {
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+.badge-soft.green { background: rgba(var(--success-rgb), 0.1); color: var(--success); }
+.badge-soft.blue { background: rgba(var(--primary-rgb), 0.1); color: var(--primary); }
+.badge-soft.gray { background: var(--border); color: var(--text-muted); }
+</style>
+
+<div class="dashboard-header">
+  <div class="header-titles">
+    <div class="workspace-label">ORGANIZER WORKSPACE</div>
+    <h1>Judging Progress</h1>
+    <div class="subtitle">{{ event.name }} · Live overview</div>
+  </div>
+  <div>
+    <button class="btn btn-primary" onclick="window.location.href='/organizer/{{ event.id }}/results'">Publish results</button>
+  </div>
 </div>
 
-<h2>Submissions Overview</h2>
-<div class="stat-row">
-  <div class="stat-block"><div class="num">{{ project_count }}</div><div class="label">Total Projects</div></div>
-  <div class="stat-block"><div class="num">{{ submitted_count }}</div><div class="label">Submitted</div></div>
-  <div class="stat-block"><div class="num">{{ draft_count }}</div><div class="label">Draft</div></div>
-  <div class="stat-block"><div class="num">{{ team_count }}</div><div class="label">Teams</div></div>
+<div class="stat-cards">
+  <div class="stat-card">
+    <div>
+      <div class="value">{{ project_count }}</div>
+      <div class="label">Projects</div>
+    </div>
+    <div class="icon">📄</div>
+  </div>
+  <div class="stat-card">
+    <div>
+      <div class="value">{{ judge_count }}</div>
+      <div class="label">Judges</div>
+    </div>
+    <div class="icon">👥</div>
+  </div>
+  <div class="stat-card">
+    <div>
+      <div class="value">{{ reviews_percent }}%</div>
+      <div class="label">Reviews complete</div>
+    </div>
+    <div class="icon">📊</div>
+  </div>
+  <div class="stat-card">
+    <div>
+      <div class="value">{{ reviews_awaiting }}</div>
+      <div class="label">Awaiting review</div>
+    </div>
+    <div class="icon">🕒</div>
+  </div>
 </div>
-<p class="meta" style="margin-top: -16px; margin-bottom: 32px;">Deadline {{ event.submissions_close }} UTC</p>
 
-
-<h2>Judging Progress</h2>
-<div class="stat-row" style="margin-bottom: 2rem;">
-  <div class="stat-block"><div class="num">{{ total_projects }}</div><div class="label">Eligible Projects</div></div>
-  <div class="stat-block"><div class="num">{{ total_fully_scored }}</div><div class="label">Fully Scored</div></div>
-  <div class="stat-block"><div class="num">{{ percent_complete }}%</div><div class="label">Complete</div></div>
-  <div class="stat-block"><div class="num">{{ judges_active }} / {{ total_judges }}</div><div class="label">Active Judges</div></div>
-</div>
-
-<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-  <h2 style="margin: 0;">By Track</h2>
-  <select id="trackSelector" class="select" style="max-width: 300px;" onchange="showTrack(this.value)">
-    <option value="all">All Tracks</option>
-    {% for ts in track_stats %}
-    <option value="{{ ts.track.id }}">{{ ts.track.name }}</option>
-    {% endfor %}
-  </select>
-</div>
-
-<div id="trackCards">
-{% for ts in track_stats %}
-<div class="card track-card" data-track-id="{{ ts.track.id }}" style="margin-bottom: 2rem; padding: 1.5rem; border: 1px solid var(--border); border-radius: 8px;">
-  <div style="display: flex; justify-content: space-between; align-items: baseline;">
-    <h3 style="margin-top: 0;">{{ ts.track.name }}</h3>
-    {% if ts.track.prize %}
-      <span class="badge">{{ ts.track.prize }}</span>
-    {% endif %}
+<div class="dashboard-grid">
+  <div class="panel">
+    <h2>Judging Progress <span>{{ reviews_percent }}%</span></h2>
+    <p class="panel-subtitle">{{ total_reviews_completed }} / {{ total_reviews_assigned }} reviews completed</p>
+    
+    <div class="progress-bar-container">
+      <div class="progress-bar-fill" style="width: {{ reviews_percent }}%;"></div>
+    </div>
+    
+    <table class="data-table" style="width: 100%; border: none;">
+      <thead>
+        <tr>
+          <th style="padding-left: 0; background: none; border-bottom: 1px solid var(--border);">Project</th>
+          <th style="background: none; border-bottom: 1px solid var(--border);">Track</th>
+          <th style="background: none; border-bottom: 1px solid var(--border);">Reviews</th>
+          <th style="background: none; border-bottom: 1px solid var(--border);">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for stat in project_stats %}
+        <tr>
+          <td style="padding-left: 0; font-weight: 500;">{{ stat.project.title }}</td>
+          <td style="color: var(--text-muted);">{{ stat.track_name }}</td>
+          <td>{{ stat.reviews_done }} / {{ stat.reviews_total }}</td>
+          <td>
+            {% if stat.reviews_total == 0 %}
+              <span class="status-dot gray"></span> No judges
+            {% elif stat.complete %}
+              <span class="status-dot green"></span> Complete
+            {% elif (stat.reviews_total - stat.reviews_done) <= 1 %}
+              <span class="status-dot yellow"></span> {{ stat.status }}
+            {% else %}
+              <span class="status-dot red"></span> {{ stat.status }}
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    
+    <div style="margin-top: 16px;">
+      <a href="/organizer/{{ event.id }}/projects" style="color: var(--primary); text-decoration: none; font-weight: 500;">View all projects →</a>
+    </div>
   </div>
   
-  {% if ts.no_judges %}
-  <div class="alert alert-error"><strong>Warning:</strong> No judges assigned to this track! Projects will never be fully scored.</div>
-  {% endif %}
-  
-  <div style="display: flex; gap: 2rem; margin-bottom: 1rem;">
-    <div><strong>{{ ts.project_count }}</strong> projects</div>
-    <div style="color: var(--success);"><strong>{{ ts.fully_scored }}</strong> fully scored</div>
-    <div style="color: var(--danger);"><strong>{{ ts.unscored }}</strong> waiting</div>
+  <div>
+    <div class="panel" style="margin-bottom: 24px;">
+      <h2>Event Health</h2>
+      <p class="panel-subtitle">Current status of your hackathon</p>
+      
+      <div class="stepper">
+        <!-- Submissions -->
+        <div class="step {% if subs_complete %}complete{% else %}in-progress{% endif %}">
+          <div class="step-dot"></div>
+          <div class="step-content">
+            <h3 class="step-title">Submissions 
+              {% if subs_complete %}<span class="badge-soft green">Complete</span>
+              {% else %}<span class="badge-soft blue">In progress</span>{% endif %}
+            </h3>
+            <p class="step-desc">{{ project_count }} projects submitted</p>
+          </div>
+        </div>
+        
+        <!-- Assignments -->
+        <div class="step {% if assign_complete %}complete{% elif subs_complete %}in-progress{% endif %}">
+          <div class="step-dot"></div>
+          <div class="step-content">
+            <h3 class="step-title">Assignments 
+              {% if assign_complete %}<span class="badge-soft green">Complete</span>
+              {% elif subs_complete %}<span class="badge-soft blue">In progress</span>
+              {% else %}<span class="badge-soft gray">Waiting</span>{% endif %}
+            </h3>
+            <p class="step-desc">{{ total_reviews_assigned }} reviews assigned</p>
+          </div>
+        </div>
+        
+        <!-- Judging -->
+        <div class="step {% if judging_complete %}complete{% elif assign_complete %}in-progress{% endif %}">
+          <div class="step-dot"></div>
+          <div class="step-content">
+            <h3 class="step-title">Judging 
+              {% if judging_complete %}<span class="badge-soft green">Complete</span>
+              {% elif assign_complete %}<span class="badge-soft blue">In progress</span>
+              {% else %}<span class="badge-soft gray">Waiting</span>{% endif %}
+            </h3>
+            <p class="step-desc">{{ total_reviews_completed }} / {{ total_reviews_assigned }} reviews completed</p>
+          </div>
+        </div>
+        
+        <!-- Normalization -->
+        <div class="step {% if judging_complete %}complete{% endif %}">
+          <div class="step-dot"></div>
+          <div class="step-content">
+            <h3 class="step-title">Normalization 
+              {% if judging_complete %}<span class="badge-soft green">Complete</span>
+              {% else %}<span class="badge-soft gray">Waiting</span>{% endif %}
+            </h3>
+            <p class="step-desc">{% if judging_complete %}Z-scores calculated{% else %}Waiting for judging to complete{% endif %}</p>
+          </div>
+        </div>
+        
+        <!-- Results -->
+        <div class="step {% if event.results_published %}complete{% endif %}">
+          <div class="step-dot"></div>
+          <div class="step-content">
+            <h3 class="step-title">Results 
+              {% if event.results_published %}<span class="badge-soft green">Published</span>
+              {% else %}<span class="badge-soft gray">Locked</span>{% endif %}
+            </h3>
+            <p class="step-desc">{% if event.results_published %}Results are public{% else %}Not published yet{% endif %}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="panel">
+      <h2>Normalization</h2>
+      <p class="panel-subtitle">Method used to calculate final scores</p>
+      
+      <div style="background: var(--background); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+          <div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 4px;">Method</div>
+            <div style="font-weight: 600;">Z-score normalization</div>
+          </div>
+          <button class="btn btn-secondary" style="font-size: 0.8rem; padding: 4px 8px;">View methodology</button>
+        </div>
+        <p style="margin: 0; font-size: 0.85rem; color: var(--text-muted); line-height: 1.4;">
+          Normalizes judge scores to account for differences in scoring patterns and scale usage across judges.
+        </p>
+      </div>
+    </div>
   </div>
-  
-  {% if ts.judge_stats %}
-  <h4>Judges</h4>
-  <table class="data-table" style="margin-bottom: 0;">
-    <tr><th>Judge</th><th>Progress</th><th>Status</th></tr>
-    {% for j in ts.judge_stats %}
-    <tr>
-      <td>{{ j.name }}</td>
-      <td>{{ j.scored }} / {{ j.total }}</td>
-      <td>
-        {% if j.scored == 0 %}
-          <span style="color: var(--danger);">Not started</span>
-        {% elif j.scored < j.total %}
-          <span style="color: var(--warning);">In progress</span>
-        {% else %}
-          <span style="color: var(--success);">Complete</span>
-        {% endif %}
-      </td>
-    </tr>
-    {% endfor %}
-  </table>
-  {% endif %}
-</div>
-{% endfor %}
 </div>
 
 <script>
-function showTrack(trackId) {
-  const cards = document.querySelectorAll('.track-card');
-  cards.forEach(card => {
-    if (trackId === 'all' || card.getAttribute('data-track-id') === trackId) {
-      card.style.display = 'block';
-    } else {
-      card.style.display = 'none';
+  // Add styling for primary-rgb and success-rgb to the document body if they don't exist
+  // We need rgb values for the rgba() backgrounds in the badges
+  document.addEventListener("DOMContentLoaded", function() {
+    const root = document.documentElement;
+    // Helper to convert hex to rgb
+    function hexToRgb(hex) {
+      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : '0, 112, 243';
     }
+    
+    const computedStyles = getComputedStyle(root);
+    
+    // Set success RGB
+    let successColor = computedStyles.getPropertyValue('--success').trim();
+    if (successColor.startsWith('#')) root.style.setProperty('--success-rgb', hexToRgb(successColor));
+    else root.style.setProperty('--success-rgb', '16, 185, 129'); // fallback
+    
+    // Set primary RGB
+    let primaryColor = computedStyles.getPropertyValue('--primary').trim();
+    if (primaryColor.startsWith('#')) root.style.setProperty('--primary-rgb', hexToRgb(primaryColor));
+    else root.style.setProperty('--primary-rgb', '37, 99, 235'); // fallback
   });
-}
 </script>
 {% endblock %}
