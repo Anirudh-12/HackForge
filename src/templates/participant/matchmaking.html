@@ -75,7 +75,10 @@
 <div class="match-grid">
   <!-- Solo Users Column -->
   <div>
-    <h2 style="margin-top: 0; margin-bottom: 16px;">Solo Hackers</h2>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <h2 style="margin: 0;">Solo Hackers</h2>
+      <span style="font-size: 13px; color: var(--text-muted);">{{ solo_users|length }} available</span>
+    </div>
     {% if not solo_users %}
       <div style="text-align: center; padding: 48px 24px; background: var(--surface); border: 1px dashed var(--border); border-radius: var(--radius);">
         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="color: var(--text-muted); margin-bottom: 16px;">
@@ -88,35 +91,41 @@
         <p style="color: var(--text-muted); margin: 0; font-size: 0.95rem;">Everyone seems to be in a team right now. Check back later!</p>
       </div>
     {% else %}
-      {% for member in solo_users %}
-        <div class="match-card">
-          <div style="display: flex; gap: 16px; align-items: flex-start;">
-            <img src="/users/{{ member.user.id }}/avatar.svg" style="width: 48px; height: 48px; border-radius: 50%; object-fit: cover;">
-            <div>
-              <h3>{{ member.user.name }}</h3>
-            <p>{{ member.user.email }}</p>
-            {% if member.skills_offered %}
-              <div class="skills">
-                {% for skill in member.skills_offered.split(',') %}
-                  <span class="skill-tag">{{ skill.strip() }}</span>
-                {% endfor %}
+      <div class="scrollable-match-list">
+        {% for member in solo_users %}
+          <div class="match-card">
+            <div style="display: flex; gap: 16px; align-items: flex-start;">
+              <img src="/users/{{ member.user.id }}/avatar.svg" style="width: 48px; height: 48px; border-radius: 50%; object-fit: cover;">
+              <div>
+                <h3>{{ member.user.name }}</h3>
+                <p>{{ member.user.email }}</p>
+                {% if member.skills_offered %}
+                  <div class="skills">
+                    {% for skill in member.skills_offered.split(',') %}
+                      <span class="skill-tag">{{ skill.strip() }}</span>
+                    {% endfor %}
+                  </div>
+                {% endif %}
               </div>
+            </div>
+            {% if team %}
+              <form method="post" action="/participant/{{ event.id }}/invite_user" style="margin: 0;">
+                <input type="hidden" name="target_user_id" value="{{ member.user.id }}">
+                <button type="submit" class="btn btn-secondary">Invite to Team</button>
+              </form>
             {% endif %}
           </div>
-          {% if team %}
-            <form method="post" action="/participant/{{ event.id }}/invite_user" style="margin: 0;">
-              <input type="hidden" name="target_user_id" value="{{ member.user.id }}">
-              <button type="submit" class="btn btn-secondary">Invite to Team</button>
-            </form>
-          {% endif %}
-        </div>
-      {% endfor %}
+        {% endfor %}
+      </div>
     {% endif %}
   </div>
 
   <!-- Open Teams Column -->
   <div>
-    <h2 style="margin-top: 0; margin-bottom: 16px;">Open Teams</h2>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <h2 style="margin: 0;">Open Teams</h2>
+      <span style="font-size: 13px; color: var(--text-muted);">{{ open_teams|length }} available</span>
+    </div>
     {% if not open_teams %}
       <div style="text-align: center; padding: 48px 24px; background: var(--surface); border: 1px dashed var(--border); border-radius: var(--radius);">
         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="color: var(--text-muted); margin-bottom: 16px;">
@@ -126,25 +135,27 @@
         <p style="color: var(--text-muted); margin: 0; font-size: 0.95rem;">There are no teams currently looking for members. Why not create one?</p>
       </div>
     {% else %}
-      {% for t in open_teams %}
-        <div class="match-card">
-          <div style="flex-grow: 1;">
-            <h3>{{ t.name }}</h3>
-            <p>{{ t.members|length }} / 4 members</p>
-            <div style="display: flex; gap: -8px; margin-top: 8px;">
-              {% for m in t.members %}
-                <img src="/users/{{ m.user.id }}/avatar.svg" style="width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--surface); margin-left: -8px; position: relative; z-index: {{ loop.index }};" title="{{ m.user.name }}">
-              {% endfor %}
+      <div class="scrollable-match-list">
+        {% for t in open_teams %}
+          <div class="match-card">
+            <div style="flex-grow: 1;">
+              <h3>{{ t.name }}</h3>
+              <p>{{ t.members|length }} / 4 members</p>
+              <div style="display: flex; gap: -8px; margin-top: 8px;">
+                {% for m in t.members %}
+                  <img src="/users/{{ m.user.id }}/avatar.svg" style="width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--surface); margin-left: -8px; position: relative; z-index: {{ loop.index }};" title="{{ m.user.name }}">
+                {% endfor %}
+              </div>
             </div>
+            {% if not team %}
+              <form method="post" action="/participant/{{ event.id }}/request_join" style="margin: 0;">
+                <input type="hidden" name="target_team_id" value="{{ t.id }}">
+                <button type="submit" class="btn btn-secondary">Request to Join</button>
+              </form>
+            {% endif %}
           </div>
-          {% if not team %}
-            <form method="post" action="/participant/{{ event.id }}/request_join" style="margin: 0;">
-              <input type="hidden" name="target_team_id" value="{{ t.id }}">
-              <button type="submit" class="btn btn-secondary">Request to Join</button>
-            </form>
-          {% endif %}
-        </div>
-      {% endfor %}
+        {% endfor %}
+      </div>
     {% endif %}
   </div>
 </div>

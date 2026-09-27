@@ -32,3 +32,22 @@ def init_db() -> None:
     from src import models  # noqa: F401
 
     Base.metadata.create_all(bind=engine)
+
+    from sqlalchemy import text
+    with engine.connect() as conn:
+        try:
+            res = conn.execute(text("PRAGMA table_info(events)")).fetchall()
+            existing_cols = {row[1] for row in res}
+            new_cols = [
+                ("event_starts", "DATETIME"),
+                ("event_ends", "DATETIME"),
+                ("results_date", "DATETIME"),
+                ("prizes_json", "TEXT"),
+                ("side_quests_json", "TEXT"),
+            ]
+            for col_name, col_type in new_cols:
+                if col_name not in existing_cols:
+                    conn.execute(text(f"ALTER TABLE events ADD COLUMN {col_name} {col_type}"))
+            conn.commit()
+        except Exception:
+            pass

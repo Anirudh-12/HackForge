@@ -2,146 +2,324 @@
 {% block title %}Profile - {{ user.name }}{% endblock %}
 
 {% block content %}
-<div class="page-header">
+<div class="page-header" style="margin-bottom: 24px;">
   <div style="display: flex; align-items: center; justify-content: space-between;">
-    <h1 class="page-title">Profile</h1>
+    <h1 class="page-title" style="margin: 0; font-size: 28px; font-weight: 700;">Profile</h1>
   </div>
-  <p class="text-muted" style="margin-top: 4px; font-size: 14px;">Manage your account information and preferences.</p>
+  <p class="text-muted" style="margin-top: 4px; font-size: 14px;">Manage your account information, showcase projects, and view hackathon activity.</p>
 </div>
 
-<div class="card" style="margin-top: 24px; display: flex; flex-direction: column; gap: 24px;">
-  <div style="display: flex; flex-wrap: wrap; gap: 24px;">
-    <!-- Profile Header Info -->
-    <div style="display: flex; gap: 24px; flex: 1; min-width: 300px;">
-      <div style="width: 96px; height: 96px; border-radius: 50%; background: var(--accent, #3b82f6); color: white; display: flex; align-items: center; justify-content: center; font-size: 36px; font-weight: bold; flex-shrink: 0; box-shadow: 0 4px 12px rgba(0,0,0,0.1); overflow: hidden;">
+<!-- Profile Header Banner -->
+<div class="card" style="display: flex; flex-direction: column; gap: 24px; padding: 28px;">
+  <div style="display: flex; flex-wrap: wrap; gap: 24px; justify-content: space-between; align-items: center;">
+    <!-- Profile Info -->
+    <div style="display: flex; gap: 24px; align-items: center; flex: 1; min-width: 280px;">
+      <div style="width: 88px; height: 88px; border-radius: 50%; background: var(--accent); color: white; display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: bold; flex-shrink: 0; box-shadow: 0 4px 14px rgba(0,0,0,0.15); overflow: hidden; border: 3px solid var(--border);">
         <img src="/users/{{ user.id }}/avatar.svg" alt="Avatar" style="width: 100%; height: 100%; object-fit: cover;">
       </div>
       <div style="display: flex; flex-direction: column; justify-content: center;">
-        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
-          <h2 style="margin: 0; font-size: 24px; font-weight: 600;">{{ user.name }}</h2>
-          <button class="btn btn-ghost" style="padding: 4px 12px; font-size: 12px;">Edit</button>
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 6px;">
+          <h2 style="margin: 0; font-size: 22px; font-weight: 700;">{{ user.name }}</h2>
+          <span class="badge" style="background: rgba(var(--accent-rgb, 59, 130, 246), 0.15); color: var(--accent); border: 1px solid rgba(var(--accent-rgb, 59, 130, 246), 0.3); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; font-size: 11px; padding: 3px 10px;">
+            {{ (user_role or role or 'Participant')|capitalize }}
+          </span>
         </div>
-        <div style="display: flex; align-items: center; gap: 8px; color: var(--text-muted, #999); font-size: 14px; margin-bottom: 4px;">
+        <div style="display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 14px; margin-bottom: 4px;">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
           {{ user.email }}
         </div>
-        <div style="display: flex; align-items: center; gap: 8px; color: var(--text-muted, #999); font-size: 14px; margin-bottom: 12px;">
+        <div style="display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 13px;">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-          Joined HackForge
-        </div>
-        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-          <span style="background: var(--surface-hover, #2a2a2a); border: 1px solid var(--border, #333); padding: 4px 8px; border-radius: 4px; font-size: 12px; color: var(--text-muted, #999);">Participant</span>
+          Active on HackForge
         </div>
       </div>
     </div>
 
     <!-- Quick Stats -->
-    <div style="display: flex; gap: 32px; padding-left: 32px; border-left: 1px solid var(--border, #333); justify-content: center; align-items: center; min-width: 200px;">
-      <div style="display: flex; flex-direction: column; align-items: center;">
-        <div style="font-size: 24px; font-weight: bold; color: var(--text-primary, #fff);">0</div>
-        <div style="font-size: 12px; color: var(--text-muted, #999);">Projects</div>
+    <div style="display: flex; gap: 28px; padding-left: 28px; border-left: 1px solid var(--border); justify-content: center; align-items: center;">
+      <div style="display: flex; flex-direction: column; align-items: center; min-width: 60px;">
+        <div style="font-size: 26px; font-weight: 700; color: var(--text-primary);">{{ projects|length }}</div>
+        <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 500;">Projects</div>
       </div>
-      <div style="display: flex; flex-direction: column; align-items: center;">
-        <div style="font-size: 24px; font-weight: bold; color: var(--text-primary, #fff);">0</div>
-        <div style="font-size: 12px; color: var(--text-muted, #999);">Hackathons</div>
+      <div style="display: flex; flex-direction: column; align-items: center; min-width: 60px;">
+        <div style="font-size: 26px; font-weight: 700; color: var(--text-primary);">{{ registered_events|length }}</div>
+        <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 500;">Hackathons</div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- Tabs -->
-<div style="margin-top: 32px; border-bottom: 1px solid var(--border, #333); display: flex; gap: 24px;">
-  <div style="padding-bottom: 12px; border-bottom: 2px solid var(--accent, #3b82f6); color: var(--accent, #3b82f6); font-weight: 500; cursor: pointer;">Overview</div>
-  <div style="padding-bottom: 12px; color: var(--text-muted, #999); cursor: pointer; transition: color 0.2s;" onmouseover="this.style.color='var(--text-primary, #fff)'" onmouseout="this.style.color='var(--text-muted, #999)'">Projects</div>
-  <div style="padding-bottom: 12px; color: var(--text-muted, #999); cursor: pointer; transition: color 0.2s;" onmouseover="this.style.color='var(--text-primary, #fff)'" onmouseout="this.style.color='var(--text-muted, #999)'">Activity</div>
-  <div style="padding-bottom: 12px; color: var(--text-muted, #999); cursor: pointer; transition: color 0.2s;" onmouseover="this.style.color='var(--text-primary, #fff)'" onmouseout="this.style.color='var(--text-muted, #999)'">Settings</div>
+<!-- Tabs Navigation -->
+<div class="profile-tabs" style="margin-top: 32px; border-bottom: 1px solid var(--border); display: flex; gap: 32px;">
+  <button id="tab-btn-overview" class="profile-tab-btn active" onclick="switchProfileTab('overview')">Overview</button>
+  <button id="tab-btn-projects" class="profile-tab-btn" onclick="switchProfileTab('projects')">Projects ({{ projects|length }})</button>
+  <button id="tab-btn-activity" class="profile-tab-btn" onclick="switchProfileTab('activity')">Activity</button>
+  <button id="tab-btn-settings" class="profile-tab-btn" onclick="switchProfileTab('settings')">Settings</button>
 </div>
 
-<div style="margin-top: 24px; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px;">
-  <!-- Recent Projects -->
-  <div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border, #333); padding-bottom: 16px; margin-bottom: 16px;">
-      <h3 style="margin: 0; font-size: 16px;">Recent Projects</h3>
-      <a href="#" style="font-size: 14px; color: var(--accent, #3b82f6); text-decoration: none;">View all</a>
+<!-- TAB 1: OVERVIEW -->
+<div id="tab-content-overview" class="profile-tab-panel" style="margin-top: 24px;">
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px;">
+    <!-- Account Details -->
+    <div class="card" id="account-details">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 14px; margin-bottom: 16px;">
+        <h3 style="margin: 0; font-size: 16px; font-weight: 600;">Personal Information</h3>
+        <button class="btn btn-ghost" style="padding: 4px 10px; font-size: 12px;" onclick="switchProfileTab('settings')">Edit in Settings</button>
+      </div>
+      
+      <div style="display: flex; flex-direction: column; gap: 16px; font-size: 14px;">
+        <div style="display: grid; grid-template-columns: 120px 1fr;">
+          <span style="color: var(--text-muted);">Name</span>
+          <span style="color: var(--text-primary); font-weight: 500;">{{ user.name }}</span>
+        </div>
+        <div style="display: grid; grid-template-columns: 120px 1fr;">
+          <span style="color: var(--text-muted);">Email</span>
+          <span style="color: var(--text-primary);">{{ user.email }}</span>
+        </div>
+        <div style="display: grid; grid-template-columns: 120px 1fr;">
+          <span style="color: var(--text-muted);">Role</span>
+          <span style="color: var(--accent); font-weight: 600;">{{ (user_role or role or 'Participant')|capitalize }}</span>
+        </div>
+        <div style="display: grid; grid-template-columns: 120px 1fr;">
+          <span style="color: var(--text-muted);">Bio</span>
+          <span style="color: var(--text-primary); line-height: 1.5;">{{ user.bio or 'No bio provided yet.' }}</span>
+        </div>
+        <div style="display: grid; grid-template-columns: 120px 1fr;">
+          <span style="color: var(--text-muted);">Skills</span>
+          <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+            {% if user.skills %}
+              {% for skill in user.skills.split(',') %}
+                <span class="badge" style="background: var(--surface-hover); border: 1px solid var(--border); font-size: 12px; padding: 2px 8px;">{{ skill.strip() }}</span>
+              {% endfor %}
+            {% else %}
+              <span style="color: var(--text-muted);">No skills added.</span>
+            {% endif %}
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 120px 1fr;">
+          <span style="color: var(--text-muted);">GitHub</span>
+          <span>
+            {% if user.github_url %}<a href="{{ user.github_url }}" target="_blank" style="color: var(--accent); font-weight: 500;">{{ user.github_url }}</a>{% else %}<span style="color: var(--text-muted);">Not provided</span>{% endif %}
+          </span>
+        </div>
+        <div style="display: grid; grid-template-columns: 120px 1fr;">
+          <span style="color: var(--text-muted);">LinkedIn</span>
+          <span>
+            {% if user.linkedin_url %}<a href="{{ user.linkedin_url }}" target="_blank" style="color: var(--accent); font-weight: 500;">{{ user.linkedin_url }}</a>{% else %}<span style="color: var(--text-muted);">Not provided</span>{% endif %}
+          </span>
+        </div>
+      </div>
     </div>
-    <div style="color: var(--text-muted, #999); font-size: 14px; text-align: center; padding: 24px 0;">
-      No projects yet.
+
+    <!-- Recent Projects Preview -->
+    <div class="card">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 14px; margin-bottom: 16px;">
+        <h3 style="margin: 0; font-size: 16px; font-weight: 600;">Projects</h3>
+        {% if projects %}
+        <button class="btn btn-ghost" style="padding: 4px 10px; font-size: 12px; color: var(--accent);" onclick="switchProfileTab('projects')">View all ({{ projects|length }})</button>
+        {% endif %}
+      </div>
+      {% if projects %}
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          {% for p in projects[:3] %}
+          <div style="padding: 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+              <strong style="font-size: 15px;">{{ p.title }}</strong>
+              {% if p.is_draft %}
+                <span class="badge" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b; font-size: 11px;">Draft</span>
+              {% else %}
+                <span class="badge" style="background: rgba(16, 185, 129, 0.1); color: #10b981; font-size: 11px;">Submitted</span>
+              {% endif %}
+            </div>
+            <p style="margin: 0 0 8px 0; font-size: 13px; color: var(--text-secondary); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+              {{ p.summary or 'No project summary provided.' }}
+            </p>
+            <div style="display: flex; gap: 8px;">
+              <a href="/projects/{{ p.id }}" class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px;">View Project</a>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div style="color: var(--text-muted); font-size: 14px; text-align: center; padding: 36px 0;">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.5; margin-bottom: 8px;"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+          <div>No projects yet.</div>
+          <a href="/explore" class="btn btn-secondary" style="margin-top: 12px; font-size: 12px;">Explore Hackathons</a>
+        </div>
+      {% endif %}
     </div>
   </div>
+</div>
 
-  <!-- Account Details -->
-  <div class="card" id="account-details">
-    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border, #333); padding-bottom: 16px; margin-bottom: 16px;">
-      <h3 style="margin: 0; font-size: 16px;">Account Details</h3>
-      <button class="btn btn-ghost" style="padding: 4px 12px; font-size: 12px;" onclick="document.getElementById('edit-form').style.display='block'; document.getElementById('account-details').style.display='none';">Edit</button>
-    </div>
-    
-    <div style="display: flex; flex-direction: column; gap: 16px; font-size: 14px;">
-      <div style="display: grid; grid-template-columns: 120px 1fr;">
-        <span style="color: var(--text-muted, #999);">Name</span>
-        <span style="color: var(--text-primary, #fff); font-weight: 500;">{{ user.name }}</span>
-      </div>
-      <div style="display: grid; grid-template-columns: 120px 1fr;">
-        <span style="color: var(--text-muted, #999);">Email</span>
-        <span style="color: var(--text-primary, #fff);">{{ user.email }}</span>
-      </div>
-      <div style="display: grid; grid-template-columns: 120px 1fr;">
-        <span style="color: var(--text-muted, #999);">Bio</span>
-        <span style="color: var(--text-primary, #fff);">{{ user.bio or 'No bio provided.' }}</span>
-      </div>
-      <div style="display: grid; grid-template-columns: 120px 1fr;">
-        <span style="color: var(--text-muted, #999);">Skills</span>
-        <span style="color: var(--text-primary, #fff);">
-          {% if user.skills %}
-            {% for skill in user.skills.split(',') %}
-              <span class="badge" style="margin-right: 4px; display: inline-block;">{{ skill.strip() }}</span>
-            {% endfor %}
-          {% else %}
-            None
+<!-- TAB 2: PROJECTS -->
+<div id="tab-content-projects" class="profile-tab-panel" style="display: none; margin-top: 24px;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h3 style="margin: 0; font-size: 18px; font-weight: 600;">My Projects ({{ projects|length }})</h3>
+    <a href="/explore" class="btn btn-primary" style="font-size: 13px;">Find Hackathons &rarr;</a>
+  </div>
+
+  {% if projects %}
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px;">
+      {% for p in projects %}
+      <div class="card" style="display: flex; flex-direction: column; justify-content: space-between;">
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+            <h4 style="margin: 0; font-size: 18px; font-weight: 600;">{{ p.title }}</h4>
+            {% if p.is_draft %}
+              <span class="badge" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b;">Draft</span>
+            {% else %}
+              <span class="badge" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">Submitted</span>
+            {% endif %}
+          </div>
+          <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 16px; line-height: 1.5;">
+            {{ p.summary or 'No project summary provided.' }}
+          </p>
+          {% if p.track %}
+            <div style="margin-bottom: 16px;">
+              <span class="badge" style="background: rgba(var(--accent-rgb, 59, 130, 246), 0.1); color: var(--accent);">Track: {{ p.track.name }}</span>
+            </div>
           {% endif %}
-        </span>
+        </div>
+        
+        <div style="display: flex; gap: 8px; border-top: 1px solid var(--border); padding-top: 14px; margin-top: 12px;">
+          <a href="/projects/{{ p.id }}" class="btn btn-primary" style="flex: 1; font-size: 13px;">View in Gallery</a>
+          {% if p.repo_url %}
+            <a href="{{ p.repo_url }}" target="_blank" class="btn btn-secondary" style="font-size: 13px;">GitHub</a>
+          {% endif %}
+        </div>
       </div>
-      <div style="display: grid; grid-template-columns: 120px 1fr;">
-        <span style="color: var(--text-muted, #999);">GitHub</span>
-        <span style="color: var(--text-primary, #fff);">
-          {% if user.github_url %}<a href="{{ user.github_url }}" target="_blank" style="color: var(--accent);">{{ user.github_url }}</a>{% else %}Not provided{% endif %}
-        </span>
-      </div>
-      <div style="display: grid; grid-template-columns: 120px 1fr;">
-        <span style="color: var(--text-muted, #999);">LinkedIn</span>
-        <span style="color: var(--text-primary, #fff);">
-          {% if user.linkedin_url %}<a href="{{ user.linkedin_url }}" target="_blank" style="color: var(--accent);">{{ user.linkedin_url }}</a>{% else %}Not provided{% endif %}
-        </span>
-      </div>
+      {% endfor %}
     </div>
-  </div>
+  {% else %}
+    <div class="card" style="text-align: center; padding: 48px 24px;">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted); margin-bottom: 12px;"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+      <h3 style="margin: 0 0 8px 0;">No projects created yet</h3>
+      <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 20px;">Join an upcoming hackathon, form a team, and showcase your builds here.</p>
+      <a href="/explore" class="btn btn-primary">Explore Hackathons</a>
+    </div>
+  {% endif %}
+</div>
 
-  <!-- Edit Profile Form -->
-  <div class="card" id="edit-form" style="display: none;">
-    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border, #333); padding-bottom: 16px; margin-bottom: 16px;">
-      <h3 style="margin: 0; font-size: 16px;">Edit Profile</h3>
-      <button class="btn btn-ghost" style="padding: 4px 12px; font-size: 12px;" onclick="document.getElementById('account-details').style.display='block'; document.getElementById('edit-form').style.display='none';">Cancel</button>
+<!-- TAB 3: ACTIVITY -->
+<div id="tab-content-activity" class="profile-tab-panel" style="display: none; margin-top: 24px;">
+  <div class="card">
+    <div style="border-bottom: 1px solid var(--border); padding-bottom: 14px; margin-bottom: 16px;">
+      <h3 style="margin: 0; font-size: 16px; font-weight: 600;">Activity History</h3>
+      <p style="margin: 4px 0 0 0; font-size: 13px; color: var(--text-muted);">Log of actions, submissions, and hackathon milestones.</p>
     </div>
-    
+
+    {% if recent_activity %}
+      <div style="display: flex; flex-direction: column; gap: 14px;">
+        {% for act in recent_activity %}
+        <div style="display: flex; gap: 14px; align-items: flex-start; padding: 10px 14px; border-radius: var(--radius); background: var(--bg); border: 1px solid var(--border);">
+          <div style="width: 28px; height: 28px; border-radius: 50%; background: var(--accent-subtle); color: var(--accent); display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+          </div>
+          <div style="flex: 1;">
+            <div style="font-size: 14px; font-weight: 500; color: var(--text-primary);">{{ act.message }}</div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">{{ act.created_at.strftime('%b %d, %Y at %H:%M UTC') if act.created_at else 'Recent' }}</div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div style="text-align: center; padding: 36px 0; color: var(--text-muted); font-size: 14px;">
+        No recent activity logged.
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- TAB 4: SETTINGS -->
+<div id="tab-content-settings" class="profile-tab-panel" style="display: none; margin-top: 24px;">
+  <div class="card" style="max-width: 720px;">
+    <div style="border-bottom: 1px solid var(--border); padding-bottom: 14px; margin-bottom: 20px;">
+      <h3 style="margin: 0; font-size: 18px; font-weight: 600;">Account Settings</h3>
+      <p style="margin: 4px 0 0 0; font-size: 13px; color: var(--text-muted);">Update your personal details, bio, and social connections.</p>
+    </div>
+
     <form method="post" action="/profile">
-      <div class="form-group" style="margin-bottom: 16px;">
-        <label>Bio</label>
-        <textarea name="bio" class="input" rows="3" placeholder="Tell us about yourself...">{{ user.bio or '' }}</textarea>
+      <div class="form-group" style="margin-bottom: 18px;">
+        <label style="font-weight: 500; margin-bottom: 6px; display: block;">Full Name</label>
+        <input type="text" name="name" class="input" value="{{ user.name }}" required>
       </div>
-      <div class="form-group" style="margin-bottom: 16px;">
-        <label>Skills (comma separated)</label>
-        <input type="text" name="skills" class="input" value="{{ user.skills or '' }}" placeholder="Python, React, Design...">
+
+      <div class="form-group" style="margin-bottom: 18px;">
+        <label style="font-weight: 500; margin-bottom: 6px; display: block;">Bio / Headline</label>
+        <textarea name="bio" class="input" rows="3" placeholder="Tell us about yourself, what you like building, or your experience...">{{ user.bio or '' }}</textarea>
       </div>
-      <div class="form-group" style="margin-bottom: 16px;">
-        <label>GitHub URL</label>
+
+      <div class="form-group" style="margin-bottom: 18px;">
+        <label style="font-weight: 500; margin-bottom: 6px; display: block;">Skills (comma separated)</label>
+        <input type="text" name="skills" class="input" value="{{ user.skills or '' }}" placeholder="Python, React, FastAPI, Machine Learning, UI/UX...">
+      </div>
+
+      <div class="form-group" style="margin-bottom: 18px;">
+        <label style="font-weight: 500; margin-bottom: 6px; display: block;">GitHub Profile URL</label>
         <input type="url" name="github_url" class="input" value="{{ user.github_url or '' }}" placeholder="https://github.com/username">
       </div>
-      <div class="form-group" style="margin-bottom: 16px;">
-        <label>LinkedIn URL</label>
+
+      <div class="form-group" style="margin-bottom: 24px;">
+        <label style="font-weight: 500; margin-bottom: 6px; display: block;">LinkedIn Profile URL</label>
         <input type="url" name="linkedin_url" class="input" value="{{ user.linkedin_url or '' }}" placeholder="https://linkedin.com/in/username">
       </div>
-      <button type="submit" class="btn btn-primary" style="width: 100%;">Save Changes</button>
+
+      <div style="display: flex; gap: 12px; justify-content: flex-end;">
+        <button type="button" class="btn btn-secondary" onclick="switchProfileTab('overview')">Cancel</button>
+        <button type="submit" class="btn btn-primary" style="padding: 10px 24px;">Save Changes</button>
+      </div>
     </form>
   </div>
 </div>
+
+<style>
+  .profile-tab-btn {
+    padding: 12px 4px;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-muted);
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .profile-tab-btn:hover {
+    color: var(--text-primary);
+  }
+  .profile-tab-btn.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+    font-weight: 600;
+  }
+</style>
+
+<script>
+  function switchProfileTab(tabName) {
+    const tabs = ['overview', 'projects', 'activity', 'settings'];
+    tabs.forEach(t => {
+      const btn = document.getElementById('tab-btn-' + t);
+      const panel = document.getElementById('tab-content-' + t);
+      if (btn && panel) {
+        if (t === tabName) {
+          btn.classList.add('active');
+          panel.style.display = 'block';
+        } else {
+          btn.classList.remove('active');
+          panel.style.display = 'none';
+        }
+      }
+    });
+    // Update hash without scrolling
+    history.replaceState(null, null, '#' + tabName);
+  }
+
+  // Handle URL hash on page load
+  window.addEventListener('DOMContentLoaded', () => {
+    const hash = window.location.hash.replace('#', '').toLowerCase();
+    if (['overview', 'projects', 'activity', 'settings'].includes(hash)) {
+      switchProfileTab(hash);
+    }
+  });
+</script>
 {% endblock %}

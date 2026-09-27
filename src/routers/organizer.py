@@ -55,24 +55,55 @@ def list_events(
 def create_event(
     request: Request,
     name: str = Form(...),
+    tagline: str = Form(""),
+    description: str = Form(""),
+    event_starts: str = Form(""),
+    event_ends: str = Form(""),
     submissions_open: str = Form(""),
     submissions_close: str = Form(""),
     judging_open: str = Form(""),
     judging_close: str = Form(""),
+    results_date: str = Form(""),
+    tracks_json: str = Form(""),
+    prizes_json: str = Form(""),
+    side_quests_json: str = Form(""),
     db: Session = Depends(get_db),
     user: User = Depends(require_role("organizer", "admin")),
 ):
+    import json
+    desc = description.strip()
+    if tagline.strip() and not desc.startswith(tagline.strip()):
+        desc = f"**{tagline.strip()}**\n\n{desc}" if desc else tagline.strip()
+
     event = Event(
         id=new_id("evt"),
         name=name.strip(),
+        description_markdown=desc or None,
+        event_starts=_dt(event_starts),
+        event_ends=_dt(event_ends),
         submissions_open=_dt(submissions_open),
         submissions_close=_dt(submissions_close),
         judging_open=_dt(judging_open),
         judging_close=_dt(judging_close),
+        results_date=_dt(results_date),
         results_published=False,
+        prizes_json=prizes_json.strip() or None,
+        side_quests_json=side_quests_json.strip() or None,
     )
     db.add(event)
     db.flush()
+
+    if tracks_json.strip():
+        try:
+            track_items = json.loads(tracks_json)
+            for item in track_items:
+                t_name = item.get("name", "").strip() if isinstance(item, dict) else str(item).strip()
+                t_prize = item.get("prize", "").strip() if isinstance(item, dict) else None
+                if t_name:
+                    db.add(Track(id=new_id("trk"), event_id=event.id, name=t_name, prize=t_prize or None))
+        except Exception:
+            pass
+
     from src.queries import upsert_membership
 
     upsert_membership(db, event.id, user.id, "organizer")

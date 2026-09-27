@@ -226,7 +226,7 @@
     
     <div class="search-container">
       <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-      <input type="text" class="search-input" placeholder="Search hackathons by name, organizer, track, or keywords...">
+      <input type="text" id="exploreSearchInput" class="search-input" placeholder="Search hackathons by name, organizer, track, or keywords..." oninput="handleSearch()">
     </div>
     
     <div class="filters-row">
@@ -246,22 +246,26 @@
   
   <div class="tabs-row">
     <div class="tabs-nav">
-      <a href="#" class="tab-item active">All Hackathons</a>
-      <a href="#" class="tab-item">Upcoming</a>
-      <a href="#" class="tab-item">Ongoing</a>
-      <a href="#" class="tab-item">Past</a>
+      <a href="javascript:void(0)" class="tab-item active" data-filter="all" onclick="filterHackathons('all', this)">All Hackathons</a>
+      <a href="javascript:void(0)" class="tab-item" data-filter="upcoming" onclick="filterHackathons('upcoming', this)">Upcoming</a>
+      <a href="javascript:void(0)" class="tab-item" data-filter="ongoing" onclick="filterHackathons('ongoing', this)">Ongoing</a>
+      <a href="javascript:void(0)" class="tab-item" data-filter="past" onclick="filterHackathons('past', this)">Past</a>
     </div>
     <div style="color: var(--text-muted); font-size: 0.9rem; display: flex; align-items: center; gap: 12px;">
-      <span>{{ ongoing|length + upcoming|length + completed|length }} hackathons</span>
+      <span id="eventsCountLabel">{{ ongoing|length + upcoming|length + completed|length }} hackathons</span>
       <div style="display: flex; gap: 4px;">
-        <button style="background: var(--accent-subtle); color: var(--accent); border: none; padding: 4px; border-radius: 4px; cursor: pointer;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg></button>
-        <button style="background: none; color: var(--text-muted); border: none; padding: 4px; border-radius: 4px; cursor: pointer;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg></button>
+        <button type="button" id="btn-events-grid" class="view-toggle-btn active" onclick="setEventsView('grid')" title="Grid View" style="background: var(--accent-subtle); color: var(--accent); border: 1px solid var(--border); padding: 5px; border-radius: 6px; cursor: pointer; display: flex; align-items: center;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+        </button>
+        <button type="button" id="btn-events-detailed" class="view-toggle-btn" onclick="setEventsView('detailed')" title="Detailed List View" style="background: var(--surface); color: var(--text-muted); border: 1px solid var(--border); padding: 5px; border-radius: 6px; cursor: pointer; display: flex; align-items: center;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+        </button>
       </div>
     </div>
   </div>
 
-  {% macro event_card(event, status_label, status_color) %}
-  <div class="event-card">
+  {% macro event_card(event, status_label, status_color, status_key) %}
+  <div class="event-card" data-status="{{ status_key }}" data-search="{{ event.name|lower }} {{ (event.description_markdown|strip_markdown)|lower }}">
     {% if event.banner_image_path and event.banner_image_path != 'None' and event.banner_image_path|trim != '' %}
     <div class="card-banner" style="background-image: url('{{ event.banner_image_path }}');">
     {% else %}
@@ -273,7 +277,7 @@
     <div class="card-content">
       <h3 class="card-title">{{ event.name }}</h3>
       <div class="card-organizer">by Hackathon Organizer</div>
-      <p class="card-desc">{{ event.description_markdown[:80] ~ '...' if event.description_markdown else 'Explore event details.' }}</p>
+      <p class="card-desc">{{ (event.description_markdown|strip_markdown)[:100] ~ '...' if event.description_markdown else 'Explore event details.' }}</p>
       
       <div class="card-meta-grid">
         <div class="card-meta-item">
@@ -310,17 +314,92 @@
   </div>
   {% endmacro %}
 
-  <div class="events-grid">
+  <div id="eventsContainer" class="events-grid">
     {% for event in ongoing %}
-      {{ event_card(event, 'Ongoing', 'var(--primary)') }}
+      {{ event_card(event, 'Ongoing', 'var(--primary)', 'ongoing') }}
     {% endfor %}
     {% for event in upcoming %}
-      {{ event_card(event, 'Registrations Open', '#10b981') }}
+      {{ event_card(event, 'Registrations Open', '#10b981', 'upcoming') }}
     {% endfor %}
     {% for event in completed %}
-      {{ event_card(event, 'Completed', '#6b7280') }}
+      {{ event_card(event, 'Completed', '#6b7280', 'past') }}
     {% endfor %}
   </div>
 
+  <div id="noEventsState" style="display: none; text-align: center; padding: 48px 24px; background: var(--surface); border: 1px dashed var(--border); border-radius: var(--radius); margin-top: 16px;">
+    <h3 style="margin: 0 0 8px 0;">No hackathons found</h3>
+    <p style="color: var(--text-muted); margin: 0;">Try adjusting your tab filter or search keyword.</p>
+  </div>
+
 </div>
+
+<script>
+  let currentFilter = 'all';
+
+  function filterHackathons(status, tabElem) {
+    currentFilter = status;
+    document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+    if (tabElem) tabElem.classList.add('active');
+    applyFilters();
+  }
+
+  function handleSearch() {
+    applyFilters();
+  }
+
+  function applyFilters() {
+    const query = (document.getElementById('exploreSearchInput').value || '').trim().toLowerCase();
+    const cards = document.querySelectorAll('#eventsContainer .event-card');
+    let visibleCount = 0;
+
+    cards.forEach(card => {
+      const cardStatus = card.getAttribute('data-status');
+      const cardSearch = card.getAttribute('data-search') || '';
+
+      const matchesStatus = (currentFilter === 'all') || (cardStatus === currentFilter);
+      const matchesQuery = !query || cardSearch.includes(query);
+
+      if (matchesStatus && matchesQuery) {
+        card.style.display = '';
+        visibleCount++;
+      } else {
+        card.style.display = 'none';
+      }
+    });
+
+    document.getElementById('eventsCountLabel').textContent = visibleCount + (visibleCount === 1 ? ' hackathon' : ' hackathons');
+    document.getElementById('noEventsState').style.display = (visibleCount === 0) ? 'block' : 'none';
+  }
+
+  function setEventsView(viewMode) {
+    const container = document.getElementById('eventsContainer');
+    const gridBtn = document.getElementById('btn-events-grid');
+    const detailedBtn = document.getElementById('btn-events-detailed');
+
+    if (viewMode === 'detailed') {
+      container.className = 'events-detailed-view';
+      detailedBtn.style.background = 'var(--accent-subtle)';
+      detailedBtn.style.color = 'var(--accent)';
+      gridBtn.style.background = 'var(--surface)';
+      gridBtn.style.color = 'var(--text-muted)';
+      localStorage.setItem('hackforge_events_view', 'detailed');
+    } else {
+      container.className = 'events-grid';
+      gridBtn.style.background = 'var(--accent-subtle)';
+      gridBtn.style.color = 'var(--accent)';
+      detailedBtn.style.background = 'var(--surface)';
+      detailedBtn.style.color = 'var(--text-muted)';
+      localStorage.setItem('hackforge_events_view', 'grid');
+    }
+  }
+
+  // Restore saved view preference
+  window.addEventListener('DOMContentLoaded', () => {
+    const saved = localStorage.getItem('hackforge_events_view');
+    if (saved === 'detailed') {
+      setEventsView('detailed');
+    }
+  });
+</script>
 {% endblock %}
+

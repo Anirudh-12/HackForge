@@ -9,14 +9,16 @@ from src.auth import (
     home_for,
     set_session_cookie,
     verify_password,
+    primary_membership,
+    hash_password,
 )
 from src.context import base_context
 from src.db import get_db
 from src.templating import templates
-from src.models import User
+from src.models import User, EventMember, TeamMember, Project, AuditLog
 from src.queries import default_event, upsert_membership
 from src.seed import new_id
-from src.auth import hash_password
+from src.timeutil import utcnow
 
 router = APIRouter()
 
@@ -117,31 +119,77 @@ def register(
 def profile(request: Request, user: User | None = Depends(get_current_user), db: Session = Depends(get_db)):
     if not user:
         return RedirectResponse("/login", status_code=303)
-    return templates.TemplateResponse(request=request, name="profile.html", context=
-        base_context(request=request, event=default_event(db), user=user, role="participant", error=None)
+
+    # Compute actual highest role
+    pm = primary_membership(db, user)
+    user_role = pm.role if pm else "participant"
+
+    # Load projects the user is involved with via team memberships
+    user_teams = db.query(TeamMember).filter(TeamMember.user_id == user.id).all()
+    team_ids = [tm.team_id for tm in user_teams]
+    projects = db.query(Project).filter(Project.team_id.in_(team_ids)).all() if team_ids else []
+
+    # Load hackathons/events user is registered for
+    user_memberships = db.query(EventMember).filter(EventMember.user_id == user.id).all()
+    registered_events = [m.event for m in user_memberships if m.event]
+
+    # Load user's recent activity logs
+    recent_activity = (
+        db.query(AuditLog)
+        .filter(AuditLog.actor_id == user.id)
+        .order_by(AuditLog.created_at.desc())
+        .limit(20)
+        .all()
     )
+
+    return templates.TemplateResponse(
+        request=request,
+        name="profile.html",
+        context=base_context(
+            request=request,
+            event=default_event(db),
+            user=user,
+            role=user_role,
+            user_role=user_role,
+            projects=projects,
+            registered_events=registered_events,
+            recent_activity=recent_activity,
+            error=None,
+        ),
+    )
+
 
 @router.post("/profile")
 def update_profile(
     request: Request,
+    name: str = Form(None),
     bio: str = Form(""),
     github_url: str = Form(""),
     linkedin_url: str = Form(""),
     skills: str = Form(""),
     user: User | None = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     if not user:
         return RedirectResponse("/login", status_code=303)
-        
+
+    if name and name.strip():
+        user.name = name.strip()
     user.bio = bio.strip()
     user.github_url = github_url.strip()
     user.linkedin_url = linkedin_url.strip()
     user.skills = skills.strip()
-    
+
+    db.add(
+        AuditLog(
+            actor_id=user.id,
+            message=f"{user.name} updated profile settings",
+            created_at=utcnow(),
+        )
+    )
     db.commit()
-    
-    return RedirectResponse("/profile", status_code=303)
+
+    return RedirectResponse("/profile#settings", status_code=303)
 
 @router.post("/logout")
 def logout():

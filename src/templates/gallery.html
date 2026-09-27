@@ -99,6 +99,19 @@
   }
 </style>
 
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding-bottom: 14px; border-bottom: 1px solid var(--border);">
+  <a href="javascript:history.length > 1 ? history.back() : window.location.href='/login'" class="btn btn-secondary" style="display: inline-flex; align-items: center; gap: 8px; font-weight: 500; font-size: 13px;">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+    Back
+  </a>
+  {% if user %}
+  <a href="/login" class="btn btn-ghost" style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--accent); font-weight: 500;">
+    <span>Go to Workspace</span>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+  </a>
+  {% endif %}
+</div>
+
 <div class="gallery-header">
   <div class="gallery-subtitle">Project Gallery</div>
   <div class="gallery-title-row">
@@ -172,16 +185,16 @@
 <div class="meta-row">
   <div class="count">{{ projects|length }} projects</div>
   <div class="view-toggles">
-    <button class="active">
+    <button type="button" id="btn-projects-grid" class="active" onclick="setProjectsView('grid')" title="Grid View">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
     </button>
-    <button>
+    <button type="button" id="btn-projects-list" onclick="setProjectsView('list')" title="List View">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
     </button>
   </div>
 </div>
 
-<div class="grid-3">
+<div id="projectsContainer" class="grid-3">
   {% for project in projects %}
   {% set rand = (project.id|length) % 6 + 1 %}
   <a class="project-card" href="/projects/{{ project.id }}">
@@ -287,5 +300,38 @@ async function toggleVote(evt, projectId, btn) {
     console.error('Vote error:', err);
   }
 }
+
+function setProjectsView(viewMode) {
+  const container = document.getElementById('projectsContainer');
+  const gridBtn = document.getElementById('btn-projects-grid');
+  const listBtn = document.getElementById('btn-projects-list');
+
+  if (viewMode === 'list') {
+    container.className = 'projects-list-view';
+    listBtn.classList.add('active');
+    gridBtn.classList.remove('active');
+    listBtn.style.color = 'var(--accent)';
+    listBtn.style.background = 'var(--accent-subtle)';
+    gridBtn.style.color = 'var(--text-muted)';
+    gridBtn.style.background = 'var(--surface)';
+    localStorage.setItem('hackforge_projects_view', 'list');
+  } else {
+    container.className = 'grid-3';
+    gridBtn.classList.add('active');
+    listBtn.classList.remove('active');
+    gridBtn.style.color = 'var(--accent)';
+    gridBtn.style.background = 'var(--accent-subtle)';
+    listBtn.style.color = 'var(--text-muted)';
+    listBtn.style.background = 'var(--surface)';
+    localStorage.setItem('hackforge_projects_view', 'grid');
+  }
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  const saved = localStorage.getItem('hackforge_projects_view');
+  if (saved === 'list') {
+    setProjectsView('list');
+  }
+});
 </script>
 {% endblock %}

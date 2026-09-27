@@ -31,15 +31,20 @@ class Event(Base):
 
     id: Mapped[str] = mapped_column(String, primary_key=True)
     name: Mapped[str] = mapped_column(String, nullable=False)
+    event_starts: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    event_ends: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     submissions_open: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     submissions_close: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     judging_open: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     judging_close: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    results_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     results_published: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     banner_image_path: Mapped[str | None] = mapped_column(String, nullable=True)
     description_markdown: Mapped[str | None] = mapped_column(Text, nullable=True)
     rules_markdown: Mapped[str | None] = mapped_column(Text, nullable=True)
+    prizes_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    side_quests_json: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     tracks: Mapped[list[Track]] = relationship(back_populates="event")
     teams: Mapped[list[Team]] = relationship(back_populates="event")
@@ -68,6 +73,26 @@ class Event(Base):
             return {"text": "Submissions Open", "progress": 20, "color": "var(--accent)"}
         else:
             return {"text": "Not Started", "progress": 0, "color": "var(--text-muted)"}
+
+    @property
+    def prizes_list(self) -> list[dict]:
+        import json
+        if not self.prizes_json:
+            return []
+        try:
+            return json.loads(self.prizes_json)
+        except Exception:
+            return []
+
+    @property
+    def side_quests_list(self) -> list[dict]:
+        import json
+        if not self.side_quests_json:
+            return []
+        try:
+            return json.loads(self.side_quests_json)
+        except Exception:
+            return []
 
 
 class EventMember(Base):
