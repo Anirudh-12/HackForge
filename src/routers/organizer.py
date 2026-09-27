@@ -406,6 +406,19 @@ def judges_page(
                 "tracks": [t for t in assigned_tracks if t is not None]
             })
             
+    from src.models import JudgeInvitation
+    pending_invitations = db.query(JudgeInvitation).filter_by(event_id=event_id, status="pending").all()
+    tracks_by_id = {t.id: t for t in event_tracks(db, event_id)}
+    
+    invitations_data = []
+    for inv in pending_invitations:
+        t_ids = inv.track_ids.split(",") if inv.track_ids else []
+        assigned_tracks = [tracks_by_id.get(tid) for tid in t_ids if tid in tracks_by_id]
+        invitations_data.append({
+            "invitation": inv,
+            "tracks": assigned_tracks
+        })
+            
     return templates.TemplateResponse(
         request=request,
         name="organizer/judges.html",
@@ -415,6 +428,7 @@ def judges_page(
             user=user,
             role="organizer",
             judges=judges_data,
+            invitations=invitations_data,
             all_tracks=event_tracks(db, event_id),
         ),
     )
@@ -436,37 +450,54 @@ def invite_judge(
     if not email_norm:
         return RedirectResponse(f"/organizer/{event_id}/judges", status_code=303)
         
-    # Find or create user
-    judge_user = db.query(User).filter(User.email == email_norm).first()
-    if not judge_user:
-        judge_user = User(
-            id=new_id("usr"),
-            email=email_norm,
-            name=email_norm,
-            password_hash=None, # Pending invite
-        )
-        db.add(judge_user)
-        db.flush()
-        
-    # Make sure they have the judge role in this event
-    from src.queries import upsert_membership
-    upsert_membership(db, event.id, judge_user.id, "judge")
+    from src.models import JudgeInvitation
     
-    # Assign tracks
-    for track_id in track_ids:
-        existing = db.query(JudgeTrack).filter_by(
-            event_id=event_id, judge_id=judge_user.id, track_id=track_id
-        ).first()
-        if not existing:
-            db.add(JudgeTrack(event_id=event_id, judge_id=judge_user.id, track_id=track_id))
-            
+    # Check if already invited
+    existing_inv = db.query(JudgeInvitation).filter_by(event_id=event_id, email=email_norm, status="pending").first()
+    if existing_inv:
+        existing_inv.track_ids = ",".join(track_ids)
+    else:
+        inv = JudgeInvitation(
+            id=new_id("inv"),
+            event_id=event_id,
+            email=email_norm,
+            track_ids=",".join(track_ids),
+            status="pending"
+        )
+        db.add(inv)
+        
     db.add(AuditLog(
         event_id=event.id,
         actor_id=user.id,
-        message=f"{user.name} invited/assigned judge {judge_user.email}",
+        message=f"{user.name} invited judge {email_norm}",
         created_at=utcnow(),
     ))
     db.commit()
+    return RedirectResponse(f"/organizer/{event_id}/judges", status_code=303)
+
+
+@router.post("/organizer/{event_id}/judges/invitation/{invitation_id}/revoke")
+def revoke_invitation(
+    event_id: str,
+    invitation_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_role("organizer", "admin")),
+):
+    event = db.get(Event, event_id)
+    if event is None:
+        raise HTTPException(status_code=404, detail="event not found")
+        
+    from src.models import JudgeInvitation
+    inv = db.query(JudgeInvitation).filter_by(event_id=event_id, id=invitation_id).first()
+    if inv:
+        db.delete(inv)
+        db.add(AuditLog(
+            event_id=event.id,
+            actor_id=user.id,
+            message=f"{user.name} revoked judge invitation for {inv.email}",
+            created_at=utcnow(),
+        ))
+        db.commit()
     return RedirectResponse(f"/organizer/{event_id}/judges", status_code=303)
 
 

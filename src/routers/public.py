@@ -38,6 +38,92 @@ def landing(request: Request, db: Session = Depends(get_db), user: User | None =
     )
 
 
+@router.get("/explore")
+def explore(request: Request, db: Session = Depends(get_db), user: User | None = Depends(get_current_user)):
+    from src.timeutil import utcnow, as_utc
+    events = db.query(Event).all()
+    now = utcnow()
+    
+    upcoming = []
+    ongoing = []
+    completed = []
+    
+    for e in events:
+        if e.results_published:
+            completed.append(e)
+            continue
+            
+        j_close = as_utc(e.judging_close)
+        s_open = as_utc(e.submissions_open)
+        
+        if s_open and now < s_open:
+            upcoming.append(e)
+        else:
+            ongoing.append(e)
+            
+    # Also fetch judge invitations if user is logged in
+    invitations = []
+    if user:
+        from src.models import JudgeInvitation
+        invitations = db.query(JudgeInvitation).filter_by(email=user.email, status="pending").all()
+        
+    return templates.TemplateResponse(request=request, name="explore.html", context=
+        base_context(
+            request=request,
+            event=default_event(db),
+            user=user,
+            role="participant" if user else "visitor",
+            upcoming=upcoming,
+            ongoing=ongoing,
+            completed=completed,
+            invitations=invitations
+        ),
+    )
+
+
+from fastapi.responses import RedirectResponse
+from fastapi import HTTPException
+
+@router.post("/invitations/{invitation_id}/accept")
+def accept_invitation(invitation_id: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    from src.models import JudgeInvitation, JudgeTrack
+    from src.queries import upsert_membership
+    if not user:
+        raise HTTPException(status_code=401)
+        
+    inv = db.query(JudgeInvitation).filter_by(id=invitation_id, email=user.email).first()
+    if not inv or inv.status != "pending":
+        raise HTTPException(status_code=404)
+        
+    inv.status = "accepted"
+    upsert_membership(db, inv.event_id, user.id, "judge")
+    
+    if inv.track_ids:
+        for t_id in inv.track_ids.split(","):
+            existing = db.query(JudgeTrack).filter_by(event_id=inv.event_id, judge_id=user.id, track_id=t_id).first()
+            if not existing:
+                db.add(JudgeTrack(event_id=inv.event_id, judge_id=user.id, track_id=t_id))
+                
+    db.commit()
+    return RedirectResponse(f"/judge/{inv.event_id}/dashboard", status_code=303)
+
+
+@router.post("/invitations/{invitation_id}/decline")
+def decline_invitation(invitation_id: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    from src.models import JudgeInvitation
+    if not user:
+        raise HTTPException(status_code=401)
+        
+    inv = db.query(JudgeInvitation).filter_by(id=invitation_id, email=user.email).first()
+    if not inv or inv.status != "pending":
+        raise HTTPException(status_code=404)
+        
+    inv.status = "declined"
+    db.commit()
+    return RedirectResponse("/explore", status_code=303)
+
+
+
 @router.get("/projects")
 def gallery(
     request: Request,

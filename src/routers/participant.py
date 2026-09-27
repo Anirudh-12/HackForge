@@ -209,12 +209,29 @@ async def submit_project(
     if team is None:
         return JSONResponse({"detail": "join or create a team first"}, status_code=400)
 
-    title = (payload.get("title") or "").strip()
-    summary = (payload.get("summary") or "").strip()
-    repo_url = (payload.get("repo_url") or "").strip() or None
-    demo_url = (payload.get("demo_url") or "").strip() or None
+    title = (payload.get("title") or "").strip() if isinstance(payload.get("title"), str) else ""
+    summary = (payload.get("summary") or "").strip() if isinstance(payload.get("summary"), str) else ""
+    repo_url = (payload.get("repo_url") or "").strip() or None if isinstance(payload.get("repo_url"), str) else None
+    demo_url = (payload.get("demo_url") or "").strip() or None if isinstance(payload.get("demo_url"), str) else None
+    tech_stack = (payload.get("tech_stack") or "").strip() if isinstance(payload.get("tech_stack"), str) else ""
     track_id = payload.get("track_id") or payload.get("track")
     is_draft = str(payload.get("action") or "").lower() == "draft" or payload.get("is_draft") in (True, "true", "1", "on")
+
+    import os
+    import shutil
+    from fastapi import UploadFile
+    
+    upload_dir = os.path.join("src", "static", "uploads")
+    os.makedirs(upload_dir, exist_ok=True)
+    
+    cover_image_path = None
+    cover_file = payload.get("cover_image")
+    if isinstance(cover_file, UploadFile) and cover_file.filename:
+        filename = f"{team.id}_{cover_file.filename}"
+        file_path = os.path.join(upload_dir, filename)
+        with open(file_path, "wb") as f:
+            shutil.copyfileobj(cover_file.file, f)
+        cover_image_path = f"/static/uploads/{filename}"
 
     project = db.query(Project).filter(Project.event_id == event.id, Project.team_id == team.id).first()
     if project is None:
@@ -231,11 +248,16 @@ async def submit_project(
     if summary or wants_json:
         project.summary = summary
     if track_id:
-        project.track_id = track_id
+        project.track_id = track_id if isinstance(track_id, str) else None
     if repo_url is not None:
         project.repo_url = repo_url
     if demo_url is not None:
         project.demo_url = demo_url
+    if tech_stack:
+        project.tech_stack = tech_stack
+    if cover_image_path:
+        project.cover_image_path = cover_image_path
+        
     project.is_draft = bool(is_draft)
     if not project.is_draft:
         project.submitted_at = utcnow()

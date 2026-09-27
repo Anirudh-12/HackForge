@@ -16,7 +16,7 @@
     {% endif %}
   </div>
 {% else %}
-  <form method="post" action="/participant/{{ event.id }}/submit">
+  <form method="post" action="/participant/{{ event.id }}/submit" enctype="multipart/form-data">
     <label>Project name</label>
     <input type="text" name="title" value="{{ project.title if project else '' }}" required>
     <label>Track</label>
@@ -25,9 +25,24 @@
         <option value="{{ t.id }}" {% if project and project.track_id == t.id %}selected{% endif %}>{{ t.name }}</option>
       {% endfor %}
     </select>
-    <label>Summary</label>
-    <textarea name="summary" rows="4">{{ project.summary if project else '' }}</textarea>
-    <label>Repository</label>
+    
+    <label>Cover Image (optional)</label>
+    {% if project and project.cover_image_path %}
+    <div style="margin-bottom: 8px;">
+        <img src="{{ project.cover_image_path }}" style="max-width: 200px; border-radius: var(--radius); border: 1px solid var(--border);" alt="Current Cover">
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin: 4px 0 0 0;">Current cover image</p>
+    </div>
+    {% endif %}
+    <input type="file" name="cover_image" accept="image/*">
+
+    <label>Tech Stack (comma-separated, e.g. React, Python, PostgreSQL)</label>
+    <input type="text" name="tech_stack" value="{{ project.tech_stack if project else '' }}">
+
+    <label>Project Story / Summary (Markdown supported)</label>
+    <textarea name="summary" rows="10" placeholder="## Inspiration...
+## What it does...">{{ project.summary if project else '' }}</textarea>
+
+    <label>Repository URL</label>
     <input type="text" name="repo_url" value="{{ project.repo_url if project else '' }}">
     <label>Demo URL (optional)</label>
     <input type="text" name="demo_url" value="{{ project.demo_url if project else '' }}">

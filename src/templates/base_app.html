@@ -27,10 +27,15 @@
           <div class="nav-section">JUDGING</div>
           <a href="/judge/{{ event.id }}/dashboard">My assignments</a>
         {% else %}
-          <div class="nav-section">MY HACKATHONS</div>
+          <div class="nav-section">DISCOVER</div>
+          <a href="/explore">Explore Hackathons</a>
+          <a href="/projects">Project Gallery</a>
+          {% if event %}
+          <div class="nav-section">CURRENT HACKATHON</div>
           <a href="/participant/{{ event.id }}/dashboard">Overview</a>
           <a href="/participant/{{ event.id }}/team">Team</a>
           <a href="/participant/{{ event.id }}/submit">Submission</a>
+          {% endif %}
         {% endif %}
       </nav>
     </aside>

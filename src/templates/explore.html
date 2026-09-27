@@ -1,0 +1,105 @@
+{% extends "base_app.html" %}
+{% block title %}Explore Hackathons{% endblock %}
+{% block content %}
+<div class="explore-container">
+  <div style="text-align: center; margin-bottom: 48px;">
+    <h1 style="font-size: 2.5rem; margin-bottom: 16px; background: -webkit-linear-gradient(45deg, var(--primary), var(--accent)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Explore Hackathons</h1>
+    <p style="color: var(--text-muted); font-size: 1.1rem; max-width: 600px; margin: 0 auto;">Find and join the most exciting hackathons, build amazing projects, and showcase your skills.</p>
+  </div>
+
+  {% if invitations %}
+  <div class="invitations-section" style="margin-bottom: 48px; background: rgba(var(--accent-rgb), 0.05); padding: 24px; border-radius: var(--radius); border: 1px solid var(--border);">
+    <h2 style="margin-top: 0; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+      Judge Invitations
+    </h2>
+    <div style="display: grid; gap: 16px;">
+      {% for inv in invitations %}
+      <div style="background: var(--bg); padding: 16px; border-radius: var(--radius); border: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <h3 style="margin: 0 0 4px 0;">{{ inv.event.name }}</h3>
+          <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem;">You have been invited to judge this event.</p>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <form method="post" action="/invitations/{{ inv.id }}/decline" style="margin: 0;">
+            <button class="btn btn-secondary" type="submit">Decline</button>
+          </form>
+          <form method="post" action="/invitations/{{ inv.id }}/accept" style="margin: 0;">
+            <button class="btn btn-primary" type="submit">Accept</button>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% macro event_card(event, status_label, status_color) %}
+  <a href="/participant/{{ event.id }}/dashboard" style="text-decoration: none; color: inherit;">
+    <div class="card event-card" style="transition: transform 0.2s, box-shadow 0.2s; height: 100%; display: flex; flex-direction: column;">
+      <div style="height: 120px; background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.1), rgba(var(--accent-rgb), 0.1)); border-bottom: 1px solid var(--border); position: relative;">
+        <span class="badge" style="position: absolute; top: 12px; right: 12px; background: {{ status_color }}; color: #fff; font-weight: bold;">{{ status_label }}</span>
+      </div>
+      <div style="padding: 24px; flex-grow: 1; display: flex; flex-direction: column;">
+        <h3 style="margin: 0 0 8px 0; font-size: 1.2rem;">{{ event.name }}</h3>
+        <p style="margin: 0 0 16px 0; color: var(--text-muted); font-size: 0.9rem; flex-grow: 1;">
+          {% if event.submissions_open %}Starts: {{ event.submissions_open.strftime('%b %d, %Y') }}{% else %}Dates TBA{% endif %}
+        </p>
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-top: auto;">
+          <span style="font-size: 0.9rem; font-weight: 500; color: var(--primary);">View Details &rarr;</span>
+        </div>
+      </div>
+    </div>
+  </a>
+  {% endmacro %}
+
+  <section style="margin-bottom: 48px;">
+    <h2 style="margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between;">
+      <span>Ongoing Hackathons</span>
+      <span style="font-size: 0.9rem; font-weight: normal; color: var(--text-muted); cursor: pointer;">View all</span>
+    </h2>
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 24px;">
+      {% for event in ongoing %}
+        {{ event_card(event, 'Ongoing', 'var(--success)') }}
+      {% else %}
+        <p style="color: var(--text-muted);">No ongoing hackathons at the moment.</p>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section style="margin-bottom: 48px;">
+    <h2 style="margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between;">
+      <span>Upcoming Hackathons</span>
+      <span style="font-size: 0.9rem; font-weight: normal; color: var(--text-muted); cursor: pointer;">View all</span>
+    </h2>
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 24px;">
+      {% for event in upcoming %}
+        {{ event_card(event, 'Upcoming', 'var(--accent)') }}
+      {% else %}
+        <p style="color: var(--text-muted);">No upcoming hackathons announced yet.</p>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section style="margin-bottom: 48px;">
+    <h2 style="margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between;">
+      <span>Past Hackathons</span>
+      <span style="font-size: 0.9rem; font-weight: normal; color: var(--text-muted); cursor: pointer;">View all</span>
+    </h2>
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 24px;">
+      {% for event in completed %}
+        {{ event_card(event, 'Completed', '#6b7280') }}
+      {% else %}
+        <p style="color: var(--text-muted);">No past hackathons available.</p>
+      {% endfor %}
+    </div>
+  </section>
+</div>
+
+<style>
+  .event-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(0,0,0,0.1);
+  }
+</style>
+{% endblock %}

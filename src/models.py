@@ -37,6 +37,29 @@ class Event(Base):
     projects: Mapped[list[Project]] = relationship(back_populates="event")
     members: Mapped[list[EventMember]] = relationship(back_populates="event")
 
+    @property
+    def status_info(self):
+        from src.timeutil import utcnow, as_utc
+        now = utcnow()
+        
+        j_close = as_utc(self.judging_close)
+        j_open = as_utc(self.judging_open)
+        s_close = as_utc(self.submissions_close)
+        s_open = as_utc(self.submissions_open)
+        
+        if self.results_published:
+            return {"text": "Results Live", "progress": 100, "color": "var(--success)"}
+        elif j_close and now > j_close:
+            return {"text": "Judging Stopped", "progress": 80, "color": "#1e3a8a"}
+        elif j_open and now > j_open:
+            return {"text": "Judging Started", "progress": 60, "color": "#7c3aed"}
+        elif s_close and now > s_close:
+            return {"text": "Submissions Closed", "progress": 40, "color": "var(--warning)"}
+        elif s_open and now > s_open:
+            return {"text": "Submissions Open", "progress": 20, "color": "var(--accent)"}
+        else:
+            return {"text": "Not Started", "progress": 0, "color": "var(--text-muted)"}
+
 
 class EventMember(Base):
     __tablename__ = "event_members"
@@ -99,6 +122,9 @@ class Project(Base):
     summary: Mapped[str] = mapped_column(Text, default="", nullable=False)
     repo_url: Mapped[str | None] = mapped_column(String, nullable=True)
     demo_url: Mapped[str | None] = mapped_column(String, nullable=True)
+    cover_image_path: Mapped[str | None] = mapped_column(String, nullable=True)
+    screenshots: Mapped[str | None] = mapped_column(Text, nullable=True)
+    tech_stack: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_draft: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     is_disqualified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
@@ -148,3 +174,16 @@ class AuditLog(Base):
     actor_id: Mapped[str | None] = mapped_column(String, nullable=True)
     message: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class JudgeInvitation(Base):
+    __tablename__ = "judge_invitations"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    event_id: Mapped[str] = mapped_column(ForeignKey("events.id"), nullable=False, index=True)
+    email: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    track_ids: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    status: Mapped[str] = mapped_column(String, default="pending", nullable=False)
+
+    event: Mapped[Event] = relationship()
+

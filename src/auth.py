@@ -110,7 +110,7 @@ def primary_membership(db: Session, user: User | None) -> EventMember | None:
 def home_for(db: Session, user: User) -> str:
     member = primary_membership(db, user)
     if member is None:
-        return "/projects"
+        return "/explore"
     if member.role == "admin":
         return "/admin/dashboard"
     if member.role == "organizer":

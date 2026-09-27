@@ -31,6 +31,34 @@
   {% endfor %}
 </table>
 
+{% if invitations %}
+<h2 style="margin-top: 32px; margin-bottom: 16px;">Pending Invitations</h2>
+<table class="data-table">
+  <tr>
+    <th>Email</th>
+    <th>Tracks</th>
+    <th>Status</th>
+    <th>Actions</th>
+  </tr>
+  {% for inv in invitations %}
+  <tr>
+    <td>{{ inv.invitation.email }}</td>
+    <td>
+      {% for t in inv.tracks %}
+      <span class="badge">{{ t.name }}</span>
+      {% endfor %}
+    </td>
+    <td><span class="badge" style="background: var(--warning); color: #fff;">Pending</span></td>
+    <td>
+      <form method="post" action="/organizer/{{ event.id }}/judges/invitation/{{ inv.invitation.id }}/revoke" style="display:inline;">
+        <button class="btn btn-secondary" type="submit">Revoke</button>
+      </form>
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% endif %}
+
 <dialog id="inviteJudgeModal" style="border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; max-width: 500px; width: 100%; box-shadow: var(--shadow);">
   <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
     <h2 style="margin: 0;">Invite Judge</h2>
