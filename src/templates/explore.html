@@ -35,9 +35,13 @@
   {% endif %}
 
   {% macro event_card(event, status_label, status_color) %}
-  <a href="/participant/{{ event.id }}/dashboard" style="text-decoration: none; color: inherit;">
-    <div class="card event-card" style="transition: transform 0.2s, box-shadow 0.2s; height: 100%; display: flex; flex-direction: column;">
+  <a href="/events/{{ event.id }}" style="text-decoration: none; color: inherit;">
+    <div class="card event-card" style="transition: transform 0.2s, box-shadow 0.2s; height: 100%; display: flex; flex-direction: column; overflow: hidden;">
+      {% if event.banner_image_path %}
+      <div style="height: 120px; background-image: url('{{ event.banner_image_path }}'); background-size: cover; background-position: center; border-bottom: 1px solid var(--border); position: relative;">
+      {% else %}
       <div style="height: 120px; background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.1), rgba(var(--accent-rgb), 0.1)); border-bottom: 1px solid var(--border); position: relative;">
+      {% endif %}
         <span class="badge" style="position: absolute; top: 12px; right: 12px; background: {{ status_color }}; color: #fff; font-weight: bold;">{{ status_label }}</span>
       </div>
       <div style="padding: 24px; flex-grow: 1; display: flex; flex-direction: column;">

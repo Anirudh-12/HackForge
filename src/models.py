@@ -37,6 +37,10 @@ class Event(Base):
     judging_close: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     results_published: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
+    banner_image_path: Mapped[str | None] = mapped_column(String, nullable=True)
+    description_markdown: Mapped[str | None] = mapped_column(Text, nullable=True)
+    rules_markdown: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     tracks: Mapped[list[Track]] = relationship(back_populates="event")
     teams: Mapped[list[Team]] = relationship(back_populates="event")
     projects: Mapped[list[Project]] = relationship(back_populates="event")

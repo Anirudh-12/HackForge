@@ -37,6 +37,35 @@ def landing(request: Request, db: Session = Depends(get_db), user: User | None =
         base_context(request=request, event=event, user=user, role="visitor"),
     )
 
+@router.get("/events/{event_id}")
+def event_landing(event_id: str, request: Request, db: Session = Depends(get_db), user: User | None = Depends(get_current_user)):
+    event = db.get(Event, event_id)
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+        
+    tracks = db.query(Track).filter(Track.event_id == event_id).all()
+    
+    return templates.TemplateResponse(request=request, name="event_landing.html", context=
+        base_context(
+            request=request, 
+            event=event, 
+            user=user, 
+            role=role_for(membership_for(db, user, event.id) if user else None),
+            tracks=tracks
+        ),
+    )
+
+@router.post("/events/{event_id}/join")
+def join_event(event_id: str, request: Request, db: Session = Depends(get_db), user: User | None = Depends(get_current_user)):
+    if not user:
+        return RedirectResponse(f"/login?next=/events/{event_id}", status_code=303)
+        
+    from src.queries import upsert_membership
+    upsert_membership(db, event_id, user.id, "participant")
+    db.commit()
+    
+    return RedirectResponse(f"/participant/{event_id}/dashboard", status_code=303)
+
 
 @router.get("/explore")
 def explore(request: Request, db: Session = Depends(get_db), user: User | None = Depends(get_current_user)):

@@ -1,18 +1,20 @@
 from __future__ import annotations
 
+import os
+import shutil
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Request
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
 from src.auth import require_role
 from src.context import base_context
 from src.db import get_db
-from src.templating import templates
 from src.models import AuditLog, Event, Project, Team, Track, User
 from src.queries import event_tracks
 from src.seed import new_id
+from src.templating import templates
 from src.timeutil import as_utc, parse_iso_utc, utcnow
 
 router = APIRouter()
@@ -38,7 +40,8 @@ def list_events(
     return templates.TemplateResponse(
         request=request,
         name="organizer/events.html",
-        context=base_context(all_events=db.query(Event).all(), 
+        context=base_context(
+            all_events=db.query(Event).all(),
             request=request,
             event=events[0] if events else None,
             user=user,
@@ -87,6 +90,7 @@ def create_event(
 
 from src.models import JudgeTrack, Score
 
+
 @router.get("/organizer/{event_id}/dashboard")
 def dashboard(
     event_id: str,
@@ -97,77 +101,89 @@ def dashboard(
     event = db.get(Event, event_id)
     if event is None:
         raise HTTPException(status_code=404, detail="event not found")
-        
+
     projects = db.query(Project).filter(Project.event_id == event_id).all()
     submitted = sum(1 for p in projects if not p.is_draft)
     teams = db.query(Team).filter(Team.event_id == event_id).count()
-    
+
     # Progress Dashboard Stats
     tracks = event_tracks(db, event_id)
     track_map = {t.id: t for t in tracks}
-    
+
     judge_tracks = db.query(JudgeTrack).filter_by(event_id=event_id).all()
     # Map track_id to list of judge_ids
     track_judges = {}
     for jt in judge_tracks:
         track_judges.setdefault(jt.track_id, []).append(jt.judge_id)
-        
+
     unique_judges = set(jt.judge_id for jt in judge_tracks)
-    
+
     scores = db.query(Score).filter_by(event_id=event_id).all()
-    
+
     # Pre-calculate who scored what: (project_id, judge_id) -> bool
     scored_pairs = set((s.project_id, s.judge_id) for s in scores)
-    
+
     total_reviews_assigned = 0
     total_reviews_completed = 0
-    
+
     project_stats = []
-    
-    submitted_projects = [p for p in projects if not p.is_draft and not p.is_disqualified]
-    
+
+    submitted_projects = [
+        p for p in projects if not p.is_draft and not p.is_disqualified
+    ]
+
     for p in submitted_projects:
         p_track = track_map.get(p.track_id)
         p_judges = track_judges.get(p.track_id, [])
-        
+
         reviews_total = len(p_judges)
         reviews_done = sum(1 for j in p_judges if (p.id, j) in scored_pairs)
-        
+
         total_reviews_assigned += reviews_total
         total_reviews_completed += reviews_done
-        
+
         if reviews_total == 0:
             status = "No judges"
         elif reviews_done == reviews_total:
             status = "Complete"
         else:
             status = f"Awaiting {reviews_total - reviews_done}"
-            
-        project_stats.append({
-            "project": p,
-            "track_name": p_track.name if p_track else "Untracked",
-            "reviews_done": reviews_done,
-            "reviews_total": reviews_total,
-            "status": status,
-            "complete": reviews_done == reviews_total and reviews_total > 0
-        })
-        
+
+        project_stats.append(
+            {
+                "project": p,
+                "track_name": p_track.name if p_track else "Untracked",
+                "reviews_done": reviews_done,
+                "reviews_total": reviews_total,
+                "status": status,
+                "complete": reviews_done == reviews_total and reviews_total > 0,
+            }
+        )
+
     # Sort projects: incomplete first, then by track
-    project_stats.sort(key=lambda x: (x["complete"], x["track_name"], x["project"].title))
-    
-    reviews_percent = int((total_reviews_completed / total_reviews_assigned * 100)) if total_reviews_assigned > 0 else 0
+    project_stats.sort(
+        key=lambda x: (x["complete"], x["track_name"], x["project"].title)
+    )
+
+    reviews_percent = (
+        int((total_reviews_completed / total_reviews_assigned * 100))
+        if total_reviews_assigned > 0
+        else 0
+    )
     reviews_awaiting = total_reviews_assigned - total_reviews_completed
-    
+
     now = utcnow()
     subs_complete = event.submissions_close and now > as_utc(event.submissions_close)
     assign_complete = total_reviews_assigned > 0
-    judging_complete = total_reviews_assigned > 0 and total_reviews_completed == total_reviews_assigned
+    judging_complete = (
+        total_reviews_assigned > 0 and total_reviews_completed == total_reviews_assigned
+    )
 
     return templates.TemplateResponse(
         request=request,
         name="organizer/dashboard.html",
         context=base_context(
-            all_events=db.query(Event).all(), 
+            all_events=db.query(Event).all(),
             request=request,
             event=event,
             user=user,
@@ -199,7 +215,13 @@ def event_settings(
     return templates.TemplateResponse(
         request=request,
         name="organizer/event.html",
-        context=base_context(all_events=db.query(Event).all(), request=request, event=event, user=user, role="organizer"),
+        context=base_context(
+            all_events=db.query(Event).all(),
+            request=request,
+            event=event,
+            user=user,
+            role="organizer",
+        ),
     )
 
 
@@ -211,22 +233,39 @@ def save_event(
     submissions_close: str = Form(""),
     judging_open: str = Form(""),
     judging_close: str = Form(""),
+    description_markdown: str = Form(""),
+    rules_markdown: str = Form(""),
+    banner_image: UploadFile = File(None),
     db: Session = Depends(get_db),
     user: User = Depends(require_role("organizer", "admin")),
 ):
     event = db.get(Event, event_id)
     if event is None:
         raise HTTPException(status_code=404, detail="event not found")
+
     event.name = name.strip()
     event.submissions_open = _dt(submissions_open)
     event.submissions_close = _dt(submissions_close)
     event.judging_open = _dt(judging_open)
     event.judging_close = _dt(judging_close)
+    event.description_markdown = description_markdown.strip()
+    event.rules_markdown = rules_markdown.strip()
+
+    if banner_image and banner_image.filename:
+        upload_dir = "src/static/uploads"
+        os.makedirs(upload_dir, exist_ok=True)
+        file_path = f"{upload_dir}/{event_id}_banner_{banner_image.filename}"
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(banner_image.file, buffer)
+        event.banner_image_path = (
+            f"/static/uploads/{event_id}_banner_{banner_image.filename}"
+        )
+
     db.add(
         AuditLog(
             event_id=event.id,
             actor_id=user.id,
-            message=f"{user.name} updated event dates for {event.name}",
+            message=f"{user.name} updated event settings for {event.name}",
             created_at=utcnow(),
         )
     )
@@ -244,9 +283,9 @@ def get_teams(
     event = db.query(Event).filter(Event.id == event_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
-    
+
     teams = db.query(Team).filter(Team.event_id == event_id).all()
-    
+
     return templates.TemplateResponse(
         request=request,
         name="organizer/teams.html",
@@ -271,9 +310,9 @@ def get_projects(
     event = db.query(Event).filter(Event.id == event_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
-    
+
     projects = db.query(Project).filter(Project.event_id == event_id).all()
-    
+
     return templates.TemplateResponse(
         request=request,
         name="organizer/projects.html",
@@ -301,7 +340,8 @@ def tracks_page(
     return templates.TemplateResponse(
         request=request,
         name="organizer/tracks.html",
-        context=base_context(all_events=db.query(Event).all(), 
+        context=base_context(
+            all_events=db.query(Event).all(),
             request=request,
             event=event,
             user=user,
@@ -358,14 +398,16 @@ def results_page(
     event = db.get(Event, event_id)
     if event is None:
         raise HTTPException(status_code=404, detail="event not found")
-        
+
     from src.queries import compute_results
+
     results = compute_results(db, event.id)
-    
+
     return templates.TemplateResponse(
         request=request,
         name="organizer/results.html",
-        context=base_context(all_events=db.query(Event).all(), 
+        context=base_context(
+            all_events=db.query(Event).all(),
             request=request,
             event=event,
             user=user,
@@ -386,16 +428,19 @@ def export_csv(
         raise HTTPException(status_code=404, detail="No event found")
 
     from src.queries import compute_results
+
     results = compute_results(db, event.id)
-    
+
     # We need to collect all unique judge IDs that have scored something
     all_judge_ids = set()
     for res in results:
         all_judge_ids.update(res["judge_raw_scores"].keys())
-    
+
     all_judge_ids = list(all_judge_ids)
-    
-    judges = db.query(User).filter(User.id.in_(all_judge_ids)).all() if all_judge_ids else []
+
+    judges = (
+        db.query(User).filter(User.id.in_(all_judge_ids)).all() if all_judge_ids else []
+    )
     judge_map = {j.id: j.name for j in judges}
 
     output = io.StringIO()
@@ -415,12 +460,15 @@ def export_csv(
     for res in results:
         p = res["project"]
         row = [
-            p.id, p.title, p.track.name if p.track else "", p.team.name if p.team else "",
+            p.id,
+            p.title,
+            p.track.name if p.track else "",
+            p.team.name if p.team else "",
             f"{res['raw_score']:.2f}",
             f"{res['normalized_score']:.2f}",
-            res['reviews_count']
+            res["reviews_count"],
         ]
-        
+
         for jid in all_judge_ids:
             score = res["judge_raw_scores"].get(jid)
             if score is not None:
@@ -438,6 +486,7 @@ def export_csv(
 
 from src.models import JudgeTrack
 
+
 @router.get("/organizer/{event_id}/judges")
 def judges_page(
     event_id: str,
@@ -448,42 +497,48 @@ def judges_page(
     event = db.get(Event, event_id)
     if event is None:
         raise HTTPException(status_code=404, detail="event not found")
-        
+
     # Get all judges assigned to this event
     judge_tracks = db.query(JudgeTrack).filter(JudgeTrack.event_id == event_id).all()
     judge_ids = list(set(jt.judge_id for jt in judge_tracks))
-    
+
     # We want to show judges with their assigned tracks
     judges_data = []
     if judge_ids:
         judges = db.query(User).filter(User.id.in_(judge_ids)).all()
         tracks_by_id = {t.id: t for t in event_tracks(db, event_id)}
-        
+
         for j in judges:
             j_tracks = [jt for jt in judge_tracks if jt.judge_id == j.id]
-            assigned_tracks = [tracks_by_id.get(jt.track_id) for jt in j_tracks if jt.track_id in tracks_by_id]
-            judges_data.append({
-                "user": j,
-                "tracks": [t for t in assigned_tracks if t is not None]
-            })
-            
+            assigned_tracks = [
+                tracks_by_id.get(jt.track_id)
+                for jt in j_tracks
+                if jt.track_id in tracks_by_id
+            ]
+            judges_data.append(
+                {"user": j, "tracks": [t for t in assigned_tracks if t is not None]}
+            )
+
     from src.models import JudgeInvitation
-    pending_invitations = db.query(JudgeInvitation).filter_by(event_id=event_id, status="pending").all()
+
+    pending_invitations = (
+        db.query(JudgeInvitation).filter_by(event_id=event_id, status="pending").all()
+    )
     tracks_by_id = {t.id: t for t in event_tracks(db, event_id)}
-    
+
     invitations_data = []
     for inv in pending_invitations:
         t_ids = inv.track_ids.split(",") if inv.track_ids else []
-        assigned_tracks = [tracks_by_id.get(tid) for tid in t_ids if tid in tracks_by_id]
-        invitations_data.append({
-            "invitation": inv,
-            "tracks": assigned_tracks
-        })
-            
+        assigned_tracks = [
+            tracks_by_id.get(tid) for tid in t_ids if tid in tracks_by_id
+        ]
+        invitations_data.append({"invitation": inv, "tracks": assigned_tracks})
+
     return templates.TemplateResponse(
         request=request,
         name="organizer/judges.html",
-        context=base_context(all_events=db.query(Event).all(), 
+        context=base_context(
+            all_events=db.query(Event).all(),
             request=request,
             event=event,
             user=user,
@@ -506,38 +561,62 @@ def invite_judge(
     event = db.get(Event, event_id)
     if event is None:
         raise HTTPException(status_code=404, detail="event not found")
-        
+
     email_norm = email.strip().lower()
     if not email_norm:
         return RedirectResponse(f"/organizer/{event_id}/judges", status_code=303)
-        
+
     from src.models import JudgeInvitation, JudgeTrack, EventMember
-    
+
     # Check if the user is already a judge for this event
     target_user = db.query(User).filter(User.email == email_norm).first()
     if target_user:
-        existing_judge = db.query(EventMember).filter_by(event_id=event_id, user_id=target_user.id, role="judge").first()
+        existing_judge = (
+            db.query(EventMember)
+            .filter_by(event_id=event_id, user_id=target_user.id, role="judge")
+            .first()
+        )
         if existing_judge:
             # Already a judge, assign to new tracks directly
             for t_id in track_ids:
                 if t_id:
-                    existing_jt = db.query(JudgeTrack).filter_by(event_id=event_id, judge_id=target_user.id, track_id=t_id).first()
+                    existing_jt = (
+                        db.query(JudgeTrack)
+                        .filter_by(
+                            event_id=event_id, judge_id=target_user.id, track_id=t_id
+                        )
+                        .first()
+                    )
                     if not existing_jt:
-                        db.add(JudgeTrack(event_id=event_id, judge_id=target_user.id, track_id=t_id))
-            
-            db.add(AuditLog(
-                event_id=event.id,
-                actor_id=user.id,
-                message=f"{user.name} assigned existing judge {email_norm} to additional tracks",
-                created_at=utcnow(),
-            ))
+                        db.add(
+                            JudgeTrack(
+                                event_id=event_id,
+                                judge_id=target_user.id,
+                                track_id=t_id,
+                            )
+                        )
+
+            db.add(
+                AuditLog(
+                    event_id=event.id,
+                    actor_id=user.id,
+                    message=f"{user.name} assigned existing judge {email_norm} to additional tracks",
+                    created_at=utcnow(),
+                )
+            )
             db.commit()
             return RedirectResponse(f"/organizer/{event_id}/judges", status_code=303)
-    
+
     # Check if already invited
-    existing_inv = db.query(JudgeInvitation).filter_by(event_id=event_id, email=email_norm, status="pending").first()
+    existing_inv = (
+        db.query(JudgeInvitation)
+        .filter_by(event_id=event_id, email=email_norm, status="pending")
+        .first()
+    )
     if existing_inv:
-        current_tracks = set(existing_inv.track_ids.split(",")) if existing_inv.track_ids else set()
+        current_tracks = (
+            set(existing_inv.track_ids.split(",")) if existing_inv.track_ids else set()
+        )
         for t_id in track_ids:
             if t_id:
                 current_tracks.add(t_id)
@@ -548,16 +627,18 @@ def invite_judge(
             event_id=event_id,
             email=email_norm,
             track_ids=",".join([t for t in track_ids if t]),
-            status="pending"
+            status="pending",
         )
         db.add(inv)
-        
-    db.add(AuditLog(
-        event_id=event.id,
-        actor_id=user.id,
-        message=f"{user.name} invited judge {email_norm}",
-        created_at=utcnow(),
-    ))
+
+    db.add(
+        AuditLog(
+            event_id=event.id,
+            actor_id=user.id,
+            message=f"{user.name} invited judge {email_norm}",
+            created_at=utcnow(),
+        )
+    )
     db.commit()
     return RedirectResponse(f"/organizer/{event_id}/judges", status_code=303)
 
@@ -572,22 +653,28 @@ def revoke_invitation(
     event = db.get(Event, event_id)
     if event is None:
         raise HTTPException(status_code=404, detail="event not found")
-        
+
     from src.models import JudgeInvitation
-    inv = db.query(JudgeInvitation).filter_by(event_id=event_id, id=invitation_id).first()
+
+    inv = (
+        db.query(JudgeInvitation).filter_by(event_id=event_id, id=invitation_id).first()
+    )
     if inv:
         db.delete(inv)
-        db.add(AuditLog(
-            event_id=event.id,
-            actor_id=user.id,
-            message=f"{user.name} revoked judge invitation for {inv.email}",
-            created_at=utcnow(),
-        ))
+        db.add(
+            AuditLog(
+                event_id=event.id,
+                actor_id=user.id,
+                message=f"{user.name} revoked judge invitation for {inv.email}",
+                created_at=utcnow(),
+            )
+        )
         db.commit()
     return RedirectResponse(f"/organizer/{event_id}/judges", status_code=303)
 
 
 from src.models import RubricCriteria, Score
+
 
 @router.get("/organizer/{event_id}/rubric")
 def rubric_page(
@@ -599,14 +686,15 @@ def rubric_page(
     event = db.get(Event, event_id)
     if event is None:
         raise HTTPException(status_code=404, detail="event not found")
-        
+
     criteria = db.query(RubricCriteria).filter_by(event_id=event_id).all()
     has_scores = db.query(Score).filter_by(event_id=event_id).first() is not None
-    
+
     return templates.TemplateResponse(
         request=request,
         name="organizer/rubric.html",
-        context=base_context(all_events=db.query(Event).all(), 
+        context=base_context(
+            all_events=db.query(Event).all(),
             request=request,
             event=event,
             user=user,
@@ -629,23 +717,29 @@ def add_rubric_criteria(
     event = db.get(Event, event_id)
     if event is None:
         raise HTTPException(status_code=404, detail="event not found")
-        
+
     has_scores = db.query(Score).filter_by(event_id=event_id).first() is not None
     if has_scores:
-        raise HTTPException(status_code=400, detail="Cannot edit rubric after judging has started")
-        
-    db.add(RubricCriteria(
-        id=new_id("cr"),
-        event_id=event_id,
-        name=name.strip(),
-        weight=weight,
-    ))
-    db.add(AuditLog(
-        event_id=event.id,
-        actor_id=user.id,
-        message=f"{user.name} added rubric criteria {name.strip()}",
-        created_at=utcnow(),
-    ))
+        raise HTTPException(
+            status_code=400, detail="Cannot edit rubric after judging has started"
+        )
+
+    db.add(
+        RubricCriteria(
+            id=new_id("cr"),
+            event_id=event_id,
+            name=name.strip(),
+            weight=weight,
+        )
+    )
+    db.add(
+        AuditLog(
+            event_id=event.id,
+            actor_id=user.id,
+            message=f"{user.name} added rubric criteria {name.strip()}",
+            created_at=utcnow(),
+        )
+    )
     db.commit()
     return RedirectResponse(f"/organizer/{event_id}/rubric", status_code=303)
 
@@ -660,22 +754,28 @@ def remove_rubric_criteria(
     event = db.get(Event, event_id)
     if event is None:
         raise HTTPException(status_code=404, detail="event not found")
-        
+
     has_scores = db.query(Score).filter_by(event_id=event_id).first() is not None
     if has_scores:
-        raise HTTPException(status_code=400, detail="Cannot edit rubric after judging has started")
-        
+        raise HTTPException(
+            status_code=400, detail="Cannot edit rubric after judging has started"
+        )
+
     crit = db.query(RubricCriteria).filter_by(event_id=event_id, id=criteria_id).first()
     if crit:
         db.delete(crit)
-        db.add(AuditLog(
-            event_id=event.id,
-            actor_id=user.id,
-            message=f"{user.name} removed rubric criteria {crit.name}",
-            created_at=utcnow(),
-        ))
+        db.add(
+            AuditLog(
+                event_id=event.id,
+                actor_id=user.id,
+                message=f"{user.name} removed rubric criteria {crit.name}",
+                created_at=utcnow(),
+            )
+        )
         db.commit()
     return RedirectResponse(f"/organizer/{event_id}/rubric", status_code=303)
+
+
 @router.post("/organizer/{event_id}/judges/{judge_id}/remove")
 def remove_judge(
     event_id: str,
@@ -686,22 +786,30 @@ def remove_judge(
     event = db.get(Event, event_id)
     if event is None:
         raise HTTPException(status_code=404, detail="event not found")
-        
-    judge_tracks = db.query(JudgeTrack).filter_by(event_id=event_id, judge_id=judge_id).all()
+
+    judge_tracks = (
+        db.query(JudgeTrack).filter_by(event_id=event_id, judge_id=judge_id).all()
+    )
     for jt in judge_tracks:
         db.delete(jt)
-        
+
     from src.models import EventMember
-    member = db.query(EventMember).filter_by(event_id=event_id, user_id=judge_id, role="judge").first()
+
+    member = (
+        db.query(EventMember)
+        .filter_by(event_id=event_id, user_id=judge_id, role="judge")
+        .first()
+    )
     if member:
         db.delete(member)
-    
-    db.add(AuditLog(
-        event_id=event.id,
-        actor_id=user.id,
-        message=f"{user.name} removed judge {judge_id} completely from event",
-        created_at=utcnow(),
-    ))
+
+    db.add(
+        AuditLog(
+            event_id=event.id,
+            actor_id=user.id,
+            message=f"{user.name} removed judge {judge_id} completely from event",
+            created_at=utcnow(),
+        )
+    )
     db.commit()
     return RedirectResponse(f"/organizer/{event_id}/judges", status_code=303)
-
