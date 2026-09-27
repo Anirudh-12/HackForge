@@ -391,6 +391,9 @@
           <option value="{{ track.name }}">{{ track.name }}</option>
           {% endfor %}
         </select>
+        {% if projects|length >= 2 %}
+        <a href="/judge/{{ event.id }}/pairwise" class="btn btn-primary" style="padding: 0.5rem 1rem;">Pairwise Mode</a>
+        {% endif %}
       </div>
     </div>
 

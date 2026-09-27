@@ -175,6 +175,7 @@ class Score(Base):
     criteria_id: Mapped[str] = mapped_column(ForeignKey("rubric_criteria.id"), nullable=False)
     value: Mapped[int] = mapped_column(Integer, nullable=False)
     comment: Mapped[str | None] = mapped_column(Text, nullable=True)
+    conflict_of_interest: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
 
 class AuditLog(Base):
@@ -210,3 +211,13 @@ class Notification(Base):
 
     user: Mapped[User] = relationship()
 
+class PairwiseComparison(Base):
+    __tablename__ = "pairwise_comparisons"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    event_id: Mapped[str] = mapped_column(ForeignKey("events.id"), nullable=False, index=True)
+    judge_id: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    winner_project_id: Mapped[str] = mapped_column(ForeignKey("projects.id"), nullable=False)
+    loser_project_id: Mapped[str] = mapped_column(ForeignKey("projects.id"), nullable=False)
+    criteria_id: Mapped[str | None] = mapped_column(ForeignKey("rubric_criteria.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

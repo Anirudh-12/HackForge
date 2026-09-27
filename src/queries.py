@@ -70,6 +70,8 @@ def compute_results(db: Session, event_id: str):
     # group scores by (project_id, judge_id)
     grouped_scores = {}
     for s in scores:
+        if getattr(s, 'conflict_of_interest', False):
+            continue
         key = (s.project_id, s.judge_id)
         if key not in grouped_scores:
             grouped_scores[key] = {}
@@ -106,6 +108,25 @@ def compute_results(db: Session, event_id: str):
                 stdev = 0
             judge_stats[(track_id, jid)] = (mean, stdev)
 
+    # Bradley-Terry ELO calculation
+    from src.models import PairwiseComparison
+    pairwise = db.query(PairwiseComparison).filter_by(event_id=event_id).order_by(PairwiseComparison.created_at).all()
+    
+    elo_scores = {p.id: 1500.0 for p in projects}
+    K = 32
+    
+    for comp in pairwise:
+        if comp.winner_project_id in elo_scores and comp.loser_project_id in elo_scores:
+            r_win = elo_scores[comp.winner_project_id]
+            r_lose = elo_scores[comp.loser_project_id]
+            
+            # Expected win probabilities
+            p_win = 1.0 / (1.0 + 10 ** ((r_lose - r_win) / 400.0))
+            p_lose = 1.0 / (1.0 + 10 ** ((r_win - r_lose) / 400.0))
+            
+            elo_scores[comp.winner_project_id] = r_win + K * (1 - p_win)
+            elo_scores[comp.loser_project_id] = r_lose + K * (0 - p_lose)
+
     results = []
     for p in projects:
         p_raw_scores = project_judge_raw.get(p.id, {})
@@ -129,6 +150,7 @@ def compute_results(db: Session, event_id: str):
             "project": p,
             "raw_score": avg_raw,
             "normalized_score": avg_norm,
+            "elo_score": elo_scores[p.id],
             "reviews_count": len(p_raw_list),
             "judge_raw_scores": p_raw_scores
         })

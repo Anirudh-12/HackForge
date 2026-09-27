@@ -1,0 +1,125 @@
+{% extends "base_app.html" %}
+{% block title %}Pairwise Judging{% endblock %}
+
+{% block content %}
+<style>
+  .pairwise-container {
+    display: flex;
+    gap: 32px;
+    margin-top: 24px;
+    align-items: stretch;
+  }
+  .pairwise-card {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .pairwise-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+  }
+  .project-img {
+    width: 100%;
+    height: 200px;
+    border-radius: 8px;
+    object-fit: cover;
+    background: linear-gradient(135deg, #0f172a, #1e293b);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 2rem;
+    font-weight: bold;
+    margin-bottom: 16px;
+  }
+  .project-title {
+    font-size: 1.5rem;
+    margin: 0 0 8px 0;
+  }
+  .project-desc {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    flex-grow: 1;
+    margin-bottom: 24px;
+  }
+  .vote-btn {
+    width: 100%;
+    padding: 16px;
+    font-size: 1.1rem;
+    font-weight: bold;
+  }
+</style>
+
+<div class="dashboard-header" style="margin-top: 16px; display: flex; justify-content: space-between; align-items: center;">
+  <div>
+    <h1 style="font-size: 2.2rem; margin: 0 0 8px 0;">Pairwise Judging</h1>
+    <p style="color: var(--text-muted); font-size: 1.1rem; margin: 0;">Compare two projects side-by-side and select the better one.</p>
+  </div>
+  {% if total_comparisons is defined %}
+    <div style="background: rgba(var(--primary-rgb), 0.1); color: var(--primary); padding: 8px 16px; border-radius: 20px; font-weight: bold;">
+      {{ total_comparisons }} Comparisons Made
+    </div>
+  {% endif %}
+</div>
+
+{% if error %}
+  <div style="margin-top: 24px; padding: 16px; background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid #ef4444; border-radius: var(--radius);">
+    {{ error }}
+  </div>
+{% else %}
+  <div class="pairwise-container">
+    <!-- Project 1 -->
+    <div class="pairwise-card">
+      <div class="project-img">
+        {% if p1.cover_image_path %}
+          <img src="{{ p1.cover_image_path }}" style="width:100%; height:100%; object-fit:cover; border-radius:8px;">
+        {% else %}
+          {{ p1.title[:2].upper() }}
+        {% endif %}
+      </div>
+      <h2 class="project-title">{{ p1.title }}</h2>
+      <p class="project-desc">{{ p1.summary }}</p>
+      
+      <form method="post" action="/judge/{{ event.id }}/pairwise" style="margin: 0;">
+        <input type="hidden" name="winner_id" value="{{ p1.id }}">
+        <input type="hidden" name="loser_id" value="{{ p2.id }}">
+        <button type="submit" class="btn btn-primary vote-btn">This one is better</button>
+      </form>
+    </div>
+
+    <!-- VS Divider -->
+    <div style="display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: bold; color: var(--text-muted);">
+      VS
+    </div>
+
+    <!-- Project 2 -->
+    <div class="pairwise-card">
+      <div class="project-img">
+        {% if p2.cover_image_path %}
+          <img src="{{ p2.cover_image_path }}" style="width:100%; height:100%; object-fit:cover; border-radius:8px;">
+        {% else %}
+          {{ p2.title[:2].upper() }}
+        {% endif %}
+      </div>
+      <h2 class="project-title">{{ p2.title }}</h2>
+      <p class="project-desc">{{ p2.summary }}</p>
+      
+      <form method="post" action="/judge/{{ event.id }}/pairwise" style="margin: 0;">
+        <input type="hidden" name="winner_id" value="{{ p2.id }}">
+        <input type="hidden" name="loser_id" value="{{ p1.id }}">
+        <button type="submit" class="btn btn-primary vote-btn">This one is better</button>
+      </form>
+    </div>
+  </div>
+{% endif %}
+
+<div style="margin-top: 32px; text-align: center;">
+  <a href="/judge/{{ event.id }}/dashboard" style="color: var(--text-muted); text-decoration: none; font-weight: 500;">&larr; Back to Dashboard</a>
+</div>
+
+{% endblock %}

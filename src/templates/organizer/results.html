@@ -1,48 +1,135 @@
 {% extends "base_app.html" %}
 {% block title %}Results{% endblock %}
 {% block content %}
-<div style="display: flex; justify-content: space-between; align-items: baseline;">
-  <h1>Results</h1>
-  <a href="/api/export.csv" class="btn btn-secondary">Download CSV</a>
+<style>
+  .toggle-container {
+    display: inline-flex;
+    background: var(--surface);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 4px;
+  }
+  .toggle-btn {
+    background: transparent;
+    border: none;
+    padding: 6px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    color: var(--text-muted);
+    transition: all 0.2s;
+  }
+  .toggle-btn.active {
+    background: var(--primary);
+    color: white;
+  }
+  
+  /* State classes */
+  body.show-raw .norm-col, body.show-raw .elo-col {
+    display: none;
+  }
+  body.show-norm .raw-col, body.show-norm .elo-col {
+    display: none;
+  }
+  body.show-elo .raw-col, body.show-elo .norm-col {
+    display: none;
+  }
+</style>
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+  <h1 style="margin: 0;">Results</h1>
+  <div style="display: flex; gap: 16px; align-items: center;">
+    <div class="toggle-container" id="scoreToggle">
+      <button class="toggle-btn" data-mode="raw">Raw Scores</button>
+      <button class="toggle-btn active" data-mode="norm">Normalized Scores</button>
+      <button class="toggle-btn" data-mode="elo">Pairwise ELO</button>
+    </div>
+    <a href="/api/export.csv" class="btn btn-secondary">Download CSV</a>
+  </div>
 </div>
 
-<p>
-  <strong>Note:</strong> Z-score normalization handles judge variance (lenient vs harsh judges) within each track.
-  Scores are sorted by Normalized Score (50-100). If judging is still in progress, these rankings may change as new scores are submitted.
-</p>
+<div style="background: rgba(var(--primary-rgb), 0.05); border: 1px solid rgba(var(--primary-rgb), 0.2); padding: 16px; border-radius: 8px; margin-bottom: 24px;">
+  <strong><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px; margin-right:4px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg> How this works:</strong>
+  <span class="raw-col" style="display: none;">Raw scores are straight averages of all judge inputs. They are vulnerable to harsh or lenient judges skewing the results.</span>
+  <span class="norm-col">Z-score normalization dynamically adjusts scores based on each judge's historical grading patterns (mean and standard deviation). This creates a fair 50-100 baseline.</span>
+  <span class="elo-col" style="display: none;">Bradley-Terry ELO rating system. Projects start at 1500 and win/lose points based on side-by-side Pairwise comparisons.</span>
+</div>
 
-<table class="data-table">
+<table class="data-table" id="resultsTable">
   <thead>
     <tr>
       <th>Project</th>
       <th>Track</th>
-      <th>Raw Avg</th>
-      <th>Normalized</th>
+      <th class="raw-col sortable" data-sort="raw" style="cursor: pointer; display: none;">Raw Avg ↕</th>
+      <th class="norm-col sortable" data-sort="norm" style="cursor: pointer;">Normalized Score ↕</th>
+      <th class="elo-col sortable" data-sort="elo" style="cursor: pointer; display: none;">ELO Rating ↕</th>
       <th>Reviews</th>
     </tr>
   </thead>
   <tbody>
     {% for r in results %}
-    <tr>
+    <tr class="result-row" data-raw="{{ r.raw_score }}" data-norm="{{ r.normalized_score }}" data-elo="{{ r.elo_score }}">
       <td>
-        <a href="/projects/{{ r.project.id }}">{{ r.project.title }}</a>
+        <a href="/projects/{{ r.project.id }}" style="font-weight: 500;">{{ r.project.title }}</a>
       </td>
       <td>
         {% if r.project.track %}
-          <span class="badge">{{ r.project.track.name }}</span>
+          <span class="badge" style="background: rgba(var(--primary-rgb), 0.1); color: var(--primary);">{{ r.project.track.name }}</span>
         {% else %}
-          —
+          <span style="color: var(--text-muted);">—</span>
         {% endif %}
       </td>
-      <td>{{ "%.2f"|format(r.raw_score) }}</td>
-      <td><strong>{{ "%.2f"|format(r.normalized_score) }}</strong></td>
+      <td class="raw-col" style="display: none;">
+        <strong>{{ "%.2f"|format(r.raw_score) }}</strong>
+      </td>
+      <td class="norm-col">
+        <strong>{{ "%.2f"|format(r.normalized_score) }}</strong>
+      </td>
+      <td class="elo-col" style="display: none;">
+        <strong>{{ "%.0f"|format(r.elo_score) }}</strong>
+      </td>
       <td>{{ r.reviews_count }}</td>
     </tr>
     {% else %}
     <tr>
-      <td colspan="5">No scored projects found.</td>
+      <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 32px 0;">No scored projects found.</td>
     </tr>
     {% endfor %}
   </tbody>
 </table>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const toggleBtns = document.querySelectorAll('#scoreToggle .toggle-btn');
+    const tableBody = document.querySelector('#resultsTable tbody');
+    
+    function setMode(mode) {
+      // Update buttons
+      toggleBtns.forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.mode === mode);
+      });
+      
+      // Update columns (handled by body class + CSS)
+      document.body.classList.remove('show-raw', 'show-norm', 'show-elo');
+      document.body.classList.add(`show-${mode}`);
+      
+      // Sort rows
+      const rows = Array.from(tableBody.querySelectorAll('.result-row'));
+      rows.sort((a, b) => {
+        const valA = parseFloat(a.dataset[mode]) || 0;
+        const valB = parseFloat(b.dataset[mode]) || 0;
+        return valB - valA; // Descending
+      });
+      
+      rows.forEach(row => tableBody.appendChild(row));
+    }
+    
+    toggleBtns.forEach(btn => {
+      btn.addEventListener('click', () => setMode(btn.dataset.mode));
+    });
+    
+    // Init state
+    setMode('norm');
+  });
+</script>
 {% endblock %}

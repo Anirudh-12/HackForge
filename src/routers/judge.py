@@ -144,17 +144,19 @@ async def submit_score(
         
     form_data = await request.form()
     comment = form_data.get("comment", "")
+    recuse = form_data.get("recuse") == "true"
     
     criteria = db.query(RubricCriteria).filter_by(event_id=event_id).all()
     
     for crit in criteria:
         val = form_data.get(f"criteria_{crit.id}")
-        if val is not None:
-            val = int(val)
+        if val is not None or recuse:
+            val = 0 if recuse else int(val)
             existing = db.query(Score).filter_by(event_id=event_id, judge_id=user.id, project_id=project_id, criteria_id=crit.id).first()
             if existing:
                 existing.value = val
                 existing.comment = comment
+                existing.conflict_of_interest = recuse
             else:
                 db.add(Score(
                     event_id=event_id,
@@ -162,7 +164,8 @@ async def submit_score(
                     project_id=project_id,
                     criteria_id=crit.id,
                     value=val,
-                    comment=comment
+                    comment=comment,
+                    conflict_of_interest=recuse
                 ))
     
     db.commit()
@@ -194,3 +197,59 @@ def get_judge_scores(
         }
         for s in scores
     ]
+
+import random
+from src.timeutil import utcnow
+
+@router.get("/judge/{event_id}/pairwise")
+def pairwise_judging(
+    event_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_role("judge", "organizer", "admin")),
+):
+    event = db.get(Event, event_id)
+    if event is None:
+        raise HTTPException(status_code=404, detail="event not found")
+        
+    judge_tracks = db.query(JudgeTrack).filter_by(event_id=event_id, judge_id=user.id).all()
+    track_ids = [jt.track_id for jt in judge_tracks]
+    
+    projects = db.query(Project).filter(Project.event_id == event_id, Project.track_id.in_(track_ids), Project.is_draft.is_(False), Project.is_disqualified.is_(False)).all() if track_ids else []
+    
+    if len(projects) < 2:
+        return templates.TemplateResponse(request=request, name="judge/pairwise.html", context=
+            base_context(request=request, event=event, user=user, role="judge", error="Not enough projects to compare.")
+        )
+        
+    from src.models import PairwiseComparison
+    existing = db.query(PairwiseComparison).filter_by(event_id=event_id, judge_id=user.id).all()
+    
+    # Simple strategy: just pick two random projects that haven't been compared yet, or just random
+    p1, p2 = random.sample(projects, 2)
+    
+    # In a more advanced implementation, we would query for the pair with the least comparisons.
+    
+    return templates.TemplateResponse(request=request, name="judge/pairwise.html", context=
+        base_context(request=request, event=event, user=user, role="judge", p1=p1, p2=p2, total_comparisons=len(existing))
+    )
+
+@router.post("/judge/{event_id}/pairwise")
+async def submit_pairwise(
+    event_id: str,
+    request: Request,
+    winner_id: str = Form(...),
+    loser_id: str = Form(...),
+    db: Session = Depends(get_db),
+    user: User = Depends(require_role("judge", "organizer", "admin")),
+):
+    from src.models import PairwiseComparison
+    db.add(PairwiseComparison(
+        event_id=event_id,
+        judge_id=user.id,
+        winner_project_id=winner_id,
+        loser_project_id=loser_id,
+        created_at=utcnow()
+    ))
+    db.commit()
+    return RedirectResponse(f"/judge/{event_id}/pairwise", status_code=303)
