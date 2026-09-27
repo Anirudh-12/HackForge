@@ -1,0 +1,19 @@
+[portal]
+base_url = "http://localhost:8080"
+
+[tiers]
+claimed = ["T1", "T2"]
+pitch = "A beautiful, premium hackathon platform."
+
+[auth]
+organizer   = "Cookie: session=org_1.bf01d02c71eb9bdecf47da671b26eeec96b62175f9172d81d3383957b1caba4b"
+judge_a     = "Cookie: session=jdg_1.2953063b1158eec576f473cec9c14265f7f2160f757acfd90a9111b75aa60999"
+judge_b     = "Cookie: session=jdg_2.5c5a37553e7cf492f8cd98b7ed65d097efce67a4d7e171aca9b5ecbd59768658"
+participant = "Cookie: session=prt_1.8eba5a39805a33bc6139371b39b829cea8b6423430926cafb2f99eb461663357"
+
+[routes]
+gallery      = "/projects"
+submit       = "/projects/new"
+judge_scores = "/api/judge/scores"
+peer_scores  = "/api/judge/scores?judge=jdg_1"
+csv_export   = "/api/export.csv"
