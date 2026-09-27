@@ -7,7 +7,7 @@ from src.auth import get_current_user, membership_for
 from src.context import base_context, role_for
 from src.db import get_db
 from src.templating import templates
-from src.models import Event, Project, User
+from src.models import Event, Project, User, Track
 from src.queries import default_event, event_tracks, gallery_projects
 
 router = APIRouter()
@@ -129,24 +129,53 @@ def gallery(
     request: Request,
     q: str | None = None,
     track: str | None = None,
+    event_id: str | None = None,
+    tech: str | None = None,
     db: Session = Depends(get_db),
     user: User | None = Depends(get_current_user),
 ):
-    event = default_event(db)
-    projects = gallery_projects(db, event.id, q=q, track_id=track) if event else []
-    tracks = event_tracks(db, event.id) if event else []
-    for project in projects:
-        project.color = track_color(project.track_id)
+    query = (
+        db.query(Project)
+        .options(joinedload(Project.team), joinedload(Project.track), joinedload(Project.event))
+        .filter(Project.is_draft.is_(False), Project.is_disqualified.is_(False))
+    )
+    if event_id:
+        query = query.filter(Project.event_id == event_id)
+    if q:
+        like = f"%{q}%"
+        query = query.filter(Project.title.ilike(like) | Project.summary.ilike(like))
+    if track:
+        query = query.filter(Project.track_id == track)
+    if tech:
+        like_tech = f"%{tech}%"
+        query = query.filter(Project.tech_stack.ilike(like_tech))
+
+    projects = query.order_by(Project.title.asc()).all()
+    
+    events = db.query(Event).order_by(Event.name.asc()).all()
+    tracks = db.query(Track).order_by(Track.name.asc()).all()
+
+    # Extract unique technologies from all projects
+    all_techs = set()
+    for p in db.query(Project.tech_stack).filter(Project.tech_stack.isnot(None)).all():
+        for t in p[0].split(','):
+            all_techs.add(t.strip())
+    techs = sorted(list(t for t in all_techs if t))
+
     return templates.TemplateResponse(request=request, name="gallery.html", context=
         base_context(
             request=request,
-            event=event,
+            event=default_event(db),
             user=user,
             role="visitor",
             projects=projects,
+            events=events,
             tracks=tracks,
+            techs=techs,
             q=q or "",
             selected_track=track or "",
+            selected_event=event_id or "",
+            selected_tech=tech or "",
         ),
     )
 

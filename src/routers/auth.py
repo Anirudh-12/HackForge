@@ -113,6 +113,15 @@ def register(
     return response
 
 
+@router.get("/profile")
+def profile(request: Request, user: User | None = Depends(get_current_user), db: Session = Depends(get_db)):
+    if not user:
+        return RedirectResponse("/login", status_code=303)
+    return templates.TemplateResponse(request=request, name="profile.html", context=
+        base_context(request=request, event=default_event(db), user=user, role="participant", error=None)
+    )
+
+
 @router.post("/logout")
 def logout():
     response = RedirectResponse("/", status_code=303)

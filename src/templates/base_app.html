@@ -72,11 +72,49 @@
           <div style="font-weight: 500;">{{ event.name if event else 'Hackforge' }}</div>
           {% endif %}
         </div>
-        <div>
-          {% if user %}{{ user.name }} · {{ role }}{% endif %}
-          <form method="post" action="/logout" style="display:inline">
-            <button class="btn btn-ghost" type="submit">Sign out</button>
-          </form>
+        <div style="display: flex; align-items: center; gap: 12px; position: relative;">
+          {% if user %}
+            <!-- Profile Icon Dropdown -->
+            <div style="cursor: pointer; display: flex; align-items: center;" onclick="const d = document.getElementById('profileDropdown'); d.style.display = d.style.display === 'none' ? 'block' : 'none'; event.stopPropagation();">
+              <div style="width: 32px; height: 32px; border-radius: 50%; background: var(--accent, #3b82f6); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; overflow: hidden; box-shadow: 0 0 0 2px var(--surface, #1e1e1e), 0 0 0 4px var(--accent, #3b82f6);">
+                {{ user.name[0].upper() if user.name else 'U' }}
+              </div>
+            </div>
+            
+            <div id="profileDropdown" style="display: none; position: absolute; top: 100%; right: 0; background: var(--surface, #1e1e1e); border: 1px solid var(--border, #333); border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); margin-top: 12px; min-width: 240px; z-index: 50; padding: 8px 0;">
+              <div style="padding: 12px 16px; border-bottom: 1px solid var(--border, #333); margin-bottom: 4px;">
+                <div style="font-weight: 500; color: var(--text-primary, #fff);">{{ user.name }}</div>
+                <div style="font-size: 12px; color: var(--text-muted, #999); margin-top: 2px;">{{ user.email }}</div>
+              </div>
+              <a href="/profile" style="display: flex; align-items: center; gap: 8px; padding: 10px 16px; color: var(--text-primary, #fff); text-decoration: none; transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='var(--border, #333)'" onmouseout="this.style.backgroundColor='transparent'">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                View Profile
+              </a>
+              <a href="/profile" style="display: flex; align-items: center; gap: 8px; padding: 10px 16px; color: var(--text-primary, #fff); text-decoration: none; transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='var(--border, #333)'" onmouseout="this.style.backgroundColor='transparent'">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                Settings
+              </a>
+              <div style="border-top: 1px solid var(--border, #333); margin: 8px 0;"></div>
+              <form method="post" action="/logout" style="margin: 0;">
+                <button type="submit" style="display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; padding: 10px 16px; color: #ef4444; background: none; border: none; cursor: pointer; font-family: inherit; font-size: inherit; transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='rgba(239, 68, 68, 0.1)'" onmouseout="this.style.backgroundColor='transparent'">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                  Logout
+                </button>
+              </form>
+            </div>
+            <script>
+              document.addEventListener('click', function(e) {
+                const d = document.getElementById('profileDropdown');
+                if (d && e.target.closest('#profileDropdown') === null && !e.target.closest('[onclick*="profileDropdown"]')) {
+                  d.style.display = 'none';
+                }
+              });
+            </script>
+          {% else %}
+            <!-- Not Logged In -->
+            <a href="/login" class="btn btn-ghost" style="text-decoration: none;">Sign in</a>
+            <a href="/register" class="btn btn-primary" style="text-decoration: none;">Sign up</a>
+          {% endif %}
         </div>
       </div>
       <div class="content">
