@@ -18,6 +18,9 @@
           <a href="/organizer/{{ event.id }}/dashboard">Dashboard</a>
           <div class="nav-section">HACKATHON</div>
           <a href="/organizer/{{ event.id }}/tracks">Tracks</a>
+          <a href="/organizer/{{ event.id }}/judges">Judges</a>
+          <a href="/organizer/{{ event.id }}/rubric">Rubric</a>
+          <a href="/organizer/{{ event.id }}/results">Results</a>
           <a href="/organizer/{{ event.id }}/event">Event</a>
           <a href="/organizer/events">All events</a>
         {% elif role == 'judge' %}
@@ -33,7 +36,32 @@
     </aside>
     <div class="app-main">
       <div class="topbar">
-        <div>{{ event.name if event else 'Hackforge' }}</div>
+        <div style="position: relative;">
+          {% if all_events %}
+          <div style="cursor: pointer; display: flex; align-items: center; gap: 4px; font-weight: 500;" onclick="const d = document.getElementById('eventDropdown'); d.style.display = d.style.display === 'none' ? 'block' : 'none'; event.stopPropagation();">
+            {{ event.name if event else 'Hackforge' }}
+            <span style="font-size: 10px;">🔻</span>
+          </div>
+          <div id="eventDropdown" style="display: none; position: absolute; top: 100%; left: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); margin-top: 8px; min-width: 220px; z-index: 50; padding: 8px 0;">
+            <div style="padding: 4px 16px 8px; font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--border); margin-bottom: 4px;">Switch Event</div>
+            {% for e in all_events %}
+            <a href="/organizer/{{ e.id }}/dashboard" style="display: block; padding: 8px 16px; color: {% if event and e.id == event.id %}var(--accent){% else %}var(--text-primary){% endif %}; text-decoration: none; font-weight: {% if event and e.id == event.id %}500{% else %}400{% endif %};">
+              {{ e.name }}
+            </a>
+            {% endfor %}
+            <div style="border-top: 1px solid var(--border); margin: 8px 0;"></div>
+            <a href="/organizer/events" style="display: block; padding: 8px 16px; color: var(--accent); text-decoration: none; font-weight: 500;">+ Create New</a>
+          </div>
+          <script>
+            document.addEventListener('click', function(e) {
+              const d = document.getElementById('eventDropdown');
+              if (d && e.target.closest('#eventDropdown') === null) d.style.display = 'none';
+            });
+          </script>
+          {% else %}
+          <div style="font-weight: 500;">{{ event.name if event else 'Hackforge' }}</div>
+          {% endif %}
+        </div>
         <div>
           {% if user %}{{ user.name }} · {{ role }}{% endif %}
           <form method="post" action="/logout" style="display:inline">

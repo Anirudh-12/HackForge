@@ -77,24 +77,33 @@ def register(
     db: Session = Depends(get_db),
 ):
     email_norm = email.strip().lower()
-    if db.query(User).filter(User.email == email_norm).first():
-        return templates.TemplateResponse(request=request, name="register.html", context=
-            base_context(
-                request=request,
-                event=default_event(db),
-                user=None,
-                role="visitor",
-                error="An account with that email already exists.",
-            ),
-            status_code=400,
+    existing_user = db.query(User).filter(User.email == email_norm).first()
+    if existing_user:
+        if existing_user.password_hash is not None:
+            return templates.TemplateResponse(request=request, name="register.html", context=
+                base_context(
+                    request=request,
+                    event=default_event(db),
+                    user=None,
+                    role="visitor",
+                    error="An account with that email already exists.",
+                ),
+                status_code=400,
+            )
+        else:
+            # Complete registration for invited user
+            existing_user.name = name.strip() or email_norm
+            existing_user.password_hash = hash_password(password)
+            user = existing_user
+    else:
+        user = User(
+            id=new_id("usr"),
+            email=email_norm,
+            name=name.strip() or email_norm,
+            password_hash=hash_password(password),
         )
-    user = User(
-        id=new_id("usr"),
-        email=email_norm,
-        name=name.strip() or email_norm,
-        password_hash=hash_password(password),
-    )
-    db.add(user)
+        db.add(user)
+    
     event = default_event(db)
     if event:
         upsert_membership(db, event.id, user.id, "participant")

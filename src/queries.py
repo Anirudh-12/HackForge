@@ -51,3 +51,86 @@ def upsert_membership(db: Session, event_id: str, user_id: str, role: str) -> Ev
     member = EventMember(event_id=event_id, user_id=user_id, role=role)
     db.add(member)
     return member
+
+
+def compute_results(db: Session, event_id: str):
+    from src.models import Score, RubricCriteria, JudgeTrack
+    import math
+
+    projects = gallery_projects(db, event_id) # gets non-draft, non-disqualified
+    criteria = db.query(RubricCriteria).filter_by(event_id=event_id).all()
+    total_weight = sum(c.weight for c in criteria)
+    if not total_weight:
+        total_weight = 1
+
+    crit_weights = {c.id: c.weight / total_weight for c in criteria}
+
+    scores = db.query(Score).filter_by(event_id=event_id).all()
+    
+    # group scores by (project_id, judge_id)
+    grouped_scores = {}
+    for s in scores:
+        key = (s.project_id, s.judge_id)
+        if key not in grouped_scores:
+            grouped_scores[key] = {}
+        grouped_scores[key][s.criteria_id] = s.value
+
+    project_judge_raw = {}
+    judge_scores_by_track = {}
+    
+    for p in projects:
+        project_judge_raw[p.id] = {}
+        if p.track_id not in judge_scores_by_track:
+            judge_scores_by_track[p.track_id] = {}
+            
+        for (pid, jid), c_scores in grouped_scores.items():
+            if pid == p.id:
+                raw_score = sum(val * crit_weights.get(cid, 0) for cid, val in c_scores.items())
+                project_judge_raw[p.id][jid] = raw_score
+                
+                if jid not in judge_scores_by_track[p.track_id]:
+                    judge_scores_by_track[p.track_id][jid] = []
+                judge_scores_by_track[p.track_id][jid].append(raw_score)
+
+    judge_stats = {}
+    for track_id, j_scores in judge_scores_by_track.items():
+        for jid, raw_scores in j_scores.items():
+            n = len(raw_scores)
+            if n == 0:
+                continue
+            mean = sum(raw_scores) / n
+            if n > 1:
+                variance = sum((x - mean)**2 for x in raw_scores) / n
+                stdev = math.sqrt(variance)
+            else:
+                stdev = 0
+            judge_stats[(track_id, jid)] = (mean, stdev)
+
+    results = []
+    for p in projects:
+        p_raw_scores = project_judge_raw.get(p.id, {})
+        p_norm_scores = []
+        p_raw_list = []
+        
+        for jid, raw in p_raw_scores.items():
+            p_raw_list.append(raw)
+            mean, stdev = judge_stats.get((p.track_id, jid), (0, 0))
+            if stdev == 0:
+                norm = 50.0
+            else:
+                z = (raw - mean) / stdev
+                norm = 50.0 + (z * 15.0)
+            p_norm_scores.append(norm)
+            
+        avg_raw = sum(p_raw_list) / len(p_raw_list) if p_raw_list else 0
+        avg_norm = sum(p_norm_scores) / len(p_norm_scores) if p_norm_scores else 0
+        
+        results.append({
+            "project": p,
+            "raw_score": avg_raw,
+            "normalized_score": avg_norm,
+            "reviews_count": len(p_raw_list),
+            "judge_raw_scores": p_raw_scores
+        })
+        
+    return sorted(results, key=lambda x: x["normalized_score"], reverse=True)

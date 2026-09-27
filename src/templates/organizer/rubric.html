@@ -1,0 +1,50 @@
+{% extends "base_app.html" %}
+{% block title %}Rubric{% endblock %}
+{% block content %}
+<h1>Scoring Rubric</h1>
+
+{% if has_scores %}
+<div class="alert alert-warning">
+  <strong>Judging has started!</strong> You cannot edit the rubric because scores have already been submitted. Changing criteria or weights now would invalidate existing scores.
+</div>
+{% endif %}
+
+<table class="data-table">
+  <tr>
+    <th>Criteria</th>
+    <th>Weight</th>
+    <th>Actions</th>
+  </tr>
+  {% for c in criteria %}
+  <tr>
+    <td>{{ c.name }}</td>
+    <td>{{ c.weight }}</td>
+    <td>
+      {% if not has_scores %}
+      <form method="post" action="/organizer/{{ event.id }}/rubric/{{ c.id }}/remove" style="display:inline;">
+        <button class="btn btn-secondary" type="submit">Remove</button>
+      </form>
+      {% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+  <tr>
+    <td><strong>Total</strong></td>
+    <td><strong>{{ total_weight }}</strong></td>
+    <td></td>
+  </tr>
+</table>
+
+{% if not has_scores %}
+<h2>Add Criteria</h2>
+<form method="post" action="/organizer/{{ event.id }}/rubric">
+  <label>Name</label>
+  <input type="text" name="name" required>
+  
+  <label>Weight (e.g., 20)</label>
+  <input type="number" name="weight" min="1" required>
+
+  <div class="row-actions"><button class="btn btn-primary" type="submit">Add Criteria</button></div>
+</form>
+{% endif %}
+{% endblock %}

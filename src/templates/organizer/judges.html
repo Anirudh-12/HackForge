@@ -1,0 +1,74 @@
+{% extends "base_app.html" %}
+{% block title %}Judges{% endblock %}
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+  <h1 style="margin: 0;">Judges</h1>
+  <button class="btn btn-primary" onclick="document.getElementById('inviteJudgeModal').showModal()">+ Invite Judge</button>
+</div>
+
+<table class="data-table">
+  <tr>
+    <th>Name</th>
+    <th>Email</th>
+    <th>Tracks</th>
+    <th>Actions</th>
+  </tr>
+  {% for j in judges %}
+  <tr>
+    <td>{{ j.user.name }}</td>
+    <td>{{ j.user.email }}</td>
+    <td>
+      {% for t in j.tracks %}
+      <span class="badge">{{ t.name }}</span>
+      {% endfor %}
+    </td>
+    <td>
+      <form method="post" action="/organizer/{{ event.id }}/judges/{{ j.user.id }}/remove" style="display:inline;">
+        <button class="btn btn-secondary" type="submit">Remove</button>
+      </form>
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+
+<dialog id="inviteJudgeModal" style="border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; max-width: 500px; width: 100%; box-shadow: var(--shadow);">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+    <h2 style="margin: 0;">Invite Judge</h2>
+    <button class="btn btn-ghost" onclick="document.getElementById('inviteJudgeModal').close()" style="padding: 4px; font-size: 20px; line-height: 1;">&times;</button>
+  </div>
+  
+  <form method="post" action="/organizer/{{ event.id }}/judges">
+    <div id="inviteStep1">
+      <label>Assign to Tracks</label>
+      <div style="margin-bottom: 16px; max-height: 200px; overflow-y: auto; border: 1px solid var(--border); padding: 12px; border-radius: var(--radius);">
+        {% for t in all_tracks %}
+        <label style="margin: 0 0 8px 0; font-weight: normal; display: flex; align-items: center; gap: 8px;">
+          <input type="checkbox" name="track_ids" value="{{ t.id }}">
+          {{ t.name }}
+        </label>
+        {% endfor %}
+      </div>
+      <div class="row-actions" style="justify-content: flex-end;">
+        <button class="btn btn-primary" type="button" onclick="document.getElementById('inviteStep1').style.display='none'; document.getElementById('inviteStep2').style.display='block';">Next &rarr;</button>
+      </div>
+    </div>
+    
+    <div id="inviteStep2" style="display: none;">
+      <label>Email Address</label>
+      <input type="email" name="email" required style="margin-bottom: 24px;">
+      
+      <div class="row-actions" style="justify-content: space-between;">
+        <button class="btn btn-secondary" type="button" onclick="document.getElementById('inviteStep2').style.display='none'; document.getElementById('inviteStep1').style.display='block';">&larr; Back</button>
+        <button class="btn btn-primary" type="submit">Send Invite</button>
+      </div>
+    </div>
+  </form>
+</dialog>
+
+<style>
+  dialog::backdrop {
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(2px);
+  }
+</style>
+{% endblock %}

@@ -1,6 +1,47 @@
 {% extends "base_app.html" %}
-{% block title %}Judge{% endblock %}
+{% block title %}My Assignments{% endblock %}
 {% block content %}
-<h1>My assignments</h1>
-<p class="secondary">Judging workspace ships in T2. You are signed in as a judge for {{ event.name }}.</p>
+<h1>My Assignments</h1>
+<p class="secondary">You are signed in as a judge for {{ event.name }}. Below are the projects in your assigned tracks.</p>
+
+<table class="data-table">
+  <thead>
+    <tr>
+      <th>Project</th>
+      <th>Track</th>
+      <th>Status</th>
+      <th>Action</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for p in projects %}
+    <tr>
+      <td>{{ p.title }}</td>
+      <td>
+        {% if p.track %}
+          <span class="badge">{{ p.track.name }}</span>
+        {% else %}
+          —
+        {% endif %}
+      </td>
+      <td>
+        {% if p.id in scored_project_ids %}
+          <span style="color: var(--success);">Scored</span>
+        {% else %}
+          <span style="color: var(--danger);">Unscored</span>
+        {% endif %}
+      </td>
+      <td>
+        <a class="btn btn-secondary" href="/judge/{{ event.id }}/project/{{ p.id }}">
+          {% if p.id in scored_project_ids %}Edit Score{% else %}Score{% endif %}
+        </a>
+      </td>
+    </tr>
+    {% else %}
+    <tr>
+      <td colspan="4">No projects assigned to you yet.</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
 {% endblock %}

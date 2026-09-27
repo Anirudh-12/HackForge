@@ -1,0 +1,49 @@
+{% extends "base_app.html" %}
+{% block title %}Score {{ project.title }}{% endblock %}
+{% block content %}
+<div style="display: flex; gap: 2rem;">
+  <div style="flex: 2;">
+    <h1>{{ project.title }}</h1>
+    {% if project.track %}
+      <span class="badge">{{ project.track.name }}</span>
+    {% endif %}
+    <p>{{ project.summary }}</p>
+    
+    <div style="margin-top: 1.5rem;">
+      {% if project.repo_url %}
+        <a href="{{ project.repo_url }}" target="_blank" class="btn btn-secondary">Source Code</a>
+      {% endif %}
+      {% if project.demo_url %}
+        <a href="{{ project.demo_url }}" target="_blank" class="btn btn-primary">Live Demo</a>
+      {% endif %}
+    </div>
+  </div>
+  
+  <div style="flex: 1; padding: 1.5rem; border: 1px solid var(--border); border-radius: 8px;">
+    <h2>Score Form</h2>
+    <form method="post" action="/judge/{{ event.id }}/project/{{ project.id }}">
+      {% for crit in criteria %}
+      <div style="margin-bottom: 1rem;">
+        <label><strong>{{ crit.name }}</strong> (Weight: {{ crit.weight }})</label>
+        <select name="criteria_{{ crit.id }}" required style="width: 100%;">
+          <option value="">Select score (1-5)</option>
+          {% for val in range(1, 6) %}
+            <option value="{{ val }}" {% if score_map.get(crit.id) and score_map.get(crit.id).value == val %}selected{% endif %}>{{ val }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endfor %}
+      
+      <div style="margin-bottom: 1.5rem;">
+        <label><strong>Comments</strong> (Optional)</label>
+        <textarea name="comment" rows="4" style="width: 100%;">{{ comment }}</textarea>
+      </div>
+      
+      <div class="row-actions">
+        <a href="/judge/{{ event.id }}/dashboard" class="btn btn-ghost">Cancel</a>
+        <button class="btn btn-primary" type="submit">Submit Score</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

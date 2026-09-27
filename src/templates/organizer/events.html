@@ -1,29 +1,58 @@
 {% extends "base_app.html" %}
 {% block title %}Events{% endblock %}
 {% block content %}
-<h1>Events</h1>
-<table class="data-table">
-  <tr><th>Name</th><th>Closes</th><th></th></tr>
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+  <h1 style="margin: 0;">Events</h1>
+  <button class="btn btn-primary" onclick="document.getElementById('createEventModal').showModal()">Create Hackathon</button>
+</div>
+
+<div class="grid-3">
   {% for e in events %}
-  <tr>
-    <td>{{ e.name }}</td>
-    <td>{{ e.submissions_close }}</td>
-    <td><a href="/organizer/{{ e.id }}/dashboard">Open</a></td>
-  </tr>
+  <a href="/organizer/{{ e.id }}/dashboard" class="card" style="display: block; text-decoration: none; color: inherit;">
+    <div style="font-weight: 600; font-size: 18px; margin-bottom: 8px;">{{ e.name }}</div>
+    <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">
+      <strong>Closes:</strong> {{ e.submissions_close }} UTC
+    </div>
+    <div style="display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--border); padding-top: 12px; margin-top: 12px;">
+      <span class="badge">Active</span>
+      <span style="color: var(--accent); font-weight: 500; font-size: 13px;">Manage Event &rarr;</span>
+    </div>
+  </a>
   {% endfor %}
-</table>
-<h2>Create hackathon</h2>
-<form method="post" action="/organizer/events">
-  <label>Name</label>
-  <input type="text" name="name" required>
-  <label>Submissions open (UTC)</label>
-  <input type="datetime-local" name="submissions_open">
-  <label>Submissions close (UTC)</label>
-  <input type="datetime-local" name="submissions_close">
-  <label>Judging open (UTC)</label>
-  <input type="datetime-local" name="judging_open">
-  <label>Judging close (UTC)</label>
-  <input type="datetime-local" name="judging_close">
-  <div class="row-actions"><button class="btn btn-primary" type="submit">Create Hackathon</button></div>
-</form>
+</div>
+
+<dialog id="createEventModal" style="border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; max-width: 500px; width: 100%; box-shadow: var(--shadow);">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+    <h2 style="margin: 0;">Create Hackathon</h2>
+    <button class="btn btn-ghost" onclick="document.getElementById('createEventModal').close()" style="padding: 4px; font-size: 20px; line-height: 1;">&times;</button>
+  </div>
+  <form method="post" action="/organizer/events">
+    <label>Name</label>
+    <input type="text" name="name" required>
+    
+    <label>Submissions open (UTC)</label>
+    <input type="datetime-local" name="submissions_open">
+    
+    <label>Submissions close (UTC)</label>
+    <input type="datetime-local" name="submissions_close">
+    
+    <label>Judging open (UTC)</label>
+    <input type="datetime-local" name="judging_open">
+    
+    <label>Judging close (UTC)</label>
+    <input type="datetime-local" name="judging_close">
+    
+    <div class="row-actions" style="justify-content: flex-end; margin-top: 24px;">
+      <button class="btn btn-secondary" type="button" onclick="document.getElementById('createEventModal').close()">Cancel</button>
+      <button class="btn btn-primary" type="submit">Create Hackathon</button>
+    </div>
+  </form>
+</dialog>
+
+<style>
+  dialog::backdrop {
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(2px);
+  }
+</style>
 {% endblock %}

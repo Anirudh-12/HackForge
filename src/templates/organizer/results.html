@@ -1,0 +1,48 @@
+{% extends "base_app.html" %}
+{% block title %}Results{% endblock %}
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: baseline;">
+  <h1>Results</h1>
+  <a href="/api/export.csv" class="btn btn-secondary">Download CSV</a>
+</div>
+
+<p>
+  <strong>Note:</strong> Z-score normalization handles judge variance (lenient vs harsh judges) within each track.
+  Scores are sorted by Normalized Score (50-100). If judging is still in progress, these rankings may change as new scores are submitted.
+</p>
+
+<table class="data-table">
+  <thead>
+    <tr>
+      <th>Project</th>
+      <th>Track</th>
+      <th>Raw Avg</th>
+      <th>Normalized</th>
+      <th>Reviews</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in results %}
+    <tr>
+      <td>
+        <a href="/projects/{{ r.project.id }}">{{ r.project.title }}</a>
+      </td>
+      <td>
+        {% if r.project.track %}
+          <span class="badge">{{ r.project.track.name }}</span>
+        {% else %}
+          —
+        {% endif %}
+      </td>
+      <td>{{ "%.2f"|format(r.raw_score) }}</td>
+      <td><strong>{{ "%.2f"|format(r.normalized_score) }}</strong></td>
+      <td>{{ r.reviews_count }}</td>
+    </tr>
+    {% else %}
+    <tr>
+      <td colspan="5">No scored projects found.</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

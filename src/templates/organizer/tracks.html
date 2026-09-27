@@ -1,19 +1,48 @@
 {% extends "base_app.html" %}
 {% block title %}Tracks{% endblock %}
 {% block content %}
-<h1>Tracks</h1>
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+  <h1 style="margin: 0;">Tracks</h1>
+  <button class="btn btn-primary" onclick="document.getElementById('addTrackModal').showModal()">+ Add Track</button>
+</div>
+
 <table class="data-table">
   <tr><th>Track</th><th>Prize</th></tr>
   {% for t in tracks %}
   <tr><td>{{ t.name }}</td><td>{{ t.prize or '—' }}</td></tr>
   {% endfor %}
 </table>
-<h2>Add track</h2>
-<form method="post">
-  <label>Name</label>
-  <input type="text" name="name" required>
-  <label>Prize</label>
-  <input type="text" name="prize">
-  <div class="row-actions"><button class="btn btn-primary" type="submit">Add track</button></div>
-</form>
+
+<dialog id="addTrackModal" style="border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; max-width: 500px; width: 100%; box-shadow: var(--shadow);">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+    <h2 style="margin: 0;">Add Track</h2>
+    <button class="btn btn-ghost" onclick="document.getElementById('addTrackModal').close()" style="padding: 4px; font-size: 20px; line-height: 1;">&times;</button>
+  </div>
+  
+  <form method="post">
+    <label>Name</label>
+    <input type="text" name="name" required>
+    
+    <label>Prize</label>
+    <input type="text" name="prize" placeholder="e.g., $500, Meta Quest, etc.">
+    
+    <div style="margin-top: 16px; padding: 12px; border-radius: var(--radius); background: var(--bg); border: 1px solid var(--border);">
+      <p style="margin: 0 0 8px 0; font-size: 13px; color: var(--text-secondary);">
+        <strong>Tip:</strong> You can assign judges to this track on the <a href="/organizer/{{ event.id }}/judges" style="color: var(--accent); text-decoration: underline;">Judges</a> page after creation.
+      </p>
+    </div>
+    
+    <div class="row-actions" style="justify-content: flex-end; margin-top: 24px;">
+      <button class="btn btn-secondary" type="button" onclick="document.getElementById('addTrackModal').close()">Cancel</button>
+      <button class="btn btn-primary" type="submit">Add Track</button>
+    </div>
+  </form>
+</dialog>
+
+<style>
+  dialog::backdrop {
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(2px);
+  }
+</style>
 {% endblock %}

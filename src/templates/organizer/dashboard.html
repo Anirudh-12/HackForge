@@ -1,13 +1,94 @@
 {% extends "base_app.html" %}
 {% block title %}Dashboard{% endblock %}
 {% block content %}
-<h1>Overview</h1>
-<p class="secondary">{{ event.name }}</p>
+<div style="display: flex; justify-content: space-between; align-items: baseline;">
+  <h1>Dashboard</h1>
+  <p class="secondary">{{ event.name }}</p>
+</div>
+
+<h2>Submissions Overview</h2>
 <div class="stat-row">
-  <div class="stat-block"><div class="num">{{ project_count }}</div><div class="label">Projects</div></div>
+  <div class="stat-block"><div class="num">{{ project_count }}</div><div class="label">Total Projects</div></div>
   <div class="stat-block"><div class="num">{{ submitted_count }}</div><div class="label">Submitted</div></div>
   <div class="stat-block"><div class="num">{{ draft_count }}</div><div class="label">Draft</div></div>
   <div class="stat-block"><div class="num">{{ team_count }}</div><div class="label">Teams</div></div>
 </div>
-<p class="meta">Deadline {{ event.submissions_close }} UTC</p>
+<p class="meta" style="margin-top: -16px; margin-bottom: 32px;">Deadline {{ event.submissions_close }} UTC</p>
+
+
+<h2>Judging Progress</h2>
+<div class="stat-row" style="margin-bottom: 2rem;">
+  <div class="stat-block"><div class="num">{{ total_projects }}</div><div class="label">Eligible Projects</div></div>
+  <div class="stat-block"><div class="num">{{ total_fully_scored }}</div><div class="label">Fully Scored</div></div>
+  <div class="stat-block"><div class="num">{{ percent_complete }}%</div><div class="label">Complete</div></div>
+  <div class="stat-block"><div class="num">{{ judges_active }} / {{ total_judges }}</div><div class="label">Active Judges</div></div>
+</div>
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <h2 style="margin: 0;">By Track</h2>
+  <select id="trackSelector" class="select" style="max-width: 300px;" onchange="showTrack(this.value)">
+    <option value="all">All Tracks</option>
+    {% for ts in track_stats %}
+    <option value="{{ ts.track.id }}">{{ ts.track.name }}</option>
+    {% endfor %}
+  </select>
+</div>
+
+<div id="trackCards">
+{% for ts in track_stats %}
+<div class="card track-card" data-track-id="{{ ts.track.id }}" style="margin-bottom: 2rem; padding: 1.5rem; border: 1px solid var(--border); border-radius: 8px;">
+  <div style="display: flex; justify-content: space-between; align-items: baseline;">
+    <h3 style="margin-top: 0;">{{ ts.track.name }}</h3>
+    {% if ts.track.prize %}
+      <span class="badge">{{ ts.track.prize }}</span>
+    {% endif %}
+  </div>
+  
+  {% if ts.no_judges %}
+  <div class="alert alert-error"><strong>Warning:</strong> No judges assigned to this track! Projects will never be fully scored.</div>
+  {% endif %}
+  
+  <div style="display: flex; gap: 2rem; margin-bottom: 1rem;">
+    <div><strong>{{ ts.project_count }}</strong> projects</div>
+    <div style="color: var(--success);"><strong>{{ ts.fully_scored }}</strong> fully scored</div>
+    <div style="color: var(--danger);"><strong>{{ ts.unscored }}</strong> waiting</div>
+  </div>
+  
+  {% if ts.judge_stats %}
+  <h4>Judges</h4>
+  <table class="data-table" style="margin-bottom: 0;">
+    <tr><th>Judge</th><th>Progress</th><th>Status</th></tr>
+    {% for j in ts.judge_stats %}
+    <tr>
+      <td>{{ j.name }}</td>
+      <td>{{ j.scored }} / {{ j.total }}</td>
+      <td>
+        {% if j.scored == 0 %}
+          <span style="color: var(--danger);">Not started</span>
+        {% elif j.scored < j.total %}
+          <span style="color: var(--warning);">In progress</span>
+        {% else %}
+          <span style="color: var(--success);">Complete</span>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+</div>
+{% endfor %}
+</div>
+
+<script>
+function showTrack(trackId) {
+  const cards = document.querySelectorAll('.track-card');
+  cards.forEach(card => {
+    if (trackId === 'all' || card.getAttribute('data-track-id') === trackId) {
+      card.style.display = 'block';
+    } else {
+      card.style.display = 'none';
+    }
+  });
+}
+</script>
 {% endblock %}
