@@ -183,21 +183,21 @@ Design the schema to satisfy T1 and T2 from the start. Adding columns later mean
 Run this before declaring T1 done.
 
 **Gallery (T1-1 + T1-2)**
-- [ ] Gallery URL returns HTTP 200 with no auth header
-- [ ] No auth guard on the gallery route
-- [ ] At least one fixture project title appears in the raw HTML
-- [ ] Project titles are rendered server-side, not fetched by JavaScript
+- [x] Gallery URL returns HTTP 200 with no auth header
+- [x] No auth guard on the gallery route
+- [x] At least one fixture project title appears in the raw HTML
+- [x] Project titles are rendered server-side, not fetched by JavaScript
 
 **Deadline enforcement (T1-3)**
-- [ ] POST to the submission URL with a closed event returns a 4xx status
-- [ ] The check is in the backend handler, not just a frontend message
-- [ ] Deadline comparison uses UTC consistently
-- [ ] An unauthenticated POST to the submit URL returns 401
+- [x] POST to the submission URL with a closed event returns a 4xx status
+- [x] The check is in the backend handler, not just a frontend message
+- [x] Deadline comparison uses UTC consistently
+- [x] An unauthenticated POST to the submit URL returns 401
 
 **Everything else (human-judged)**
-- [ ] All 5 roles can log in and land on a real page
-- [ ] Organizer can create an event with tracks and prizes
-- [ ] Participant can form a team, generate an invite link, share it
-- [ ] A second participant can join via the link
-- [ ] Participant can submit a project while the event is open, save as draft, edit
-- [ ] Gallery has working search (by title) and filter (by track)
+- [x] All 5 roles can log in and land on a real page
+- [x] Organizer can create an event with tracks and prizes
+- [x] Participant can form a team, generate an invite link, share it
+- [x] A second participant can join via the link
+- [x] Participant can submit a project while the event is open, save as draft, edit
+- [x] Gallery has working search (by title) and filter (by track)

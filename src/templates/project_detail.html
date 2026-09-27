@@ -1,0 +1,22 @@
+{% extends "base_public.html" %}
+{% block title %}{{ project.title if project else 'Not found' }}{% endblock %}
+{% block content %}
+<a class="secondary" href="/projects">← Back to gallery</a>
+{% if not project %}
+  <h1>Project not found</h1>
+{% else %}
+  <h1>{{ project.title }}</h1>
+  <p class="secondary">{{ project.track.name if project.track else '' }} · {{ project.team.name if project.team else '' }}</p>
+  <p>{{ project.summary }}</p>
+  {% if project.submitted_at %}<p class="meta">Submitted {{ project.submitted_at }}</p>{% endif %}
+  <div class="row-actions">
+    {% if project.repo_url %}<a class="btn btn-secondary" href="{{ project.repo_url }}">GitHub ↗</a>{% endif %}
+    {% if project.demo_url %}<a class="btn btn-secondary" href="{{ project.demo_url }}">Demo ↗</a>{% endif %}
+  </div>
+  <h2>Team</h2>
+  {% for member in members %}
+    <div class="secondary">{{ member.email }}</div>
+  {% endfor %}
+  <p class="muted">Results will be published when the organizer opens the results window.</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,20 @@
+{% extends "base_public.html" %}
+{% block title %}Sign in{% endblock %}
+{% block content %}
+<div class="card auth-card">
+  <h1>Sign in</h1>
+  {% if error %}<div class="flash flash-error">{{ error }}</div>{% endif %}
+  <form method="post" action="/login">
+    <input type="hidden" name="next" value="{{ next }}">
+    <label>Email</label>
+    <input type="email" name="email" required>
+    <label>Password</label>
+    <input type="password" name="password">
+    <p class="meta">Seeded fixture accounts accept any password.</p>
+    <div class="row-actions">
+      <button class="btn btn-primary" type="submit">Sign in</button>
+      <a class="btn btn-ghost" href="/register">Register</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

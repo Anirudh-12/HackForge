@@ -1,0 +1,29 @@
+{% extends "base_public.html" %}
+{% block title %}{{ event.name if event else 'Gallery' }}{% endblock %}
+{% block content %}
+<h1>{{ event.name if event else 'Projects' }}</h1>
+<p class="secondary">{{ projects|length }} projects{% if event and event.tracks %} · {{ event.tracks|length }} tracks{% endif %}</p>
+<form class="filters" method="get" action="/projects">
+  <input type="text" name="q" value="{{ q }}" placeholder="Search projects...">
+  <select name="track">
+    <option value="">All tracks</option>
+    {% for t in tracks %}
+      <option value="{{ t.id }}" {% if selected_track == t.id %}selected{% endif %}>{{ t.name }}</option>
+    {% endfor %}
+  </select>
+  <button class="btn btn-secondary" type="submit">Filter</button>
+</form>
+<div class="grid-3">
+  {% for project in projects %}
+  <a class="card project-card" href="/projects/{{ project.id }}">
+    <div class="color-bar" style="background: {{ project.color }}"></div>
+    <div class="body">
+      <h3>{{ project.title }}</h3>
+      <p class="secondary">{{ project.summary }}</p>
+      <div class="badge">{{ project.track.name if project.track else 'Untracked' }}</div>
+      <div class="meta">{{ project.team.name if project.team else '' }}</div>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% endblock %}

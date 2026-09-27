@@ -1,0 +1,29 @@
+{% extends "base_app.html" %}
+{% block title %}Events{% endblock %}
+{% block content %}
+<h1>Events</h1>
+<table class="data-table">
+  <tr><th>Name</th><th>Closes</th><th></th></tr>
+  {% for e in events %}
+  <tr>
+    <td>{{ e.name }}</td>
+    <td>{{ e.submissions_close }}</td>
+    <td><a href="/organizer/{{ e.id }}/dashboard">Open</a></td>
+  </tr>
+  {% endfor %}
+</table>
+<h2>Create hackathon</h2>
+<form method="post" action="/organizer/events">
+  <label>Name</label>
+  <input type="text" name="name" required>
+  <label>Submissions open (UTC)</label>
+  <input type="datetime-local" name="submissions_open">
+  <label>Submissions close (UTC)</label>
+  <input type="datetime-local" name="submissions_close">
+  <label>Judging open (UTC)</label>
+  <input type="datetime-local" name="judging_open">
+  <label>Judging close (UTC)</label>
+  <input type="datetime-local" name="judging_close">
+  <div class="row-actions"><button class="btn btn-primary" type="submit">Create Hackathon</button></div>
+</form>
+{% endblock %}

@@ -74,12 +74,12 @@ This is not negotiable. Public gallery and the internal app are separate design 
 
 Before any UI work:
 
-- [ ] `src/__init__.py`
-- [ ] `src/auth.py` — `get_current_user()`, `require_role("organizer")` as FastAPI deps
-- [ ] `src/routers/` — one file per role: `public.py`, `auth.py`, `participant.py`, `judge.py`, `organizer.py`, `api.py`
-- [ ] Move inline route logic out of `main.py`
-- [ ] `src/models.py` — added `RubricCriteria`, `AuditLog`, invite tokens, proper relationships
-- [ ] Acceptance checker still passes after restructure — **all 7 checks PASS, T1+T2 verified**
+- [x] `src/__init__.py`
+- [x] `src/auth.py` — `get_current_user()`, `require_role("organizer")` as FastAPI deps
+- [x] `src/routers/` — one file per role: `public.py`, `auth.py`, `participant.py`, `judge.py`, `organizer.py`, `api.py`
+- [x] Move inline route logic out of `main.py`
+- [x] `src/models.py` — added `RubricCriteria`, `AuditLog`, invite tokens, proper relationships
+- [x] Acceptance checker still passes after restructure — **all 7 checks PASS, T1+T2 verified**
 
 > **Note on fixture data**: The "One line of what it does." summaries are from `fixtures.json` verbatim.
 > That's intentional per the spec — shared fixture data, not real projects. Will look fine with real submissions.

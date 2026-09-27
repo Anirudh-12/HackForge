@@ -1,0 +1,23 @@
+{% extends "base_app.html" %}
+{% block title %}Overview{% endblock %}
+{% block content %}
+<h1>{{ event.name }}</h1>
+<div class="card">
+  <h2>Your submission</h2>
+  {% if project %}
+    <h3>{{ project.title }}</h3>
+    <p class="secondary">{{ project.track.name if project.track else '' }}</p>
+    <p class="status-pill"><span class="dot {% if project.is_draft %}dot-draft{% else %}dot-submitted{% endif %}"></span>{% if project.is_draft %}Draft{% else %}Submitted{% endif %}</p>
+    <a class="btn btn-primary" href="/participant/{{ event.id }}/submit">Edit submission →</a>
+  {% else %}
+    <p class="secondary">You have not submitted a project yet.</p>
+    <a class="btn btn-primary" href="/participant/{{ event.id }}/submit">Create submission →</a>
+  {% endif %}
+</div>
+<p>Your team: {{ team.name if team else 'None' }}</p>
+{% if team %}
+  <p class="secondary">Members: {% for m in team.members %}{{ m.user.email }}{% if not loop.last %} · {% endif %}{% endfor %}</p>
+{% endif %}
+<a href="/participant/{{ event.id }}/team">Manage team</a>
+<p class="meta">Deadline {{ event.submissions_close }} UTC</p>
+{% endblock %}

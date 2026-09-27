@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Hackforge{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="/">◈ Hackforge</a>
+      <nav class="sidebar-nav">
+        {% if role == 'organizer' or role == 'admin' %}
+          <div class="nav-section">OVERVIEW</div>
+          <a href="/organizer/{{ event.id }}/dashboard">Dashboard</a>
+          <div class="nav-section">HACKATHON</div>
+          <a href="/organizer/{{ event.id }}/tracks">Tracks</a>
+          <a href="/organizer/{{ event.id }}/event">Event</a>
+          <a href="/organizer/events">All events</a>
+        {% elif role == 'judge' %}
+          <div class="nav-section">JUDGING</div>
+          <a href="/judge/{{ event.id }}/dashboard">My assignments</a>
+        {% else %}
+          <div class="nav-section">MY HACKATHONS</div>
+          <a href="/participant/{{ event.id }}/dashboard">Overview</a>
+          <a href="/participant/{{ event.id }}/team">Team</a>
+          <a href="/participant/{{ event.id }}/submit">Submission</a>
+        {% endif %}
+      </nav>
+    </aside>
+    <div class="app-main">
+      <div class="topbar">
+        <div>{{ event.name if event else 'Hackforge' }}</div>
+        <div>
+          {% if user %}{{ user.name }} · {{ role }}{% endif %}
+          <form method="post" action="/logout" style="display:inline">
+            <button class="btn btn-ghost" type="submit">Sign out</button>
+          </form>
+        </div>
+      </div>
+      <div class="content">
+        {% block content %}{% endblock %}
+      </div>
+    </div>
+  </div>
+</body>
+</html>

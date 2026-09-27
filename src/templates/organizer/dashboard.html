@@ -1,0 +1,13 @@
+{% extends "base_app.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<h1>Overview</h1>
+<p class="secondary">{{ event.name }}</p>
+<div class="stat-row">
+  <div class="stat-block"><div class="num">{{ project_count }}</div><div class="label">Projects</div></div>
+  <div class="stat-block"><div class="num">{{ submitted_count }}</div><div class="label">Submitted</div></div>
+  <div class="stat-block"><div class="num">{{ draft_count }}</div><div class="label">Draft</div></div>
+  <div class="stat-block"><div class="num">{{ team_count }}</div><div class="label">Teams</div></div>
+</div>
+<p class="meta">Deadline {{ event.submissions_close }} UTC</p>
+{% endblock %}

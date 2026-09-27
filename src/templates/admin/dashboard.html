@@ -1,0 +1,11 @@
+{% extends "base_app.html" %}
+{% block title %}Admin{% endblock %}
+{% block content %}
+<h1>Admin</h1>
+<p class="secondary">Platform administration. {{ events|length }} events on this instance.</p>
+<ul>
+  {% for e in events %}
+    <li><a href="/organizer/{{ e.id }}/dashboard">{{ e.name }}</a></li>
+  {% endfor %}
+</ul>
+{% endblock %}

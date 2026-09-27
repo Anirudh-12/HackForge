@@ -1,0 +1,40 @@
+{% extends "base_app.html" %}
+{% block title %}Submission{% endblock %}
+{% block content %}
+<h1>Submission</h1>
+{% if not team %}
+  <div class="flash flash-warn">Create or join a team before submitting.</div>
+  <a class="btn btn-primary" href="/participant/{{ event.id }}/team">Go to team</a>
+{% elif closed %}
+  <div class="card">
+    <h2>Submissions closed</h2>
+    <p>This event closed on {{ event.submissions_close }}.</p>
+    {% if project %}
+      <p>Project name {{ project.title }}</p>
+      <p>Track {{ project.track.name if project.track else '' }}</p>
+      <p>{{ project.summary }}</p>
+    {% endif %}
+  </div>
+{% else %}
+  <form method="post" action="/participant/{{ event.id }}/submit">
+    <label>Project name</label>
+    <input type="text" name="title" value="{{ project.title if project else '' }}" required>
+    <label>Track</label>
+    <select name="track_id">
+      {% for t in tracks %}
+        <option value="{{ t.id }}" {% if project and project.track_id == t.id %}selected{% endif %}>{{ t.name }}</option>
+      {% endfor %}
+    </select>
+    <label>Summary</label>
+    <textarea name="summary" rows="4">{{ project.summary if project else '' }}</textarea>
+    <label>Repository</label>
+    <input type="text" name="repo_url" value="{{ project.repo_url if project else '' }}">
+    <label>Demo URL (optional)</label>
+    <input type="text" name="demo_url" value="{{ project.demo_url if project else '' }}">
+    <div class="row-actions">
+      <button class="btn btn-secondary" type="submit" name="action" value="draft">Save draft</button>
+      <button class="btn btn-primary" type="submit" name="action" value="submit">Submit project</button>
+    </div>
+  </form>
+{% endif %}
+{% endblock %}

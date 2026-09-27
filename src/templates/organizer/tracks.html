@@ -1,0 +1,19 @@
+{% extends "base_app.html" %}
+{% block title %}Tracks{% endblock %}
+{% block content %}
+<h1>Tracks</h1>
+<table class="data-table">
+  <tr><th>Track</th><th>Prize</th></tr>
+  {% for t in tracks %}
+  <tr><td>{{ t.name }}</td><td>{{ t.prize or '—' }}</td></tr>
+  {% endfor %}
+</table>
+<h2>Add track</h2>
+<form method="post">
+  <label>Name</label>
+  <input type="text" name="name" required>
+  <label>Prize</label>
+  <input type="text" name="prize">
+  <div class="row-actions"><button class="btn btn-primary" type="submit">Add track</button></div>
+</form>
+{% endblock %}

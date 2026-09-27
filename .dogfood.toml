@@ -2,18 +2,18 @@
 base_url = "http://localhost:8080"
 
 [tiers]
-claimed = ["T1", "T2"]
-pitch = "A beautiful, premium hackathon platform."
+claimed = ["T1"]
+pitch = "Run your hackathon without the spreadsheet chaos."
 
 [auth]
-organizer   = "Cookie: session=org_1.bf01d02c71eb9bdecf47da671b26eeec96b62175f9172d81d3383957b1caba4b"
-judge_a     = "Cookie: session=jdg_1.2953063b1158eec576f473cec9c14265f7f2160f757acfd90a9111b75aa60999"
-judge_b     = "Cookie: session=jdg_2.5c5a37553e7cf492f8cd98b7ed65d097efce67a4d7e171aca9b5ecbd59768658"
-participant = "Cookie: session=prt_1.8eba5a39805a33bc6139371b39b829cea8b6423430926cafb2f99eb461663357"
+organizer   = "Cookie: session=org_1.bc826db9afa5c5272756f589e832f78160fce069fea518188662894734bba206"
+judge_a     = "Cookie: session=jdg_01.b39f3ee9253179484ba296fc8ace5673828277308a724cd20df8c4ea8e03169b"
+judge_b     = "Cookie: session=jdg_02.15f25bb8bda46362c951811f8d1ddce5bc45612fb0be7cf6f22d931254e6d2ee"
+participant = "Cookie: session=prt_1.8f35cb3401f517113c075d51b96be62908ae384d6ecbd378816b67355dd4e76f"
 
 [routes]
 gallery      = "/projects"
 submit       = "/projects/new"
 judge_scores = "/api/judge/scores"
-peer_scores  = "/api/judge/scores?judge=jdg_1"
+peer_scores  = "/api/judge/scores?judge=jdg_01"
 csv_export   = "/api/export.csv"

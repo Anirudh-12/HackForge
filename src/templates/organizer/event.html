@@ -1,0 +1,18 @@
+{% extends "base_app.html" %}
+{% block title %}Event{% endblock %}
+{% block content %}
+<h1>Event</h1>
+<form method="post">
+  <label>Name</label>
+  <input type="text" name="name" value="{{ event.name }}" required>
+  <label>Submissions open (UTC)</label>
+  <input type="datetime-local" name="submissions_open" value="{{ event.submissions_open.strftime('%Y-%m-%dT%H:%M') if event.submissions_open else '' }}">
+  <label>Submissions close (UTC)</label>
+  <input type="datetime-local" name="submissions_close" value="{{ event.submissions_close.strftime('%Y-%m-%dT%H:%M') if event.submissions_close else '' }}">
+  <label>Judging open (UTC)</label>
+  <input type="datetime-local" name="judging_open" value="{{ event.judging_open.strftime('%Y-%m-%dT%H:%M') if event.judging_open else '' }}">
+  <label>Judging close (UTC)</label>
+  <input type="datetime-local" name="judging_close" value="{{ event.judging_close.strftime('%Y-%m-%dT%H:%M') if event.judging_close else '' }}">
+  <div class="row-actions"><button class="btn btn-primary" type="submit">Save</button></div>
+</form>
+{% endblock %}

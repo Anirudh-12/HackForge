@@ -1,0 +1,30 @@
+{% extends "base_app.html" %}
+{% block title %}Team{% endblock %}
+{% block content %}
+<h1>Team</h1>
+{% if error %}<div class="flash flash-error">{{ error }}</div>{% endif %}
+{% if team %}
+  <h2>{{ team.name }}</h2>
+  {% for m in team.members %}
+    <div class="secondary">{{ m.user.email }}</div>
+  {% endfor %}
+  {% if team.invite_token %}
+    <p>Invite link: <code>{{ request.base_url }}join/{{ team.invite_token }}</code></p>
+  {% endif %}
+  <form method="post">
+    <input type="hidden" name="action" value="invite">
+    <button class="btn btn-secondary" type="submit">Generate invite link</button>
+  </form>
+  <form method="post">
+    <input type="hidden" name="action" value="leave">
+    <button class="btn btn-ghost" type="submit">Leave team</button>
+  </form>
+{% else %}
+  <form method="post">
+    <input type="hidden" name="action" value="create">
+    <label>Team name</label>
+    <input type="text" name="name" required>
+    <div class="row-actions"><button class="btn btn-primary" type="submit">Create team</button></div>
+  </form>
+{% endif %}
+{% endblock %}
