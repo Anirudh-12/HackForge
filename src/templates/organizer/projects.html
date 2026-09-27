@@ -1,0 +1,40 @@
+{% extends "base_app.html" %}
+{% block title %}Projects{% endblock %}
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+  <h1 style="margin: 0;">Projects</h1>
+</div>
+
+<div class="card" style="padding: 24px;">
+  {% if projects %}
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Project Name</th>
+        <th>Status</th>
+        <th>Submitted At</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for project in projects %}
+      <tr>
+        <td>{{ project.title }}</td>
+        <td>
+          {% if project.is_draft %}
+          <span style="color: var(--warning);">Draft</span>
+          {% elif project.is_disqualified %}
+          <span style="color: var(--error);">Disqualified</span>
+          {% else %}
+          <span style="color: var(--success);">Submitted</span>
+          {% endif %}
+        </td>
+        <td>{{ project.submitted_at.strftime('%Y-%m-%d %H:%M') if project.submitted_at else '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p style="color: var(--text-secondary); text-align: center; margin: 0;">No projects have been created yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

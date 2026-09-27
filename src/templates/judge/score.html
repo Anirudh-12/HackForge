@@ -1,47 +1,483 @@
 {% extends "base_app.html" %}
 {% block title %}Score {{ project.title }}{% endblock %}
+
 {% block content %}
-<div style="display: flex; gap: 2rem;">
-  <div style="flex: 2;">
-    <h1>{{ project.title }}</h1>
-    {% if project.track %}
-      <span class="badge">{{ project.track.name }}</span>
-    {% endif %}
-    <p>{{ project.summary }}</p>
-    
-    <div style="margin-top: 1.5rem;">
-      {% if project.repo_url %}
-        <a href="{{ project.repo_url }}" target="_blank" class="btn btn-secondary">Source Code</a>
+<style>
+  .review-header-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 2rem;
+  }
+  .back-link {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 0.875rem;
+    font-weight: 500;
+  }
+  .back-link:hover {
+    color: var(--text-color);
+  }
+  .nav-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+  .nav-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: #fff;
+    color: var(--text-color);
+    text-decoration: none;
+  }
+  .nav-btn:hover {
+    background: var(--bg-muted);
+  }
+  .nav-btn[disabled] {
+    opacity: 0.5;
+    pointer-events: none;
+  }
+
+  .review-container {
+    display: grid;
+    grid-template-columns: 1fr 450px;
+    gap: 2rem;
+    align-items: start;
+    padding-bottom: 3rem;
+  }
+
+  /* Left Column: Project Details */
+  .project-header-box {
+    display: flex;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  .project-logo {
+    width: 140px;
+    height: 100px;
+    border-radius: 8px;
+    object-fit: cover;
+    background: linear-gradient(135deg, #0f172a, #1e293b);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    overflow: hidden;
+  }
+  .project-logo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .project-header-info {
+    flex: 1;
+  }
+  .project-header-info h1 {
+    font-size: 1.75rem;
+    margin-bottom: 0.5rem;
+  }
+  .project-header-info p {
+    color: var(--text-muted);
+    font-size: 1rem;
+    margin-bottom: 1rem;
+  }
+  .project-meta-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .meta-left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  .team-name {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    color: var(--text-muted);
+    font-size: 0.875rem;
+  }
+  .track-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    background: #ecfdf5;
+    color: #10b981;
+  }
+  .meta-right {
+    display: flex;
+    gap: 0.75rem;
+  }
+
+  .project-tabs {
+    display: flex;
+    gap: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 2rem;
+  }
+  .p-tab {
+    padding: 0.75rem 0;
+    color: var(--text-muted);
+    font-weight: 500;
+    font-size: 0.9rem;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+  }
+  .p-tab.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+  }
+
+  .content-section {
+    background: #fff;
+    border-radius: 8px;
+  }
+  .content-section h2 {
+    font-size: 1.125rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+  }
+  .content-section p {
+    color: var(--text-color);
+    line-height: 1.6;
+    margin-bottom: 1rem;
+    font-size: 0.95rem;
+  }
+  
+  .tech-stack {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+  }
+  .tech-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 16px;
+    background: #f1f5f9;
+    color: var(--primary);
+    font-size: 0.8125rem;
+    font-weight: 500;
+  }
+
+  .media-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+  }
+  .media-item {
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+    aspect-ratio: 16/9;
+  }
+  .media-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  /* Right Column: Scoring Form */
+  .rubric-container {
+    background: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1.5rem;
+  }
+  .rubric-container > h2 {
+    font-size: 1.25rem;
+    margin-bottom: 0.25rem;
+  }
+  .rubric-container > p {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .criteria-card {
+    background: #fafafa;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1.5rem;
+  }
+  .criteria-info {
+    flex: 1;
+  }
+  .criteria-info h3 {
+    font-size: 1rem;
+    margin: 0 0 0.25rem 0;
+  }
+  .criteria-info p {
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+    margin: 0;
+  }
+  
+  .score-radios {
+    display: flex;
+    gap: 0.5rem;
+    flex-shrink: 0;
+  }
+  .score-radio-label {
+    display: block;
+    width: 36px;
+    height: 36px;
+    position: relative;
+    cursor: pointer;
+  }
+  .score-radio-label input {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    height: 0;
+    width: 0;
+  }
+  .score-box {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 500;
+    font-size: 0.875rem;
+    color: var(--text-color);
+    transition: all 0.15s;
+  }
+  .score-radio-label:hover input ~ .score-box {
+    border-color: var(--primary);
+    color: var(--primary);
+  }
+  .score-radio-label input:checked ~ .score-box {
+    background-color: #eff6ff;
+    border-color: var(--primary);
+    color: var(--primary);
+    font-weight: 600;
+  }
+
+  .comments-section {
+    margin-top: 2rem;
+  }
+  .comments-section h3 {
+    font-size: 1.125rem;
+    margin-bottom: 0.25rem;
+  }
+  .comments-section p {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    margin-bottom: 1rem;
+  }
+  .comments-section textarea {
+    width: 100%;
+    padding: 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    resize: vertical;
+    font-family: inherit;
+    font-size: 0.95rem;
+    min-height: 150px;
+  }
+  .char-count {
+    text-align: right;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 0.5rem;
+  }
+
+  .action-buttons {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1.5rem;
+  }
+  .action-buttons .btn {
+    flex: 1;
+    justify-content: center;
+    padding: 0.75rem;
+    font-size: 1rem;
+  }
+
+  @media (max-width: 1024px) {
+    .review-container {
+      grid-template-columns: 1fr;
+    }
+    .rubric-container {
+      position: static;
+    }
+  }
+</style>
+
+<div class="review-header-bar">
+  <a href="/judge/{{ event.id }}/dashboard" class="back-link">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+    Back to assignments
+  </a>
+  <div class="nav-controls">
+    <a href="{% if prev_project_id %}/judge/{{ event.id }}/project/{{ prev_project_id }}{% else %}#{% endif %}" class="nav-btn" {% if not prev_project_id %}disabled{% endif %}>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+    </a>
+    <span>{{ project_index }} of {{ total_projects }}</span>
+    <a href="{% if next_project_id %}/judge/{{ event.id }}/project/{{ next_project_id }}{% else %}#{% endif %}" class="nav-btn" {% if not next_project_id %}disabled{% endif %}>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+    </a>
+  </div>
+</div>
+
+<div class="review-container">
+  
+  <div class="project-details">
+    <div class="project-header-box">
+      <div class="project-logo">
+        {% if project.cover_image_path %}
+          <img src="{{ project.cover_image_path }}" alt="{{ project.title }}">
+        {% else %}
+          <span>{{ project.title[:2].upper() }}</span>
+        {% endif %}
+      </div>
+      <div class="project-header-info">
+        <h1>{{ project.title }}</h1>
+        <p>{{ project.summary }}</p>
+        <div class="project-meta-row">
+          <div class="meta-left">
+            <span class="team-name">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+              {{ project.team.name if project.team else "Individual" }}
+            </span>
+            {% if project.track %}
+              <span class="track-badge">{{ project.track.name }}</span>
+            {% endif %}
+          </div>
+          <div class="meta-right">
+            {% if project.repo_url %}
+              <a href="{{ project.repo_url }}" target="_blank" class="btn btn-secondary" style="background:#fff; border: 1px solid var(--border-color); color: var(--text-color); font-weight: 500;">
+                GitHub
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:4px;"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg>
+              </a>
+            {% endif %}
+            {% if project.demo_url %}
+              <a href="{{ project.demo_url }}" target="_blank" class="btn btn-secondary" style="background:#fff; border: 1px solid var(--border-color); color: var(--text-color); font-weight: 500;">
+                Live Demo
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:4px;"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg>
+              </a>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="project-tabs">
+      <div class="p-tab active">Overview</div>
+      <div class="p-tab">Pitch Deck</div>
+      <div class="p-tab">Screenshots</div>
+      <div class="p-tab">Team</div>
+      <div class="p-tab">Comments (0)</div>
+    </div>
+
+    <div class="content-section">
+      <h2>About the project</h2>
+      <p>{{ project.summary }}</p>
+      
+      <!-- Normally this would be parsed markdown from project.description or similar. 
+           Using summary and tech_stack placeholders since we don't have full markdown field easily available. -->
+      
+      {% if project.tech_stack %}
+      <h2 style="margin-top: 2rem;">Tech Stack</h2>
+      <div class="tech-stack">
+        {% for tech in project.tech_stack.split(',') %}
+          {% if tech.strip() %}
+          <span class="tech-badge">{{ tech.strip() }}</span>
+          {% endif %}
+        {% endfor %}
+      </div>
       {% endif %}
-      {% if project.demo_url %}
-        <a href="{{ project.demo_url }}" target="_blank" class="btn btn-primary">Live Demo</a>
+
+      {% if project.screenshots %}
+      <h2 style="margin-top: 2rem;">Media</h2>
+      <div class="media-grid">
+        {% for url in project.screenshots.split(',') %}
+          {% if url.strip() %}
+          <div class="media-item">
+            <img src="{{ url.strip() }}" alt="Screenshot">
+          </div>
+          {% endif %}
+        {% endfor %}
+      </div>
       {% endif %}
     </div>
   </div>
-  
-  <div style="flex: 1; padding: 1.5rem; border: 1px solid var(--border); border-radius: 8px;">
-    <h2>Score Form</h2>
+
+  <div class="rubric-container">
+    <h2>Judging Rubric</h2>
+    <p>Rate each criterion from 1 (poor) to 5 (excellent).</p>
+    
     <form method="post" action="/judge/{{ event.id }}/project/{{ project.id }}">
       {% for crit in criteria %}
-      <div style="margin-bottom: 1rem;">
-        <label><strong>{{ crit.name }}</strong> (Weight: {{ crit.weight }})</label>
-        <select name="criteria_{{ crit.id }}" required style="width: 100%;">
-          <option value="">Select score (1-5)</option>
+      <div class="criteria-card">
+        <div class="criteria-info">
+          <h3>{{ crit.name }}</h3>
+          <p>
+          {% if "function" in crit.name|lower %}
+            Does the project work as intended? Is it complete and stable?
+          {% elif "tech" in crit.name|lower or "quality" in crit.name|lower %}
+            Code quality, architecture, and appropriate use of technologies.
+          {% elif "innovat" in crit.name|lower %}
+            How novel or creative is the idea or implementation?
+          {% elif "impact" in crit.name|lower or "use" in crit.name|lower %}
+            Real-world impact, potential for adoption, and relevance.
+          {% elif "design" in crit.name|lower or "ui" in crit.name|lower %}
+            Aesthetics, user experience, and accessibility.
+          {% else %}
+            Evaluate the project based on this criterion.
+          {% endif %}
+          </p>
+        </div>
+        <div class="score-radios">
           {% for val in range(1, 6) %}
-            <option value="{{ val }}" {% if score_map.get(crit.id) and score_map.get(crit.id).value == val %}selected{% endif %}>{{ val }}</option>
+            <label class="score-radio-label">
+              <input type="radio" name="criteria_{{ crit.id }}" value="{{ val }}" required 
+                {% if score_map.get(crit.id) and score_map.get(crit.id).value == val %}checked{% endif %}>
+              <div class="score-box">{{ val }}</div>
+            </label>
           {% endfor %}
-        </select>
+        </div>
       </div>
       {% endfor %}
       
-      <div style="margin-bottom: 1.5rem;">
-        <label><strong>Comments</strong> (Optional)</label>
-        <textarea name="comment" rows="4" style="width: 100%;">{{ comment }}</textarea>
+      <div class="comments-section" x-data="{ count: {{ comment|length }} }">
+        <h3>Comments</h3>
+        <p>Share your detailed feedback for the team. Be constructive and specific.</p>
+        <textarea name="comment" placeholder="Write your feedback here..." maxlength="1000" x-on:input="count = $event.target.value.length">{{ comment }}</textarea>
+        <div class="char-count" x-text="count + '/1000'"></div>
       </div>
       
-      <div class="row-actions">
-        <a href="/judge/{{ event.id }}/dashboard" class="btn btn-ghost">Cancel</a>
-        <button class="btn btn-primary" type="submit">Submit Score</button>
+      <div class="action-buttons">
+        <button type="submit" class="btn" style="background:#fff; border: 1px solid var(--primary); color: var(--primary); font-weight: 500;">Save Draft</button>
+        <button type="submit" class="btn btn-primary">Submit Review</button>
       </div>
     </form>
   </div>

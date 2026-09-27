@@ -1,0 +1,30 @@
+{% extends "base_app.html" %}
+{% block title %}Teams{% endblock %}
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+  <h1 style="margin: 0;">Teams</h1>
+</div>
+
+<div class="card" style="padding: 24px;">
+  {% if teams %}
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Team Name</th>
+        <th>Invite Token</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for team in teams %}
+      <tr>
+        <td>{{ team.name }}</td>
+        <td>{{ team.invite_token or '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p style="color: var(--text-secondary); text-align: center; margin: 0;">No teams have registered yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

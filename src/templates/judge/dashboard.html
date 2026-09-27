@@ -1,47 +1,579 @@
 {% extends "base_app.html" %}
-{% block title %}My Assignments{% endblock %}
-{% block content %}
-<h1>My Assignments</h1>
-<p class="secondary">You are signed in as a judge for {{ event.name }}. Below are the projects in your assigned tracks.</p>
+{% block title %}Judge Dashboard - {{ event.name }}{% endblock %}
 
-<table class="data-table">
-  <thead>
-    <tr>
-      <th>Project</th>
-      <th>Track</th>
-      <th>Status</th>
-      <th>Action</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for p in projects %}
-    <tr>
-      <td>{{ p.title }}</td>
-      <td>
-        {% if p.track %}
-          <span class="badge">{{ p.track.name }}</span>
+{% block content %}
+<style>
+  .judge-dashboard {
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: 2rem;
+    align-items: start;
+    padding-bottom: 2rem;
+  }
+  
+  .dashboard-main {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+  
+  .dashboard-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+  
+  .welcome-section h1 {
+    font-size: 2rem;
+    margin-bottom: 0.25rem;
+  }
+  .welcome-section p {
+    color: var(--text-muted);
+    font-size: 1rem;
+  }
+
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+  }
+
+  .metric-card {
+    background: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+  }
+  .metric-card .icon {
+    position: absolute;
+    top: 1.25rem;
+    right: 1.25rem;
+    color: var(--text-muted);
+    opacity: 0.5;
+  }
+  .metric-card .value {
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1.2;
+    margin-bottom: 0.25rem;
+  }
+  .metric-card .label {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+  }
+
+  .controls-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 1px; /* space for active tab border */
+  }
+
+  .tabs {
+    display: flex;
+    gap: 1.5rem;
+  }
+  .tab-btn {
+    background: none;
+    border: none;
+    padding: 0.75rem 0;
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    font-weight: 500;
+    transition: all 0.2s;
+    margin-bottom: -1px;
+  }
+  .tab-btn:hover {
+    color: var(--text-color);
+  }
+  .tab-btn.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+  }
+
+  .filters {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+  }
+  .search-input {
+    padding: 0.5rem 1rem 0.5rem 2.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 0.875rem;
+    background: #fff url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="%2394a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>') no-repeat 0.75rem center;
+    width: 240px;
+  }
+  .track-select {
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 0.875rem;
+    background-color: #fff;
+    cursor: pointer;
+  }
+
+  .project-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .project-card {
+    background: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1.25rem;
+    display: flex;
+    gap: 1.5rem;
+    align-items: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .project-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    transform: translateY(-1px);
+  }
+  .project-img {
+    width: 140px;
+    height: 80px;
+    border-radius: 6px;
+    object-fit: cover;
+    background: linear-gradient(135deg, #0f172a, #1e293b);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    overflow: hidden;
+  }
+  .project-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .project-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  .project-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text-color);
+    text-decoration: none;
+  }
+  .project-desc {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .project-meta {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 0.25rem;
+    font-size: 0.875rem;
+  }
+  .team-name {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    color: var(--text-muted);
+  }
+  .team-name svg {
+    width: 14px;
+    height: 14px;
+  }
+  .track-badge {
+    padding: 0.125rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    background: #ecfdf5;
+    color: #10b981;
+  }
+  .project-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.75rem;
+    min-width: 140px;
+  }
+  .status-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    background: #f1f5f9;
+    color: var(--text-muted);
+  }
+  .status-badge.reviewed {
+    background: #ecfdf5;
+    color: #10b981;
+  }
+
+  /* Sidebar Cards */
+  .sidebar-card {
+    background: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+  }
+  .sidebar-card h3 {
+    font-size: 1rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 1rem;
+  }
+  .progress-bar-bg {
+    width: 100%;
+    height: 8px;
+    background: #e2e8f0;
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    background: var(--primary);
+    border-radius: 4px;
+    transition: width 0.5s ease;
+  }
+  .progress-pct {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    position: absolute;
+    right: 0;
+    top: -1.5rem;
+  }
+
+  .track-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .track-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.875rem;
+  }
+  .track-item-name {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-color);
+  }
+  .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+  .track-item-count {
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+
+  .date-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .date-item {
+    display: flex;
+    gap: 0.75rem;
+  }
+  .date-item svg {
+    color: var(--text-muted);
+    margin-top: 0.125rem;
+  }
+  .date-info h4 {
+    font-size: 0.875rem;
+    font-weight: 600;
+    margin: 0 0 0.125rem 0;
+  }
+  .date-info p {
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+    margin: 0;
+  }
+
+  @media (max-width: 1024px) {
+    .judge-dashboard {
+      grid-template-columns: 1fr;
+    }
+  }
+  @media (max-width: 768px) {
+    .metrics-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    .project-card {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    .project-img {
+      width: 100%;
+      height: 160px;
+    }
+    .project-actions {
+      width: 100%;
+      flex-direction: row;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 1rem;
+    }
+  }
+</style>
+
+<div class="judge-dashboard" x-data="dashboardData()">
+  <div class="dashboard-main">
+    
+    <div class="welcome-section">
+      <div class="text-sm text-muted mb-2 text-uppercase" style="font-weight: 600; letter-spacing: 0.5px;">JUDGE DASHBOARD</div>
+      <h1>Good morning, {{ user.name.split(' ')[0] }}.</h1>
+      <p>Here are your judging assignments for {{ event.name }}.</p>
+    </div>
+
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <svg class="icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+        <div class="value">{{ metrics.assigned }}</div>
+        <div class="label">Assigned</div>
+      </div>
+      <div class="metric-card">
+        <svg class="icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+        <div class="value">{{ metrics.reviewed }}</div>
+        <div class="label">Reviewed</div>
+      </div>
+      <div class="metric-card">
+        <svg class="icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+        <div class="value">{{ metrics.remaining }}</div>
+        <div class="label">Remaining</div>
+      </div>
+      <div class="metric-card">
+        <svg class="icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+        <div class="value">{{ metrics.completion_pct }}%</div>
+        <div class="label">Completion</div>
+      </div>
+    </div>
+
+    <div class="controls-row">
+      <div class="tabs">
+        <button class="tab-btn" :class="{ 'active': activeTab === 'needs_review' }" @click="activeTab = 'needs_review'">Needs Review ({{ metrics.remaining }})</button>
+        <button class="tab-btn" :class="{ 'active': activeTab === 'reviewed' }" @click="activeTab = 'reviewed'">Reviewed ({{ metrics.reviewed }})</button>
+        <button class="tab-btn" :class="{ 'active': activeTab === 'all' }" @click="activeTab = 'all'">All Assignments ({{ metrics.assigned }})</button>
+      </div>
+      <div class="filters">
+        <input type="text" class="search-input" placeholder="Search by project or team..." x-model="searchQuery">
+        <select class="track-select" x-model="selectedTrack">
+          <option value="">All Tracks</option>
+          {% for track in track_distribution %}
+          <option value="{{ track.name }}">{{ track.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <div class="project-list">
+      {% for p in projects %}
+      <div class="project-card" x-show="showProject('{{ p.id }}', '{{ p.track.name if p.track else '' }}', '{{ p.title | escape }}', '{{ p.team.name if p.team else '' | escape }}')">
+        <div class="project-img">
+          {% if p.cover_image_path %}
+          <img src="{{ p.cover_image_path }}" alt="{{ p.title }}">
+          {% else %}
+          <span>{{ p.title[:2].upper() }}</span>
+          {% endif %}
+        </div>
+        <div class="project-info">
+          <a href="/judge/{{ event.id }}/project/{{ p.id }}" class="project-title">{{ p.title }}</a>
+          <div class="project-desc">{{ p.summary or "No description provided." }}</div>
+          <div class="project-meta">
+            <span class="team-name">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+              {{ p.team.name if p.team else "Individual" }}
+            </span>
+            {% if p.track %}
+            <span class="track-badge">{{ p.track.name }}</span>
+            {% endif %}
+          </div>
+        </div>
+        <div class="project-actions">
+          {% if p.id in scored_project_ids %}
+            <span class="status-badge reviewed"><svg style="width:12px;height:12px;display:inline-block;margin-right:4px;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> Reviewed</span>
+            <a href="/judge/{{ event.id }}/project/{{ p.id }}" class="btn btn-secondary">Edit Score &rarr;</a>
+          {% else %}
+            <span class="status-badge">Not reviewed yet</span>
+            <a href="/judge/{{ event.id }}/project/{{ p.id }}" class="btn btn-primary">Review Project &rarr;</a>
+          {% endif %}
+        </div>
+      </div>
+      {% else %}
+      <div class="empty-state" style="padding: 3rem; text-align: center; color: var(--text-muted); border: 1px dashed var(--border-color); border-radius: 8px;">
+        <p>No projects assigned to you yet.</p>
+      </div>
+      {% endfor %}
+      
+      <div x-show="projectsList.length > 0 && Array.from(document.querySelectorAll('.project-card')).every(el => el.style.display === 'none')" style="display: none; padding: 3rem; text-align: center; color: var(--text-muted); border: 1px dashed var(--border-color); border-radius: 8px;" id="no-results-msg">
+        No projects match your current filters.
+      </div>
+    </div>
+  </div>
+
+  <div class="dashboard-sidebar">
+    <div class="sidebar-card">
+      <div class="progress-header">
+        <h3 style="margin-bottom:0;">Your Progress</h3>
+        <span style="font-size: 0.875rem; color: var(--text-muted);">{{ metrics.reviewed }} of {{ metrics.assigned }} reviewed</span>
+      </div>
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" style="width: {{ metrics.completion_pct }}%;"></div>
+      </div>
+      <div style="text-align: right; margin-top: 0.5rem; font-size: 0.875rem; font-weight: 600;">{{ metrics.completion_pct }}%</div>
+    </div>
+
+    <div class="sidebar-card">
+      <h3>
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+        Track Distribution
+      </h3>
+      <div class="track-list">
+        {% for track in track_distribution %}
+        <div class="track-item">
+          <div class="track-item-name">
+            <span class="dot" style="background-color: {{ track.color }};"></span>
+            {{ track.name }}
+          </div>
+          <div class="track-item-count">{{ track.count }}</div>
+        </div>
         {% else %}
-          —
-        {% endif %}
-      </td>
-      <td>
-        {% if p.id in scored_project_ids %}
-          <span style="color: var(--success);">Scored</span>
-        {% else %}
-          <span style="color: var(--danger);">Unscored</span>
-        {% endif %}
-      </td>
-      <td>
-        <a class="btn btn-secondary" href="/judge/{{ event.id }}/project/{{ p.id }}">
-          {% if p.id in scored_project_ids %}Edit Score{% else %}Score{% endif %}
-        </a>
-      </td>
-    </tr>
-    {% else %}
-    <tr>
-      <td colspan="4">No projects assigned to you yet.</td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
+        <div class="text-muted" style="font-size: 0.875rem;">No tracks assigned.</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="sidebar-card">
+      <h3>
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+        Important Dates
+      </h3>
+      <div class="date-list">
+        <div class="date-item">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+          <div class="date-info">
+            <h4>Submission deadline</h4>
+            <p>{{ event.submissions_close.strftime('%b %d, %Y - %H:%M UTC') if event.submissions_close else 'TBD' }}</p>
+          </div>
+        </div>
+        <div class="date-item">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+          <div class="date-info">
+            <h4>Judging period</h4>
+            <p>
+              {% if event.judging_open and event.judging_close %}
+                {{ event.judging_open.strftime('%b %d') }} &ndash; {{ event.judging_close.strftime('%b %d, %Y') }}
+              {% else %}
+                TBD
+              {% endif %}
+            </p>
+          </div>
+        </div>
+        <div class="date-item">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+          <div class="date-info">
+            <h4>Results announcement</h4>
+            <p>{{ event.judging_close.strftime('%b %d, %Y') if event.judging_close else 'TBD' }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-card">
+      <h3>
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+        Judging Guidelines
+      </h3>
+      <p style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 1rem;">Read the event rubric, evaluation criteria and other guidelines before reviewing.</p>
+      <a href="#" class="btn btn-secondary" style="width: 100%; justify-content: center; background: white; border: 1px solid var(--border-color);">View Guidelines</a>
+    </div>
+  </div>
+</div>
+
+<script>
+  function dashboardData() {
+    // Generate a set of scored project IDs to use in the frontend filtering
+    const scoredIds = new Set([
+      {% for id in scored_project_ids %}
+        '{{ id }}',
+      {% endfor %}
+    ]);
+
+    return {
+      activeTab: 'needs_review',
+      searchQuery: '',
+      selectedTrack: '',
+      projectsList: [
+        {% for p in projects %} '{{ p.id }}', {% endfor %}
+      ],
+      showProject(id, track, title, team) {
+        // Tab filtering
+        const isScored = scoredIds.has(id);
+        if (this.activeTab === 'needs_review' && isScored) return false;
+        if (this.activeTab === 'reviewed' && !isScored) return false;
+        
+        // Track filtering
+        if (this.selectedTrack && track !== this.selectedTrack) return false;
+        
+        // Search filtering
+        if (this.searchQuery) {
+          const q = this.searchQuery.toLowerCase();
+          if (!title.toLowerCase().includes(q) && !team.toLowerCase().includes(q)) {
+            return false;
+          }
+        }
+        
+        return true;
+      },
+      init() {
+        this.$watch('activeTab', () => this.checkEmptyState());
+        this.$watch('searchQuery', () => this.checkEmptyState());
+        this.$watch('selectedTrack', () => this.checkEmptyState());
+      },
+      checkEmptyState() {
+        setTimeout(() => {
+          const cards = document.querySelectorAll('.project-card');
+          const noResults = document.getElementById('no-results-msg');
+          let allHidden = true;
+          cards.forEach(c => {
+            if (c.style.display !== 'none') allHidden = false;
+          });
+          if (allHidden && this.projectsList.length > 0) {
+            if(noResults) noResults.style.display = 'block';
+          } else {
+            if(noResults) noResults.style.display = 'none';
+          }
+        }, 50);
+      }
+    }
+  }
+</script>
 {% endblock %}

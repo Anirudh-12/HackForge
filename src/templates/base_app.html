@@ -22,13 +22,12 @@
           <div class="nav-section">HACKATHON</div>
           <a href="/organizer/{{ event.id }}/judges" {% if request and 'judges' in request.url.path %}class="active"{% endif %}>Judges</a>
           <a href="/organizer/{{ event.id }}/rubric" {% if request and 'rubric' in request.url.path %}class="active"{% endif %}>Rubric</a>
-          <a href="/organizer/{{ event.id }}/assignments" {% if request and 'assignments' in request.url.path %}class="active"{% endif %}>Assignments</a>
           <a href="/organizer/{{ event.id }}/results" {% if request and 'results' in request.url.path %}class="active"{% endif %}>Results</a>
           
           <div class="nav-section">ADMIN</div>
           <a href="/organizer/{{ event.id }}/audit" {% if request and 'audit' in request.url.path %}class="active"{% endif %}>Audit Log</a>
           <a href="/organizer/{{ event.id }}/event" {% if request and 'event' in request.url.path %}class="active"{% endif %}>Settings</a>
-          <a href="/organizer/events">Switch Event</a>
+          <a href="/organizer/events">Events</a>
         {% elif role == 'judge' %}
           <div class="nav-section">JUDGING</div>
           <a href="/judge/{{ event.id }}/dashboard">My assignments</a>

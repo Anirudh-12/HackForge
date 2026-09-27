@@ -234,6 +234,60 @@ def save_event(
     return RedirectResponse(f"/organizer/{event_id}/event", status_code=303)
 
 
+@router.get("/organizer/{event_id}/teams")
+def get_teams(
+    event_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_role("organizer", "admin")),
+):
+    event = db.query(Event).filter(Event.id == event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    
+    teams = db.query(Team).filter(Team.event_id == event_id).all()
+    
+    return templates.TemplateResponse(
+        request=request,
+        name="organizer/teams.html",
+        context=base_context(
+            all_events=db.query(Event).all(),
+            request=request,
+            event=event,
+            user=user,
+            role="organizer",
+            teams=teams,
+        ),
+    )
+
+
+@router.get("/organizer/{event_id}/projects")
+def get_projects(
+    event_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_role("organizer", "admin")),
+):
+    event = db.query(Event).filter(Event.id == event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    
+    projects = db.query(Project).filter(Project.event_id == event_id).all()
+    
+    return templates.TemplateResponse(
+        request=request,
+        name="organizer/projects.html",
+        context=base_context(
+            all_events=db.query(Event).all(),
+            request=request,
+            event=event,
+            user=user,
+            role="organizer",
+            projects=projects,
+        ),
+    )
+
+
 @router.get("/organizer/{event_id}/tracks")
 def tracks_page(
     event_id: str,
@@ -457,18 +511,43 @@ def invite_judge(
     if not email_norm:
         return RedirectResponse(f"/organizer/{event_id}/judges", status_code=303)
         
-    from src.models import JudgeInvitation
+    from src.models import JudgeInvitation, JudgeTrack, EventMember
+    
+    # Check if the user is already a judge for this event
+    target_user = db.query(User).filter(User.email == email_norm).first()
+    if target_user:
+        existing_judge = db.query(EventMember).filter_by(event_id=event_id, user_id=target_user.id, role="judge").first()
+        if existing_judge:
+            # Already a judge, assign to new tracks directly
+            for t_id in track_ids:
+                if t_id:
+                    existing_jt = db.query(JudgeTrack).filter_by(event_id=event_id, judge_id=target_user.id, track_id=t_id).first()
+                    if not existing_jt:
+                        db.add(JudgeTrack(event_id=event_id, judge_id=target_user.id, track_id=t_id))
+            
+            db.add(AuditLog(
+                event_id=event.id,
+                actor_id=user.id,
+                message=f"{user.name} assigned existing judge {email_norm} to additional tracks",
+                created_at=utcnow(),
+            ))
+            db.commit()
+            return RedirectResponse(f"/organizer/{event_id}/judges", status_code=303)
     
     # Check if already invited
     existing_inv = db.query(JudgeInvitation).filter_by(event_id=event_id, email=email_norm, status="pending").first()
     if existing_inv:
-        existing_inv.track_ids = ",".join(track_ids)
+        current_tracks = set(existing_inv.track_ids.split(",")) if existing_inv.track_ids else set()
+        for t_id in track_ids:
+            if t_id:
+                current_tracks.add(t_id)
+        existing_inv.track_ids = ",".join(current_tracks)
     else:
         inv = JudgeInvitation(
             id=new_id("inv"),
             event_id=event_id,
             email=email_norm,
-            track_ids=",".join(track_ids),
+            track_ids=",".join([t for t in track_ids if t]),
             status="pending"
         )
         db.add(inv)
@@ -612,14 +691,15 @@ def remove_judge(
     for jt in judge_tracks:
         db.delete(jt)
         
-    # Optionally remove the judge membership if they have no tracks?
-    # Spec: "Removing a judge from a track removes their queue without touching their existing scores"
-    # We will just delete the JudgeTrack assignment.
+    from src.models import EventMember
+    member = db.query(EventMember).filter_by(event_id=event_id, user_id=judge_id, role="judge").first()
+    if member:
+        db.delete(member)
     
     db.add(AuditLog(
         event_id=event.id,
         actor_id=user.id,
-        message=f"{user.name} removed judge {judge_id} from all tracks",
+        message=f"{user.name} removed judge {judge_id} completely from event",
         created_at=utcnow(),
     ))
     db.commit()
