@@ -1,14 +1,199 @@
 {% extends "base_app.html" %}
 {% block title %}Explore Hackathons{% endblock %}
 {% block content %}
-<div class="explore-container">
-  <div style="text-align: center; margin-bottom: 48px;">
-    <h1 style="font-size: 2.5rem; margin-bottom: 16px; background: -webkit-linear-gradient(45deg, var(--primary), var(--accent)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Explore Hackathons</h1>
-    <p style="color: var(--text-muted); font-size: 1.1rem; max-width: 600px; margin: 0 auto;">Find and join the most exciting hackathons, build amazing projects, and showcase your skills.</p>
-  </div>
+<style>
+  .explore-header {
+    margin-bottom: 32px;
+    position: relative;
+  }
+  .explore-header h1 {
+    font-size: 3rem;
+    margin: 0 0 8px 0;
+    color: var(--text-primary);
+  }
+  .explore-header p {
+    font-size: 1.2rem;
+    color: var(--text-muted);
+    margin: 0;
+  }
+  .search-container {
+    margin-top: 24px;
+    position: relative;
+    max-width: 800px;
+  }
+  .search-input {
+    width: 100%;
+    padding: 16px 20px 16px 48px !important;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    font-size: 1.1rem;
+    color: var(--text-primary);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+  }
+  .search-icon {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+  }
+  
+  .filters-row {
+    display: flex;
+    gap: 12px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .filter-select {
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    cursor: pointer;
+    flex: 0 1 auto;
+    width: auto !important;
+  }
+  
+  .tabs-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+    margin-top: 32px;
+    margin-bottom: 24px;
+  }
+  .tabs-nav {
+    display: flex;
+    gap: 24px;
+  }
+  .tab-item {
+    padding: 12px 4px;
+    color: var(--text-muted);
+    text-decoration: none;
+    font-weight: 500;
+    border-bottom: 2px solid transparent;
+    transition: color 0.2s, border-color 0.2s;
+  }
+  .tab-item:hover {
+    color: var(--text-primary);
+  }
+  .tab-item.active {
+    color: var(--accent);
+    border-bottom: 2px solid var(--accent);
+  }
+  
+  .events-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 24px;
+  }
+  .event-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .event-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(0,0,0,0.1);
+  }
+  .card-banner {
+    height: 140px;
+    background-size: cover;
+    background-position: center;
+    position: relative;
+    border-bottom: 1px solid var(--border);
+  }
+  .card-badge {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: white;
+  }
+  .card-content {
+    padding: 20px;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+  }
+  .card-title {
+    font-size: 1.25rem;
+    margin: 0 0 4px 0;
+    font-weight: 600;
+  }
+  .card-organizer {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin: 0 0 12px 0;
+  }
+  .card-desc {
+    font-size: 0.95rem;
+    color: var(--text-primary);
+    margin: 0 0 16px 0;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .card-meta-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .card-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .card-tags {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 24px;
+    margin-top: auto;
+  }
+  .card-tag {
+    background: var(--accent-subtle);
+    color: var(--accent);
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+  .card-actions {
+    display: flex;
+    gap: 12px;
+  }
+  .card-actions .btn {
+    flex: 1;
+    text-align: center;
+    padding: 8px 16px;
+    font-size: 0.95rem;
+  }
+</style>
 
+<div class="explore-container">
+  
   {% if invitations %}
-  <div class="invitations-section" style="margin-bottom: 48px; background: rgba(var(--accent-rgb), 0.05); padding: 24px; border-radius: var(--radius); border: 1px solid var(--border);">
+  <div class="invitations-section" style="margin-bottom: 32px; background: rgba(var(--accent-rgb), 0.05); padding: 24px; border-radius: var(--radius); border: 1px solid var(--border);">
     <h2 style="margin-top: 0; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
       Judge Invitations
@@ -34,76 +219,110 @@
   </div>
   {% endif %}
 
-  {% macro event_card(event, status_label, status_color) %}
-  <a href="/events/{{ event.id }}" style="text-decoration: none; color: inherit;">
-    <div class="card event-card" style="transition: transform 0.2s, box-shadow 0.2s; height: 100%; display: flex; flex-direction: column; overflow: hidden;">
-      {% if event.banner_image_path %}
-      <div style="height: 120px; background-image: url('{{ event.banner_image_path }}'); background-size: cover; background-position: center; border-bottom: 1px solid var(--border); position: relative;">
-      {% else %}
-      <div style="height: 120px; background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.1), rgba(var(--accent-rgb), 0.1)); border-bottom: 1px solid var(--border); position: relative;">
-      {% endif %}
-        <span class="badge" style="position: absolute; top: 12px; right: 12px; background: {{ status_color }}; color: #fff; font-weight: bold;">{{ status_label }}</span>
+  <div class="explore-header">
+    <div style="color: var(--text-muted); font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">EXPLORE HACKATHONS</div>
+    <h1>Find your next challenge.</h1>
+    <p>Discover hackathons, build amazing projects, and be part of vibrant communities.</p>
+    
+    <div class="search-container">
+      <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+      <input type="text" class="search-input" placeholder="Search hackathons by name, organizer, track, or keywords...">
+    </div>
+    
+    <div class="filters-row">
+      <select class="filter-select"><option>All Tracks</option></select>
+      <select class="filter-select"><option>All Locations</option></select>
+      <select class="filter-select"><option>Online / Offline</option></select>
+      <select class="filter-select"><option>Any Prize Pool</option></select>
+      <select class="filter-select"><option>Any Date</option></select>
+      <select class="filter-select"><option>All Statuses</option></select>
+      
+      <div style="margin-left: auto; display: flex; align-items: center; gap: 8px;">
+        <span style="color: var(--text-muted); font-size: 0.9rem;">Sort by</span>
+        <select class="filter-select" style="font-weight: 500;"><option>Start Date (Soonest)</option></select>
       </div>
-      <div style="padding: 24px; flex-grow: 1; display: flex; flex-direction: column;">
-        <h3 style="margin: 0 0 8px 0; font-size: 1.2rem;">{{ event.name }}</h3>
-        <p style="margin: 0 0 16px 0; color: var(--text-muted); font-size: 0.9rem; flex-grow: 1;">
-          {% if event.submissions_open %}Starts: {{ event.submissions_open.strftime('%b %d, %Y') }}{% else %}Dates TBA{% endif %}
-        </p>
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-top: auto;">
-          <span style="font-size: 0.9rem; font-weight: 500; color: var(--primary);">View Details &rarr;</span>
+    </div>
+  </div>
+  
+  <div class="tabs-row">
+    <div class="tabs-nav">
+      <a href="#" class="tab-item active">All Hackathons</a>
+      <a href="#" class="tab-item">Upcoming</a>
+      <a href="#" class="tab-item">Ongoing</a>
+      <a href="#" class="tab-item">Past</a>
+    </div>
+    <div style="color: var(--text-muted); font-size: 0.9rem; display: flex; align-items: center; gap: 12px;">
+      <span>{{ ongoing|length + upcoming|length + completed|length }} hackathons</span>
+      <div style="display: flex; gap: 4px;">
+        <button style="background: var(--accent-subtle); color: var(--accent); border: none; padding: 4px; border-radius: 4px; cursor: pointer;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg></button>
+        <button style="background: none; color: var(--text-muted); border: none; padding: 4px; border-radius: 4px; cursor: pointer;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg></button>
+      </div>
+    </div>
+  </div>
+
+  {% macro event_card(event, status_label, status_color) %}
+  <div class="event-card">
+    {% if event.banner_image_path and event.banner_image_path != 'None' and event.banner_image_path|trim != '' %}
+    <div class="card-banner" style="background-image: url('{{ event.banner_image_path }}');">
+    {% else %}
+    <div class="card-banner" style="background: linear-gradient(135deg, var(--accent), #8b5cf6);">
+    {% endif %}
+      <div class="card-badge" style="background: {{ status_color }};">{{ status_label }}</div>
+    </div>
+    
+    <div class="card-content">
+      <h3 class="card-title">{{ event.name }}</h3>
+      <div class="card-organizer">by Hackathon Organizer</div>
+      <p class="card-desc">{{ event.description_markdown[:80] ~ '...' if event.description_markdown else 'Explore event details.' }}</p>
+      
+      <div class="card-meta-grid">
+        <div class="card-meta-item">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+          {% if event.submissions_open %}{{ event.submissions_open.strftime('%b %d') }} - {{ event.submissions_close.strftime('%b %d, %Y') }}{% else %}TBA{% endif %}
+        </div>
+        <div class="card-meta-item">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+          Online
+        </div>
+        <div class="card-meta-item">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+          Teams of 1-4
+        </div>
+        <div class="card-meta-item">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path><path d="M4 22h16"></path><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"></path><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"></path><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"></path></svg>
+          TBA
         </div>
       </div>
+      
+      <div class="card-tags">
+        {% for track in event.tracks[:3] %}
+          <span class="card-tag">{{ track.name }}</span>
+        {% else %}
+          <span class="card-tag">Hackathon</span>
+        {% endfor %}
+      </div>
+      
+      <div class="card-actions">
+        <a href="/events/{{ event.id }}" class="btn btn-secondary">View Details</a>
+        <form method="post" action="/events/{{ event.id }}/join" style="flex:1; margin:0; display:flex;">
+          <button type="submit" class="btn btn-primary" style="flex:1;">Register &rarr;</button>
+        </form>
+      </div>
     </div>
-  </a>
+  </div>
   {% endmacro %}
 
-  <section style="margin-bottom: 48px;">
-    <h2 style="margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between;">
-      <span>Ongoing Hackathons</span>
-      <span style="font-size: 0.9rem; font-weight: normal; color: var(--text-muted); cursor: pointer;">View all</span>
-    </h2>
-    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 24px;">
-      {% for event in ongoing %}
-        {{ event_card(event, 'Ongoing', 'var(--success)') }}
-      {% else %}
-        <p style="color: var(--text-muted);">No ongoing hackathons at the moment.</p>
-      {% endfor %}
-    </div>
-  </section>
+  <div class="events-grid">
+    {% for event in ongoing %}
+      {{ event_card(event, 'Ongoing', 'var(--primary)') }}
+    {% endfor %}
+    {% for event in upcoming %}
+      {{ event_card(event, 'Registrations Open', '#10b981') }}
+    {% endfor %}
+    {% for event in completed %}
+      {{ event_card(event, 'Completed', '#6b7280') }}
+    {% endfor %}
+  </div>
 
-  <section style="margin-bottom: 48px;">
-    <h2 style="margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between;">
-      <span>Upcoming Hackathons</span>
-      <span style="font-size: 0.9rem; font-weight: normal; color: var(--text-muted); cursor: pointer;">View all</span>
-    </h2>
-    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 24px;">
-      {% for event in upcoming %}
-        {{ event_card(event, 'Upcoming', 'var(--accent)') }}
-      {% else %}
-        <p style="color: var(--text-muted);">No upcoming hackathons announced yet.</p>
-      {% endfor %}
-    </div>
-  </section>
-
-  <section style="margin-bottom: 48px;">
-    <h2 style="margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between;">
-      <span>Past Hackathons</span>
-      <span style="font-size: 0.9rem; font-weight: normal; color: var(--text-muted); cursor: pointer;">View all</span>
-    </h2>
-    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 24px;">
-      {% for event in completed %}
-        {{ event_card(event, 'Completed', '#6b7280') }}
-      {% else %}
-        <p style="color: var(--text-muted);">No past hackathons available.</p>
-      {% endfor %}
-    </div>
-  </section>
 </div>
-
-<style>
-  .event-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 12px 24px rgba(0,0,0,0.1);
-  }
-</style>
 {% endblock %}

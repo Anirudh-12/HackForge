@@ -34,6 +34,90 @@ async def _payload(request: Request) -> dict:
     return {key: form.get(key) for key in form}
 
 
+from src.timeutil import submissions_open, utcnow, as_utc
+from src.models import EventMember
+
+@router.get("/participant/home")
+def participant_home(
+    request: Request,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user)
+):
+    if not user:
+        return RedirectResponse("/login", status_code=303)
+        
+    now = utcnow()
+    
+    # 1. Registered Events
+    memberships = db.query(EventMember).filter(EventMember.user_id == user.id, EventMember.role == "participant").all()
+    registered_event_ids = [m.event_id for m in memberships]
+    
+    registered_events = db.query(Event).filter(Event.id.in_(registered_event_ids)).all() if registered_event_ids else []
+    
+    # Associate team/project status for each registered event
+    event_statuses = []
+    total_submissions = 0
+    upcoming_deadlines = []
+    
+    for event in registered_events:
+        team = user_team(db, user.id, event.id)
+        project = None
+        if team:
+            project = db.query(Project).filter(Project.team_id == team.id).first()
+            
+        status = "Registered"
+        if project:
+            total_submissions += 1
+            if project.is_draft:
+                status = "Submission in progress"
+            else:
+                status = "Submitted"
+                
+        event_statuses.append({
+            "event": event,
+            "status": status,
+            "project_id": project.id if project else None
+        })
+        
+        # Deadlines
+        s_close = as_utc(event.submissions_close) if event.submissions_close else None
+        if s_close and s_close > now:
+            upcoming_deadlines.append(event)
+            
+    upcoming_deadlines.sort(key=lambda e: as_utc(e.submissions_close))
+    
+    # 2. Recommendations (Events not registered in, that haven't closed yet)
+    recommended_events = []
+    if registered_event_ids:
+        recommended_events = db.query(Event).filter(Event.id.not_in(registered_event_ids)).all()
+    else:
+        recommended_events = db.query(Event).all()
+        
+    valid_recs = []
+    for e in recommended_events:
+        c = as_utc(e.submissions_close) if e.submissions_close else None
+        if not c or c > now:
+            valid_recs.append(e)
+            
+    # 3. Recent Activity (Audit logs involving user or their teams)
+    # Simple approach: fetch audit logs where actor_id == user.id
+    activities = db.query(AuditLog).filter(AuditLog.actor_id == user.id).order_by(AuditLog.created_at.desc()).limit(5).all()
+
+    return templates.TemplateResponse(request=request, name="participant/dashboard_new.html", context=
+        base_context(
+            request=request,
+            event=default_event(db),
+            user=user,
+            role="participant",
+            event_statuses=event_statuses,
+            total_submissions=total_submissions,
+            total_registrations=len(registered_events),
+            upcoming_deadlines=upcoming_deadlines,
+            recommendations=valid_recs[:3],
+            activities=activities
+        )
+    )
+
 @router.get("/participant/{event_id}/dashboard")
 def participant_dashboard(
     event_id: str,

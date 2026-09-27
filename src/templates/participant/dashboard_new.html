@@ -1,0 +1,419 @@
+{% extends "base_app.html" %}
+{% block title %}Participant Dashboard{% endblock %}
+
+{% block content %}
+<style>
+  /* Base Layout for Dashboard */
+  .dashboard-layout {
+    margin-top: 16px;
+  }
+
+  
+  /* Main Content Layout */
+  .main-content {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 32px;
+    align-items: start;
+  }
+  
+  /* Header Section */
+  .dashboard-header {
+    margin-bottom: 32px;
+  }
+  .dashboard-header h1 {
+    font-size: 2.2rem;
+    margin: 0 0 8px 0;
+  }
+  .dashboard-header p {
+    color: var(--text-muted);
+    font-size: 1.1rem;
+    margin: 0;
+  }
+  
+  /* Stats Row */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  }
+  .stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: rgba(var(--primary-rgb), 0.1);
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .stat-value {
+    font-size: 1.8rem;
+    font-weight: bold;
+    margin: 0;
+    line-height: 1;
+  }
+  .stat-label {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin: 4px 0 0 0;
+  }
+  
+  /* Section Titles */
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  .section-header h2 {
+    font-size: 1.2rem;
+    margin: 0;
+  }
+  
+  /* Hackathon Event Card List */
+  .event-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+  .event-list-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    display: flex;
+    gap: 20px;
+    align-items: center;
+  }
+  .event-list-banner {
+    width: 160px;
+    height: 100px;
+    border-radius: var(--radius);
+    object-fit: cover;
+    background: var(--surface-hover);
+    flex-shrink: 0;
+  }
+  .event-list-info {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .event-list-info h3 {
+    margin: 0;
+    font-size: 1.1rem;
+  }
+  .event-list-info p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+  }
+  .event-list-meta {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+  }
+  .event-list-tags {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+  }
+  .tag {
+    background: rgba(var(--primary-rgb), 0.1);
+    color: var(--primary);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+  .event-list-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+    min-width: 140px;
+  }
+  
+  /* Deadlines List */
+  .deadline-list {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    display: flex;
+    flex-direction: column;
+  }
+  .deadline-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .deadline-item:last-child {
+    border-bottom: none;
+  }
+  .deadline-icon {
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    background: rgba(var(--primary-rgb), 0.1);
+    color: var(--primary);
+    display: flex; align-items: center; justify-content: center;
+  }
+  
+  /* Right Sidebar (Recommendations & Activity) */
+  .right-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+  }
+  .recommendation-card {
+    display: flex;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .recommendation-card:last-child {
+    border-bottom: none;
+  }
+  .rec-banner {
+    width: 64px; height: 64px;
+    border-radius: 8px;
+    object-fit: cover;
+    background: var(--surface-hover);
+    flex-shrink: 0;
+  }
+  .rec-info h4 { margin: 0 0 4px 0; font-size: 0.95rem; }
+  .rec-info p { margin: 0 0 6px 0; font-size: 0.8rem; color: var(--text-muted); }
+  
+  .activity-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .activity-item {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  .activity-icon {
+    color: var(--primary);
+    margin-top: 2px;
+  }
+  .activity-details {
+    flex-grow: 1;
+    font-size: 0.9rem;
+  }
+  .activity-time {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+</style>
+
+<div class="dashboard-layout">
+  
+
+  
+  <!-- Dashboard Grid -->
+  <div class="main-content">
+    
+    <!-- Left Column (Stats & Registered Events) -->
+    <div>
+      <div class="dashboard-header">
+        <h1 style="display: flex; justify-content: space-between; align-items: center;">
+          Good morning, {{ user.name.split(' ')[0] }}.
+          <a href="/explore" class="btn btn-primary" style="font-size: 1rem; font-weight: normal;">Explore Hackathons &rarr;</a>
+        </h1>
+        <p>Here's an overview of your hackathons and submissions.</p>
+      </div>
+      
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+          </div>
+          <div>
+            <h3 class="stat-value">{{ total_registrations }}</h3>
+            <p class="stat-label">Registrations</p>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+          </div>
+          <div>
+            <h3 class="stat-value">{{ total_submissions }}</h3>
+            <p class="stat-label">Submission{% if total_submissions != 1 %}s{% endif %}</p>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+          </div>
+          <div>
+            <h3 class="stat-value">{{ upcoming_deadlines|length }}</h3>
+            <p class="stat-label">Upcoming Deadlines</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="section-header">
+        <h2>Your Registered Hackathons</h2>
+        <a href="#" style="font-size: 0.9rem; color: var(--primary); text-decoration: none;">View all &rarr;</a>
+      </div>
+      
+      <div class="event-list">
+        {% for item in event_statuses %}
+        <div class="event-list-item">
+          {% if item.event.banner_image_path %}
+            <img src="{{ item.event.banner_image_path }}" class="event-list-banner">
+          {% else %}
+            <div class="event-list-banner" style="background: linear-gradient(135deg, #3b82f6, #8b5cf6); display:flex; align-items:center; justify-content:center; color:white; font-weight:bold; font-size:1.2rem;">{{ item.event.name }}</div>
+          {% endif %}
+          
+          <div class="event-list-info">
+            <h3>{{ item.event.name }}</h3>
+            <p>{{ item.event.description_markdown[:80] ~ '...' if item.event.description_markdown else 'Explore the event details.' }}</p>
+            <div class="event-list-meta">
+              <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="vertical-align:-2px; margin-right:4px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg> {% if item.event.submissions_open %}{{ item.event.submissions_open.strftime('%b %d') }} - {{ item.event.submissions_close.strftime('%b %d, %Y') }}{% else %}Dates TBA{% endif %}</span>
+              <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="vertical-align:-2px; margin-right:4px;"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg> Online</span>
+            </div>
+            <div class="event-list-tags">
+              {% for track in item.event.tracks[:3] %}
+                <span class="tag">{{ track.name }}</span>
+              {% else %}
+                <span class="tag">Hackathon</span>
+              {% endfor %}
+            </div>
+          </div>
+          
+          <div class="event-list-actions">
+            {% if item.status == 'Submission in progress' %}
+              <div class="badge" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b; font-weight: 500; font-size: 0.75rem; padding: 4px 8px;">{{ item.status }}</div>
+              <a href="/participant/{{ item.event.id }}/dashboard" class="btn btn-primary">Continue Submission &rarr;</a>
+            {% elif item.status == 'Submitted' %}
+              <div class="badge" style="background: rgba(16, 185, 129, 0.1); color: #10b981; font-weight: 500; font-size: 0.75rem; padding: 4px 8px;">{{ item.status }}</div>
+              <a href="/participant/{{ item.event.id }}/dashboard" class="btn btn-outline">View Submission</a>
+            {% else %}
+              <div class="badge" style="background: rgba(16, 185, 129, 0.1); color: #10b981; font-weight: 500; font-size: 0.75rem; padding: 4px 8px;">Registered</div>
+              <a href="/participant/{{ item.event.id }}/dashboard" class="btn btn-outline">View Event &rarr;</a>
+            {% endif %}
+          </div>
+        </div>
+        {% else %}
+        <div class="card" style="text-align: center; color: var(--text-muted); padding: 48px;">
+          You haven't registered for any hackathons yet.
+          <br><br>
+          <a href="/explore" class="btn btn-primary">Explore Hackathons</a>
+        </div>
+        {% endfor %}
+      </div>
+      
+      <div class="section-header">
+        <h2>Upcoming Deadlines</h2>
+        <a href="#" style="font-size: 0.9rem; color: var(--primary); text-decoration: none;">View all &rarr;</a>
+      </div>
+      
+      <div class="deadline-list">
+        {% for event in upcoming_deadlines %}
+        <div class="deadline-item">
+          <div class="deadline-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+          </div>
+          <div style="flex-grow: 1;">
+            <div style="font-weight: 500;">{{ event.name }} &mdash; <span style="font-weight: normal; color: var(--text-muted);">Submission deadline</span></div>
+            <div style="font-size: 0.85rem; color: var(--text-muted);">{{ event.submissions_close.strftime('%b %d, %Y - %H:%M UTC') }}</div>
+          </div>
+          <div>
+            <div class="badge" style="background: rgba(239, 68, 68, 0.1); color: #ef4444;">Due soon</div>
+          </div>
+        </div>
+        {% else %}
+        <div style="padding: 24px; text-align: center; color: var(--text-muted);">No upcoming deadlines.</div>
+        {% endfor %}
+      </div>
+    </div>
+    
+    <!-- Right Sidebar (Recommendations & Activity) -->
+    <aside class="right-sidebar">
+      <div>
+        <div class="section-header">
+          <h2>Event Recommendations</h2>
+          <a href="/explore" style="font-size: 0.9rem; color: var(--primary); text-decoration: none;">View all &rarr;</a>
+        </div>
+        <div class="card" style="padding: 16px;">
+          {% for rec in recommendations %}
+          <div class="recommendation-card">
+            {% if rec.banner_image_path %}
+              <img src="{{ rec.banner_image_path }}" class="rec-banner">
+            {% else %}
+              <div class="rec-banner" style="background: linear-gradient(135deg, #3b82f6, #8b5cf6); display:flex; align-items:center; justify-content:center; color:white; font-weight:bold; font-size:1.2rem;">{{ rec.name[0] }}</div>
+            {% endif %}
+            <div class="rec-info" style="flex-grow: 1;">
+              <h4>{{ rec.name }}</h4>
+              <p>{{ rec.description_markdown[:40] ~ '...' if rec.description_markdown else 'Join the event!' }}</p>
+              <div style="display: flex; gap: 8px;">
+                {% for track in rec.tracks[:2] %}
+                  <span class="tag" style="background: var(--surface-hover); color: var(--text-primary); border: 1px solid var(--border); padding: 2px 6px; font-size: 0.7rem;">{{ track.name }}</span>
+                {% else %}
+                  <span class="tag" style="background: var(--surface-hover); color: var(--text-primary); border: 1px solid var(--border); padding: 2px 6px; font-size: 0.7rem;">Online</span>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+          {% else %}
+          <div style="color: var(--text-muted); font-size: 0.9rem; text-align: center; padding: 16px 0;">No new recommendations.</div>
+          {% endfor %}
+        </div>
+      </div>
+      
+      <div>
+        <div class="section-header">
+          <h2>Recent Activity</h2>
+          <a href="#" style="font-size: 0.9rem; color: var(--primary); text-decoration: none;">View all &rarr;</a>
+        </div>
+        <div class="card" style="padding: 16px;">
+          <div class="activity-list">
+            {% for act in activities %}
+            <div class="activity-item">
+              <div class="activity-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+              </div>
+              <div class="activity-details">
+                {{ act.message }}
+              </div>
+              <div class="activity-time">
+                {{ act.created_at.strftime('%b %d') }}
+              </div>
+            </div>
+            {% else %}
+            <div style="color: var(--text-muted); font-size: 0.9rem; text-align: center; padding: 16px 0;">No recent activity.</div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </aside>
+    
+  </div>
+</div>
+{% endblock %}

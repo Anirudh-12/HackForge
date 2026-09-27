@@ -117,7 +117,7 @@ def home_for(db: Session, user: User) -> str:
         return f"/organizer/{member.event_id}/dashboard"
     if member.role == "judge":
         return f"/judge/{member.event_id}/dashboard"
-    return f"/participant/{member.event_id}/dashboard"
+    return "/participant/home"
 
 
 def require_login(user: User | None = Depends(get_current_user)) -> User:
