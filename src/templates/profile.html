@@ -13,8 +13,8 @@
   <div style="display: flex; flex-wrap: wrap; gap: 24px;">
     <!-- Profile Header Info -->
     <div style="display: flex; gap: 24px; flex: 1; min-width: 300px;">
-      <div style="width: 96px; height: 96px; border-radius: 50%; background: var(--accent, #3b82f6); color: white; display: flex; align-items: center; justify-content: center; font-size: 36px; font-weight: bold; flex-shrink: 0; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-        {{ user.name[0].upper() if user.name else 'U' }}
+      <div style="width: 96px; height: 96px; border-radius: 50%; background: var(--accent, #3b82f6); color: white; display: flex; align-items: center; justify-content: center; font-size: 36px; font-weight: bold; flex-shrink: 0; box-shadow: 0 4px 12px rgba(0,0,0,0.1); overflow: hidden;">
+        <img src="/users/{{ user.id }}/avatar.svg" alt="Avatar" style="width: 100%; height: 100%; object-fit: cover;">
       </div>
       <div style="display: flex; flex-direction: column; justify-content: center;">
         <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
@@ -70,10 +70,10 @@
   </div>
 
   <!-- Account Details -->
-  <div class="card">
+  <div class="card" id="account-details">
     <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border, #333); padding-bottom: 16px; margin-bottom: 16px;">
       <h3 style="margin: 0; font-size: 16px;">Account Details</h3>
-      <button class="btn btn-ghost" style="padding: 4px 12px; font-size: 12px;">Edit</button>
+      <button class="btn btn-ghost" style="padding: 4px 12px; font-size: 12px;" onclick="document.getElementById('edit-form').style.display='block'; document.getElementById('account-details').style.display='none';">Edit</button>
     </div>
     
     <div style="display: flex; flex-direction: column; gap: 16px; font-size: 14px;">
@@ -86,10 +86,62 @@
         <span style="color: var(--text-primary, #fff);">{{ user.email }}</span>
       </div>
       <div style="display: grid; grid-template-columns: 120px 1fr;">
-        <span style="color: var(--text-muted, #999);">Role</span>
-        <span style="color: var(--text-primary, #fff);">Participant</span>
+        <span style="color: var(--text-muted, #999);">Bio</span>
+        <span style="color: var(--text-primary, #fff);">{{ user.bio or 'No bio provided.' }}</span>
+      </div>
+      <div style="display: grid; grid-template-columns: 120px 1fr;">
+        <span style="color: var(--text-muted, #999);">Skills</span>
+        <span style="color: var(--text-primary, #fff);">
+          {% if user.skills %}
+            {% for skill in user.skills.split(',') %}
+              <span class="badge" style="margin-right: 4px; display: inline-block;">{{ skill.strip() }}</span>
+            {% endfor %}
+          {% else %}
+            None
+          {% endif %}
+        </span>
+      </div>
+      <div style="display: grid; grid-template-columns: 120px 1fr;">
+        <span style="color: var(--text-muted, #999);">GitHub</span>
+        <span style="color: var(--text-primary, #fff);">
+          {% if user.github_url %}<a href="{{ user.github_url }}" target="_blank" style="color: var(--accent);">{{ user.github_url }}</a>{% else %}Not provided{% endif %}
+        </span>
+      </div>
+      <div style="display: grid; grid-template-columns: 120px 1fr;">
+        <span style="color: var(--text-muted, #999);">LinkedIn</span>
+        <span style="color: var(--text-primary, #fff);">
+          {% if user.linkedin_url %}<a href="{{ user.linkedin_url }}" target="_blank" style="color: var(--accent);">{{ user.linkedin_url }}</a>{% else %}Not provided{% endif %}
+        </span>
       </div>
     </div>
+  </div>
+
+  <!-- Edit Profile Form -->
+  <div class="card" id="edit-form" style="display: none;">
+    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border, #333); padding-bottom: 16px; margin-bottom: 16px;">
+      <h3 style="margin: 0; font-size: 16px;">Edit Profile</h3>
+      <button class="btn btn-ghost" style="padding: 4px 12px; font-size: 12px;" onclick="document.getElementById('account-details').style.display='block'; document.getElementById('edit-form').style.display='none';">Cancel</button>
+    </div>
+    
+    <form method="post" action="/profile">
+      <div class="form-group" style="margin-bottom: 16px;">
+        <label>Bio</label>
+        <textarea name="bio" class="input" rows="3" placeholder="Tell us about yourself...">{{ user.bio or '' }}</textarea>
+      </div>
+      <div class="form-group" style="margin-bottom: 16px;">
+        <label>Skills (comma separated)</label>
+        <input type="text" name="skills" class="input" value="{{ user.skills or '' }}" placeholder="Python, React, Design...">
+      </div>
+      <div class="form-group" style="margin-bottom: 16px;">
+        <label>GitHub URL</label>
+        <input type="url" name="github_url" class="input" value="{{ user.github_url or '' }}" placeholder="https://github.com/username">
+      </div>
+      <div class="form-group" style="margin-bottom: 16px;">
+        <label>LinkedIn URL</label>
+        <input type="url" name="linkedin_url" class="input" value="{{ user.linkedin_url or '' }}" placeholder="https://linkedin.com/in/username">
+      </div>
+      <button type="submit" class="btn btn-primary" style="width: 100%;">Save Changes</button>
+    </form>
   </div>
 </div>
 {% endblock %}

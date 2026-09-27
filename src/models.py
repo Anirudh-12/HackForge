@@ -17,6 +17,11 @@ class User(Base):
     # Null password_hash means a seeded fixture/test user: any password is accepted.
     password_hash: Mapped[str | None] = mapped_column(String, nullable=True)
 
+    bio: Mapped[str | None] = mapped_column(Text, nullable=True)
+    github_url: Mapped[str | None] = mapped_column(String, nullable=True)
+    linkedin_url: Mapped[str | None] = mapped_column(String, nullable=True)
+    skills: Mapped[str | None] = mapped_column(String, nullable=True)
+
     memberships: Mapped[list[EventMember]] = relationship(back_populates="user")
     team_memberships: Mapped[list[TeamMember]] = relationship(back_populates="user")
 

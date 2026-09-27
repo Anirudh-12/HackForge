@@ -217,3 +217,17 @@ def project_detail(
         ),
         status_code=200 if project else 404,
     )
+
+
+from fastapi import Response
+from src.avatar import generate_avatar_svg
+
+@router.get("/users/{user_id}/avatar.svg")
+def user_avatar(user_id: str, db: Session = Depends(get_db)):
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    svg_content = generate_avatar_svg(user.email)
+    return Response(content=svg_content, media_type="image/svg+xml")
+

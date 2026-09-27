@@ -121,6 +121,27 @@ def profile(request: Request, user: User | None = Depends(get_current_user), db:
         base_context(request=request, event=default_event(db), user=user, role="participant", error=None)
     )
 
+@router.post("/profile")
+def update_profile(
+    request: Request,
+    bio: str = Form(""),
+    github_url: str = Form(""),
+    linkedin_url: str = Form(""),
+    skills: str = Form(""),
+    user: User | None = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if not user:
+        return RedirectResponse("/login", status_code=303)
+        
+    user.bio = bio.strip()
+    user.github_url = github_url.strip()
+    user.linkedin_url = linkedin_url.strip()
+    user.skills = skills.strip()
+    
+    db.commit()
+    
+    return RedirectResponse("/profile", status_code=303)
 
 @router.post("/logout")
 def logout():
