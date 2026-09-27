@@ -230,5 +230,61 @@
       </div>
     </div>
   </div>
+
+  <!-- Global Toast Container -->
+  <div id="toast-container" style="position: fixed; bottom: 24px; right: 24px; display: flex; flex-direction: column; gap: 8px; z-index: 9999;"></div>
+  
+  <script>
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      
+      const colors = {
+        'success': { bg: '#ecfdf5', border: '#10b981', color: '#047857' },
+        'error': { bg: '#fef2f2', border: '#ef4444', color: '#b91c1c' },
+        'info': { bg: '#eff6ff', border: '#3b82f6', color: '#1d4ed8' }
+      };
+      
+      const theme = colors[type] || colors['info'];
+      
+      toast.style.background = theme.bg;
+      toast.style.border = `1px solid ${theme.border}`;
+      toast.style.color = theme.color;
+      toast.style.padding = '12px 20px';
+      toast.style.borderRadius = '8px';
+      toast.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
+      toast.style.fontWeight = '500';
+      toast.style.fontSize = '0.95rem';
+      toast.style.transform = 'translateY(100%)';
+      toast.style.opacity = '0';
+      toast.style.transition = 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s';
+      toast.innerText = message;
+      
+      container.appendChild(toast);
+      
+      // Animate in
+      setTimeout(() => {
+        toast.style.transform = 'translateY(0)';
+        toast.style.opacity = '1';
+      }, 10);
+      
+      // Animate out and remove
+      setTimeout(() => {
+        toast.style.transform = 'translateY(20px)';
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+    
+    // Check for flash messages in URL
+    document.addEventListener('DOMContentLoaded', () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.has('msg')) {
+        showToast(urlParams.get('msg'), urlParams.get('msg_type') || 'success');
+        // Clean up URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    });
+  </script>
 </body>
 </html>

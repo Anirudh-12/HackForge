@@ -227,6 +227,35 @@ def invite_user_to_team(
     return RedirectResponse(f"/participant/{event_id}/matchmaking", status_code=303)
 
 
+@router.post("/participant/{event_id}/request_join")
+def request_join_team(
+    event_id: str,
+    target_team_id: str = Form(...),
+    db: Session = Depends(get_db),
+    user: User = Depends(require_role("participant", "organizer", "admin")),
+):
+    team = user_team(db, user.id, event_id)
+    if team:
+        return RedirectResponse(f"/participant/{event_id}/matchmaking", status_code=303)
+        
+    target_team = db.query(Team).filter_by(id=target_team_id).first()
+    if not target_team:
+        return RedirectResponse(f"/participant/{event_id}/matchmaking", status_code=303)
+        
+    from src.seed import new_id
+    from src.models import Notification, TeamMember
+    
+    first_member = db.query(TeamMember).filter_by(team_id=target_team.id).first()
+    if first_member:
+        db.add(Notification(
+            id=new_id("notif"),
+            user_id=first_member.user_id,
+            message=f"{user.name} ({user.email}) has requested to join your team '{target_team.name}'. You can invite them from the Matchmaking board.",
+            action_link=f"/participant/{event_id}/matchmaking"
+        ))
+        db.commit()
+    
+    return RedirectResponse(f"/participant/{event_id}/matchmaking", status_code=303)
 @router.get("/participant/{event_id}/team")
 def team_page(
     event_id: str,

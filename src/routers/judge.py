@@ -169,8 +169,11 @@ async def submit_score(
                 ))
     
     db.commit()
-    return RedirectResponse(f"/judge/{event_id}/dashboard", status_code=303)
-
+    db.commit()
+    import urllib.parse
+    msg = "Recused from project." if recuse else "Scores saved successfully!"
+    query = urllib.parse.urlencode({"msg": msg, "msg_type": "info" if recuse else "success"})
+    return RedirectResponse(f"/judge/{event_id}/dashboard?{query}", status_code=303)
 
 @router.get("/api/judge/scores")
 def get_judge_scores(

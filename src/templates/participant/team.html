@@ -63,7 +63,7 @@
         <h2 style="margin: 0 0 4px 0; font-size: 1.8rem;">{{ team.name }}</h2>
         <span style="color: var(--text-muted); font-size: 0.9rem;">{{ team.members|length }} / 4 Members</span>
       </div>
-      <form method="post" style="margin: 0;">
+      <form method="post" style="margin: 0;" onsubmit="return confirm('Are you sure you want to leave this team? If you are the last member, the team will be deleted.');">
         <input type="hidden" name="action" value="leave">
         <button class="btn btn-secondary" type="submit" style="color: #ef4444; border-color: #ef4444;">Leave Team</button>
       </form>

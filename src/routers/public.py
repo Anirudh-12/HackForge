@@ -29,6 +29,37 @@ def track_color(track_id: str | None) -> str:
         return "#e4e4e4"
     return TRACK_COLORS[sum(ord(c) for c in track_id) % len(TRACK_COLORS)]
 
+from fastapi.responses import Response
+import hashlib
+
+@router.get("/users/{user_id}/avatar.svg")
+def user_avatar(user_id: str):
+    # Deterministic Avatar Generator based on user_id
+    h = int(hashlib.md5(user_id.encode('utf-8')).hexdigest(), 16)
+    
+    # Pick a vibrant background color
+    bg_colors = [
+        "#f43f5e", "#d946ef", "#8b5cf6", "#6366f1", "#3b82f6", 
+        "#0ea5e9", "#14b8a6", "#10b981", "#84cc16", "#eab308", "#f97316"
+    ]
+    bg = bg_colors[h % len(bg_colors)]
+    
+    # Generate some simple geometric shapes
+    shapes = ""
+    for i in range(3):
+        h = int(hashlib.md5(f"{user_id}_{i}".encode('utf-8')).hexdigest(), 16)
+        x = (h % 100)
+        y = ((h // 100) % 100)
+        r = 10 + ((h // 10000) % 40)
+        opacity = 0.2 + ((h // 1000000) % 6) * 0.1
+        shapes += f'<circle cx="{x}" cy="{y}" r="{r}" fill="white" opacity="{opacity}" />'
+    
+    svg = f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100%" height="100%">
+        <rect width="100" height="100" fill="{bg}" />
+        {shapes}
+    </svg>'''
+    return Response(content=svg, media_type="image/svg+xml")
+
 
 @router.get("/")
 def landing(request: Request, db: Session = Depends(get_db), user: User | None = Depends(get_current_user)):

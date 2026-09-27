@@ -17,9 +17,14 @@
     padding: 24px;
     display: flex;
     flex-direction: column;
-    transition: transform 0.2s, box-shadow 0.2s;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s, box-shadow 0.2s;
+    opacity: 1;
   }
-  .pairwise-card:hover {
+  .pairwise-card.animating-out {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  .pairwise-card:hover:not(.animating-out) {
     transform: translateY(-4px);
     box-shadow: 0 8px 24px rgba(0,0,0,0.1);
   }
@@ -52,6 +57,33 @@
     padding: 16px;
     font-size: 1.1rem;
     font-weight: bold;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .key-hint {
+    font-size: 0.8rem;
+    background: rgba(255,255,255,0.2);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: normal;
+  }
+  .skip-btn {
+    padding: 12px 24px;
+    font-size: 1rem;
+    color: var(--text-muted);
+    background: transparent;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .skip-btn:hover {
+    background: rgba(0,0,0,0.05);
   }
 </style>
 
@@ -85,10 +117,13 @@
       <h2 class="project-title">{{ p1.title }}</h2>
       <p class="project-desc">{{ p1.summary }}</p>
       
-      <form method="post" action="/judge/{{ event.id }}/pairwise" style="margin: 0;">
+      <form class="pairwise-form" method="post" action="/judge/{{ event.id }}/pairwise" style="margin: 0;">
         <input type="hidden" name="winner_id" value="{{ p1.id }}">
         <input type="hidden" name="loser_id" value="{{ p2.id }}">
-        <button type="submit" class="btn btn-primary vote-btn">This one is better</button>
+        <button type="submit" class="btn btn-primary vote-btn" id="btn-left">
+          <span>This one is better</span>
+          <span class="key-hint">←</span>
+        </button>
       </form>
     </div>
 
@@ -109,17 +144,124 @@
       <h2 class="project-title">{{ p2.title }}</h2>
       <p class="project-desc">{{ p2.summary }}</p>
       
-      <form method="post" action="/judge/{{ event.id }}/pairwise" style="margin: 0;">
+      <form class="pairwise-form" method="post" action="/judge/{{ event.id }}/pairwise" style="margin: 0;">
         <input type="hidden" name="winner_id" value="{{ p2.id }}">
         <input type="hidden" name="loser_id" value="{{ p1.id }}">
-        <button type="submit" class="btn btn-primary vote-btn">This one is better</button>
+        <button type="submit" class="btn btn-primary vote-btn" id="btn-right">
+          <span>This one is better</span>
+          <span class="key-hint">→</span>
+        </button>
       </form>
     </div>
   </div>
 {% endif %}
 
-<div style="margin-top: 32px; text-align: center;">
+<div style="margin-top: 32px; display: flex; justify-content: center; gap: 24px; align-items: center;">
   <a href="/judge/{{ event.id }}/dashboard" style="color: var(--text-muted); text-decoration: none; font-weight: 500;">&larr; Back to Dashboard</a>
+  <button id="btn-skip" class="skip-btn" onclick="nextPair()">
+    Tie / Skip <span class="key-hint" style="background: rgba(0,0,0,0.1); color: var(--text-muted);">↓</span>
+  </button>
 </div>
+
+<script>
+  let isSubmitting = false;
+
+  async function handleVote(formElem) {
+    if (isSubmitting) return;
+    isSubmitting = true;
+    
+    const formData = new FormData(formElem);
+    
+    // Animate out
+    document.querySelectorAll('.pairwise-card').forEach(el => el.classList.add('animating-out'));
+    
+    try {
+      // Submit vote silently
+      await fetch(formElem.action, {
+        method: 'POST',
+        body: formData,
+        redirect: 'manual' // Don't follow redirect, we'll fetch next manually
+      });
+      await nextPair();
+    } catch (err) {
+      console.error(err);
+      isSubmitting = false;
+    }
+  }
+
+  async function nextPair() {
+    if (!isSubmitting) {
+      isSubmitting = true;
+      document.querySelectorAll('.pairwise-card').forEach(el => el.classList.add('animating-out'));
+    }
+    
+    try {
+      // Fetch new pairs
+      const res = await fetch(window.location.href);
+      const htmlStr = await res.text();
+      
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(htmlStr, 'text/html');
+      
+      const newContainer = doc.querySelector('.pairwise-container');
+      const newHeader = doc.querySelector('.dashboard-header');
+      
+      if (newContainer && newHeader) {
+        document.querySelector('.pairwise-container').innerHTML = newContainer.innerHTML;
+        document.querySelector('.dashboard-header').innerHTML = newHeader.innerHTML;
+        
+        // Re-attach listeners to new forms
+        attachFormListeners();
+        
+        // Ensure new elements start invisible then animate in
+        document.querySelectorAll('.pairwise-card').forEach(el => {
+          el.style.opacity = '0';
+          el.style.transform = 'scale(0.95)';
+        });
+        
+        setTimeout(() => {
+          document.querySelectorAll('.pairwise-card').forEach(el => {
+            el.style.transition = 'transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.4s';
+            el.style.opacity = '1';
+            el.style.transform = 'scale(1) translateY(0)';
+            el.classList.remove('animating-out');
+          });
+          isSubmitting = false;
+        }, 50);
+      }
+    } catch (err) {
+      console.error(err);
+      window.location.reload();
+    }
+  }
+
+  function attachFormListeners() {
+    document.querySelectorAll('.pairwise-form').forEach(form => {
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        handleVote(form);
+      });
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    attachFormListeners();
+    
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      if (isSubmitting) return;
+      if (e.key === 'ArrowLeft') {
+        const btn = document.querySelector('#btn-left');
+        if (btn) btn.click();
+      } else if (e.key === 'ArrowRight') {
+        const btn = document.querySelector('#btn-right');
+        if (btn) btn.click();
+      } else if (e.key === 'ArrowDown') {
+        const btn = document.querySelector('#btn-skip');
+        if (btn) btn.click();
+      }
+    });
+  });
+</script>
 
 {% endblock %}

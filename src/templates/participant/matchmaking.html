@@ -77,12 +77,23 @@
   <div>
     <h2 style="margin-top: 0; margin-bottom: 16px;">Solo Hackers</h2>
     {% if not solo_users %}
-      <p style="color: var(--text-muted);">No solo hackers looking for a team right now.</p>
+      <div style="text-align: center; padding: 48px 24px; background: var(--surface); border: 1px dashed var(--border); border-radius: var(--radius);">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="color: var(--text-muted); margin-bottom: 16px;">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+          <circle cx="9" cy="7" r="4"></circle>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+        </svg>
+        <h3 style="margin: 0 0 8px 0; color: var(--text-color);">No solo hackers</h3>
+        <p style="color: var(--text-muted); margin: 0; font-size: 0.95rem;">Everyone seems to be in a team right now. Check back later!</p>
+      </div>
     {% else %}
       {% for member in solo_users %}
         <div class="match-card">
-          <div>
-            <h3>{{ member.user.name }}</h3>
+          <div style="display: flex; gap: 16px; align-items: flex-start;">
+            <img src="/users/{{ member.user.id }}/avatar.svg" style="width: 48px; height: 48px; border-radius: 50%; object-fit: cover;">
+            <div>
+              <h3>{{ member.user.name }}</h3>
             <p>{{ member.user.email }}</p>
             {% if member.skills_offered %}
               <div class="skills">
@@ -107,19 +118,29 @@
   <div>
     <h2 style="margin-top: 0; margin-bottom: 16px;">Open Teams</h2>
     {% if not open_teams %}
-      <p style="color: var(--text-muted);">No open teams looking for members right now.</p>
+      <div style="text-align: center; padding: 48px 24px; background: var(--surface); border: 1px dashed var(--border); border-radius: var(--radius);">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="color: var(--text-muted); margin-bottom: 16px;">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+        </svg>
+        <h3 style="margin: 0 0 8px 0; color: var(--text-color);">No open teams</h3>
+        <p style="color: var(--text-muted); margin: 0; font-size: 0.95rem;">There are no teams currently looking for members. Why not create one?</p>
+      </div>
     {% else %}
       {% for t in open_teams %}
         <div class="match-card">
-          <div>
+          <div style="flex-grow: 1;">
             <h3>{{ t.name }}</h3>
             <p>{{ t.members|length }} / 4 members</p>
+            <div style="display: flex; gap: -8px; margin-top: 8px;">
+              {% for m in t.members %}
+                <img src="/users/{{ m.user.id }}/avatar.svg" style="width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--surface); margin-left: -8px; position: relative; z-index: {{ loop.index }};" title="{{ m.user.name }}">
+              {% endfor %}
+            </div>
           </div>
           {% if not team %}
-            <form method="post" action="/participant/{{ event.id }}/team" style="margin: 0;">
-              <!-- Using the same Join logic, wait, they need the invite token. So we need to show Request to Join or we just give them the link? -->
-              <!-- For now, we will just send an email/notification to the team leader. Let's build a quick request feature, or just show them. -->
-              <span style="color: var(--text-muted); font-size: 0.9rem;">Reach out to join</span>
+            <form method="post" action="/participant/{{ event.id }}/request_join" style="margin: 0;">
+              <input type="hidden" name="target_team_id" value="{{ t.id }}">
+              <button type="submit" class="btn btn-secondary">Request to Join</button>
             </form>
           {% endif %}
         </div>
