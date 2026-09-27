@@ -566,7 +566,7 @@ def invite_judge(
     if not email_norm:
         return RedirectResponse(f"/organizer/{event_id}/judges", status_code=303)
 
-    from src.models import JudgeInvitation, JudgeTrack, EventMember
+    from src.models import JudgeInvitation, JudgeTrack, EventMember, Notification
 
     # Check if the user is already a judge for this event
     target_user = db.query(User).filter(User.email == email_norm).first()
@@ -639,6 +639,17 @@ def invite_judge(
             created_at=utcnow(),
         )
     )
+    
+    if target_user:
+        db.add(
+            Notification(
+                id=new_id("notif"),
+                user_id=target_user.id,
+                message=f"You have been invited to judge '{event.name}'.",
+                action_link="/explore",
+            )
+        )
+
     db.commit()
     return RedirectResponse(f"/organizer/{event_id}/judges", status_code=303)
 
