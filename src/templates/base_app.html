@@ -172,15 +172,29 @@
             {{ event.name }}
             <span style="font-size: 10px;">🔻</span>
           </div>
-          <div id="eventDropdown" style="display: none; position: absolute; top: 100%; left: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); margin-top: 8px; min-width: 220px; z-index: 50; padding: 8px 0;">
-            <div style="padding: 4px 16px 8px; font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--border); margin-bottom: 4px;">Switch Event</div>
-            {% for e in all_events %}
-            <a href="/organizer/{{ e.id }}/dashboard" style="display: block; padding: 8px 16px; color: {% if event and e.id == event.id %}var(--accent){% else %}var(--text-primary){% endif %}; text-decoration: none; font-weight: {% if event and e.id == event.id %}500{% else %}400{% endif %};">
-              {{ e.name }}
-            </a>
-            {% endfor %}
-            <div style="border-top: 1px solid var(--border); margin: 8px 0;"></div>
-            <a href="/organizer/events" style="display: block; padding: 8px 16px; color: var(--accent); text-decoration: none; font-weight: 500;">+ Create New</a>
+          <div id="eventDropdown" style="display: none; position: absolute; top: 100%; left: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0,0,0,0.05); margin-top: 8px; min-width: 250px; max-width: 320px; z-index: 50; overflow: hidden;">
+            <div style="padding: 8px 16px 6px; font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+              <span>Switch Event</span>
+              <span style="font-size: 10px; background: var(--bg); padding: 1px 6px; border-radius: 10px;">{{ all_events|length }}</span>
+            </div>
+            <!-- Scrollable Event Items (shows ~3 to 4 items) -->
+            <div class="event-dropdown-list" style="max-height: 156px; overflow-y: auto; overscroll-behavior: contain;">
+              {% for e in all_events %}
+              <a href="/organizer/{{ e.id }}/dashboard" style="display: flex; align-items: center; justify-content: space-between; padding: 9px 16px; color: {% if event and e.id == event.id %}var(--accent){% else %}var(--text-primary){% endif %}; background: {% if event and e.id == event.id %}rgba(var(--accent-rgb), 0.06){% else %}transparent{% endif %}; text-decoration: none; font-size: 13px; font-weight: {% if event and e.id == event.id %}600{% else %}400{% endif %}; transition: background 0.15s;" onmouseover="if(!this.style.background.includes('0.06')) this.style.background='var(--surface-hover, rgba(0,0,0,0.03))'" onmouseout="if(!this.dataset.active) this.style.background='{% if event and e.id == event.id %}rgba(var(--accent-rgb), 0.06){% else %}transparent{% endif %}'" {% if event and e.id == event.id %}data-active="true"{% endif %} title="{{ e.name }}">
+                <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px;">{{ e.name }}</span>
+                {% if event and e.id == event.id %}
+                  <span style="color: var(--accent); font-size: 14px; font-weight: 700; margin-left: 8px;">✓</span>
+                {% endif %}
+              </a>
+              {% endfor %}
+            </div>
+            <!-- Bottom Action Outside Scrollable Area -->
+            <div style="border-top: 1px solid var(--border);">
+              <a href="/organizer/events" style="display: flex; align-items: center; gap: 8px; padding: 10px 16px; color: var(--accent); text-decoration: none; font-weight: 600; font-size: 13px; background: var(--bg); transition: background 0.15s;" onmouseover="this.style.background='rgba(var(--accent-rgb), 0.08)'" onmouseout="this.style.background='var(--bg)'">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                <span>Create New Hackathon</span>
+              </a>
+            </div>
           </div>
           <script>
             document.addEventListener('click', function(e) {

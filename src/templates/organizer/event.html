@@ -1,57 +1,656 @@
 {% extends "base_app.html" %}
-{% block title %}Event{% endblock %}
+{% block title %}{{ event.name }} - Settings{% endblock %}
 {% block content %}
-<h1>Event Settings</h1>
-<form method="post" enctype="multipart/form-data">
-  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
-    <div>
-      <div class="form-group">
-        <label>Name</label>
-        <input type="text" name="name" class="input" value="{{ event.name }}" required>
+<style>
+  .settings-container {
+    max-width: 1060px;
+    margin: 0 auto;
+    padding-bottom: 60px;
+  }
+  .settings-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  .tab-nav {
+    display: flex;
+    gap: 4px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 4px;
+    margin-bottom: 24px;
+    overflow-x: auto;
+  }
+  .tab-btn {
+    padding: 8px 16px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-weight: 500;
+    font-size: 13px;
+    border-radius: calc(var(--radius) - 2px);
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .tab-btn:hover {
+    color: var(--text-primary);
+    background: var(--bg);
+  }
+  .tab-btn.active {
+    background: var(--accent);
+    color: white;
+  }
+  .settings-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: var(--shadow);
+  }
+  .settings-card-title {
+    margin: 0 0 6px 0;
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+  .settings-card-desc {
+    margin: 0 0 20px 0;
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+  .form-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  @media (max-width: 768px) {
+    .form-grid-2 { grid-template-columns: 1fr; }
+  }
+  .row-item {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px;
+    transition: border-color 0.2s;
+  }
+  .row-item:focus-within {
+    border-color: var(--accent);
+  }
+</style>
+
+<div class="settings-container">
+  <form id="eventSettingsForm" method="post" enctype="multipart/form-data" onsubmit="return handleSettingsSubmit(event)">
+    <!-- Hidden Serialization Fields -->
+    <input type="hidden" name="tracks_json" id="hidden_settings_tracks_json" value="[]">
+    <input type="hidden" name="prizes_json" id="hidden_settings_prizes_json" value="[]">
+    <input type="hidden" name="side_quests_json" id="hidden_settings_side_quests_json" value="[]">
+    <input type="hidden" name="rubrics_json" id="hidden_settings_rubrics_json" value="[]">
+
+    <!-- Top Action Bar -->
+    <div class="settings-header">
+      <div>
+        <div style="font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent); font-weight: 600; margin-bottom: 4px;">Organizer Studio</div>
+        <h1 style="margin: 0; font-size: 26px; font-weight: 700;">Hackathon Settings</h1>
+        <p style="margin: 4px 0 0 0; color: var(--text-muted); font-size: 14px;">Manage identity, timelines, tracks, prizes, bounties, and scoring rubrics.</p>
       </div>
-      
-      <div class="form-group">
-        <label>Event Banner Image</label>
-        <input type="file" name="banner_image" class="input" accept="image/*">
-        {% if event.banner_image_path %}
-          <div style="margin-top: 8px;">
-            <img src="{{ event.banner_image_path }}" style="height: 100px; border-radius: var(--radius); border: 1px solid var(--border); object-fit: cover;">
+      <div style="display: flex; gap: 12px; align-items: center;">
+        <a href="/organizer/{{ event.id }}/dashboard" class="btn btn-secondary" style="padding: 9px 18px;">← Dashboard</a>
+        <button type="submit" class="btn btn-primary" style="padding: 9px 24px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+          Save All Changes
+        </button>
+      </div>
+    </div>
+
+    <!-- Segmented Tab Navigation -->
+    <div class="tab-nav">
+      <button type="button" class="tab-btn active" onclick="switchSettingsTab('tab-identity', this)">
+        <span>◈</span> Identity & Branding
+      </button>
+      <button type="button" class="tab-btn" onclick="switchSettingsTab('tab-schedules', this)">
+        <span>📅</span> Schedules & Timelines
+      </button>
+      <button type="button" class="tab-btn" onclick="switchSettingsTab('tab-prizes-tracks', this)">
+        <span>🏆</span> Prizes & Tracks
+      </button>
+      <button type="button" class="tab-btn" onclick="switchSettingsTab('tab-sidequests', this)">
+        <span>⚡</span> Side Quests
+      </button>
+      <button type="button" class="tab-btn" onclick="switchSettingsTab('tab-rubrics', this)">
+        <span>⚖️</span> Scoring Rubrics
+      </button>
+    </div>
+
+    <!-- TAB 1: IDENTITY & BRANDING -->
+    <div id="tab-identity" class="settings-tab-pane">
+      <div class="settings-card">
+        <h2 class="settings-card-title">Hackathon Identity</h2>
+        <p class="settings-card-desc">The primary title and summaries displayed on the event landing page and project gallery.</p>
+
+        <div style="margin-bottom: 20px;">
+          <label style="font-weight: 600; margin-bottom: 6px; display: block;">Hackathon Name <span style="color: #ef4444;">*</span></label>
+          <input type="text" name="name" id="inp_name" class="input" value="{{ event.name }}" required placeholder="e.g. Autonomous AI Global Hackathon 2026">
+        </div>
+
+        <div style="margin-bottom: 20px;">
+          <label style="font-weight: 600; margin-bottom: 6px; display: block;">Tagline / Short Summary</label>
+          <input type="text" name="tagline" id="inp_tagline" class="input" value="{{ event.tagline or '' }}" placeholder="e.g. Build state-of-the-art agentic workflows and compete for glory.">
+        </div>
+
+        <div style="margin-bottom: 20px;">
+          <label style="font-weight: 600; margin-bottom: 6px; display: block;">Event Banner Image</label>
+          <input type="file" name="banner_image" class="input" accept="image/*">
+          {% if event.banner_image_path %}
+            <div style="margin-top: 12px; display: flex; align-items: center; gap: 16px;">
+              <img src="{{ event.banner_image_path }}" alt="Current Banner" style="height: 90px; width: 180px; border-radius: var(--radius); border: 1px solid var(--border); object-fit: cover;">
+              <span style="font-size: 12px; color: var(--text-muted);">Current active event banner image. Uploading a new file will replace it.</span>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="settings-card">
+        <h2 class="settings-card-title">Descriptions & Guidelines</h2>
+        <p class="settings-card-desc">Detailed guidelines, problem statements, and rules rendered on the event landing page using Markdown.</p>
+
+        <div class="form-grid-2">
+          <div>
+            <label style="font-weight: 600; margin-bottom: 6px; display: block;">Full Description (Markdown)</label>
+            <textarea name="description_markdown" class="input" rows="12" placeholder="Welcome builders! Describe your hackathon theme, tracks, and resources...">{{ event.description_markdown or '' }}</textarea>
           </div>
-        {% endif %}
+          <div>
+            <label style="font-weight: 600; margin-bottom: 6px; display: block;">Rules & FAQs (Markdown)</label>
+            <textarea name="rules_markdown" class="input" rows="12" placeholder="## Rules&#10;- Submissions must be original.&#10;&#10;## FAQs&#10;Q: How many members per team?&#10;A: Up to 4.">{{ event.rules_markdown or '' }}</textarea>
+          </div>
+        </div>
       </div>
+    </div>
+
+    <!-- TAB 2: SCHEDULES & TIMELINES -->
+    <div id="tab-schedules" class="settings-tab-pane" style="display: none;">
       
-      <div class="form-group">
-        <label>Submissions open (UTC)</label>
-        <input type="datetime-local" class="input" name="submissions_open" value="{{ event.submissions_open.strftime('%Y-%m-%dT%H:%M') if event.submissions_open else '' }}">
+      <!-- Event Lifecycle -->
+      <div class="settings-card">
+        <h2 class="settings-card-title">Event Lifecycle</h2>
+        <p class="settings-card-desc">The overarching start and end time for the complete hackathon experience.</p>
+        <div class="form-grid-2">
+          <div>
+            <label style="font-weight: 600; margin-bottom: 6px; display: block;">Event Starts (UTC)</label>
+            <input type="datetime-local" name="event_starts" class="input" value="{{ event.event_starts.strftime('%Y-%m-%dT%H:%M') if event.event_starts else '' }}">
+            <span style="font-size: 12px; color: var(--text-muted);">Official kickoff date and time.</span>
+          </div>
+          <div>
+            <label style="font-weight: 600; margin-bottom: 6px; display: block;">Event Ends (UTC)</label>
+            <input type="datetime-local" name="event_ends" class="input" value="{{ event.event_ends.strftime('%Y-%m-%dT%H:%M') if event.event_ends else '' }}">
+            <span style="font-size: 12px; color: var(--text-muted);">When ceremonies and hackathon conclude.</span>
+          </div>
+        </div>
       </div>
-      <div class="form-group">
-        <label>Submissions close (UTC)</label>
-        <input type="datetime-local" class="input" name="submissions_close" value="{{ event.submissions_close.strftime('%Y-%m-%dT%H:%M') if event.submissions_close else '' }}">
+
+      <!-- Registration Window (Separate from Submissions) -->
+      <div class="settings-card">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px;">
+          <h2 class="settings-card-title">Registration Window</h2>
+          <span class="badge" style="background: rgba(37, 99, 235, 0.1); color: var(--accent);">Separate from submissions</span>
+        </div>
+        <p class="settings-card-desc">Allow participants to RSVP and build teams ahead of time before project hacking begins.</p>
+        <div class="form-grid-2">
+          <div>
+            <label style="font-weight: 600; margin-bottom: 6px; display: block;">Registrations Open (UTC)</label>
+            <input type="datetime-local" name="registrations_open" class="input" value="{{ event.registrations_open.strftime('%Y-%m-%dT%H:%M') if event.registrations_open else '' }}">
+            <span style="font-size: 12px; color: var(--text-muted);">Participants can join and form teams.</span>
+          </div>
+          <div>
+            <label style="font-weight: 600; margin-bottom: 6px; display: block;">Registrations Close (UTC)</label>
+            <input type="datetime-local" name="registrations_close" class="input" value="{{ event.registrations_close.strftime('%Y-%m-%dT%H:%M') if event.registrations_close else '' }}">
+            <span style="font-size: 12px; color: var(--text-muted);">Cutoff for new participant registrations.</span>
+          </div>
+        </div>
       </div>
-      <div class="form-group">
-        <label>Judging open (UTC)</label>
-        <input type="datetime-local" class="input" name="judging_open" value="{{ event.judging_open.strftime('%Y-%m-%dT%H:%M') if event.judging_open else '' }}">
+
+      <!-- Project Submission Window -->
+      <div class="settings-card">
+        <h2 class="settings-card-title">Project Submission Window</h2>
+        <p class="settings-card-desc">The specific window during which teams can create project drafts, update GitHub repos, and submit video demos.</p>
+        <div class="form-grid-2">
+          <div>
+            <label style="font-weight: 600; margin-bottom: 6px; display: block;">Submissions Open (UTC)</label>
+            <input type="datetime-local" name="submissions_open" class="input" value="{{ event.submissions_open.strftime('%Y-%m-%dT%H:%M') if event.submissions_open else '' }}">
+            <span style="font-size: 12px; color: var(--text-muted);">Drafting and project submissions unlocked.</span>
+          </div>
+          <div>
+            <label style="font-weight: 600; margin-bottom: 6px; display: block;">Submissions Close (UTC)</label>
+            <input type="datetime-local" name="submissions_close" class="input" value="{{ event.submissions_close.strftime('%Y-%m-%dT%H:%M') if event.submissions_close else '' }}">
+            <span style="font-size: 12px; color: var(--text-muted);">Hard deadline; late submissions will be blocked.</span>
+          </div>
+        </div>
       </div>
-      <div class="form-group">
-        <label>Judging close (UTC)</label>
-        <input type="datetime-local" class="input" name="judging_close" value="{{ event.judging_close.strftime('%Y-%m-%dT%H:%M') if event.judging_close else '' }}">
+
+      <!-- Judging Period & Results Announcement -->
+      <div class="settings-card">
+        <h2 class="settings-card-title">Judging Window & Results Announcement</h2>
+        <p class="settings-card-desc">When judges evaluate submissions, pairwise comparisons, and when results are revealed.</p>
+        <div class="form-grid-2" style="margin-bottom: 20px;">
+          <div>
+            <label style="font-weight: 600; margin-bottom: 6px; display: block;">Judging Opens (UTC)</label>
+            <input type="datetime-local" name="judging_open" class="input" value="{{ event.judging_open.strftime('%Y-%m-%dT%H:%M') if event.judging_open else '' }}">
+          </div>
+          <div>
+            <label style="font-weight: 600; margin-bottom: 6px; display: block;">Judging Closes (UTC)</label>
+            <input type="datetime-local" name="judging_close" class="input" value="{{ event.judging_close.strftime('%Y-%m-%dT%H:%M') if event.judging_close else '' }}">
+          </div>
+        </div>
+        <div>
+          <label style="font-weight: 600; margin-bottom: 6px; display: block;">Results Announcement Date (UTC, Optional)</label>
+          <input type="datetime-local" name="results_date" class="input" value="{{ event.results_date.strftime('%Y-%m-%dT%H:%M') if event.results_date else '' }}">
+          <span style="font-size: 12px; color: var(--text-muted);">Displayed publicly as the winner reveal date.</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- TAB 3: PRIZES & TRACKS -->
+    <div id="tab-prizes-tracks" class="settings-tab-pane" style="display: none;">
+      
+      <!-- Overall Hackathon Prizes -->
+      <div class="settings-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <div>
+            <h2 class="settings-card-title">Overall Hackathon Prizes</h2>
+            <p class="settings-card-desc" style="margin-bottom: 0;">Grand prizes awarded across the entire competition regardless of track.</p>
+          </div>
+          <button type="button" class="btn btn-secondary" onclick="addSettingsPrizeRow()" style="font-size: 13px; padding: 6px 14px;">+ Add Prize</button>
+        </div>
+
+        <div id="settingsPrizesContainer" style="display: flex; flex-direction: column; gap: 10px; margin-top: 14px;">
+          <!-- Pre-populated via JS -->
+        </div>
+      </div>
+
+      <!-- Tracks Management (Optional Tracks & 1-Click Remove Track Prizes) -->
+      <div class="settings-card">
+        <div style="margin-bottom: 16px;">
+          <h2 class="settings-card-title">Track Configuration</h2>
+          <p class="settings-card-desc">Tracks are completely optional. You can choose to run an Open Innovation hackathon where all projects compete globally without track divisions.</p>
+        </div>
+
+        <!-- Mode Toggle -->
+        <div style="display: flex; gap: 14px; margin-bottom: 20px;">
+          <label style="flex: 1; border: 1px solid var(--border); padding: 14px 16px; border-radius: var(--radius); cursor: pointer; display: flex; align-items: flex-start; gap: 12px; background: var(--bg);">
+            <input type="radio" name="settings_tracks_mode" value="open" onchange="toggleSettingsTracksMode(this.value)" {% if not tracks %}checked{% endif %} style="margin-top: 3px;">
+            <div>
+              <strong style="display: block; font-size: 14px;">Open Innovation (No Tracks)</strong>
+              <span style="font-size: 12px; color: var(--text-muted);">Single competition pool. Projects don't select a track and judges evaluate all projects.</span>
+            </div>
+          </label>
+          <label style="flex: 1; border: 1px solid var(--border); padding: 14px 16px; border-radius: var(--radius); cursor: pointer; display: flex; align-items: flex-start; gap: 12px; background: var(--bg);">
+            <input type="radio" name="settings_tracks_mode" value="custom" onchange="toggleSettingsTracksMode(this.value)" {% if tracks %}checked{% endif %} style="margin-top: 3px;">
+            <div>
+              <strong style="display: block; font-size: 14px;">Categorized Tracks</strong>
+              <span style="font-size: 12px; color: var(--text-muted);">Divide hackathon into tracks with optional track-specific prizes.</span>
+            </div>
+          </label>
+        </div>
+
+        <div id="settingsTracksSectionBody" style="display: {% if tracks %}block{% else %}none{% endif %}; border-top: 1px dashed var(--border); padding-top: 18px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+            <h3 style="margin: 0; font-size: 15px; font-weight: 600;">Active Tracks</h3>
+            <div style="display: flex; gap: 8px;">
+              <button type="button" class="btn btn-secondary" onclick="clearSettingsTrackPrizes()" style="font-size: 12px; padding: 5px 12px; color: var(--text-secondary);" title="Set all track prize amounts to empty in one click">✕ Remove All Track Prizes</button>
+              <button type="button" class="btn btn-secondary" onclick="addSettingsTrackRow()" style="font-size: 12px; padding: 5px 12px;">+ Add Track</button>
+            </div>
+          </div>
+          <div id="settingsTracksContainer" style="display: flex; flex-direction: column; gap: 10px;">
+            <!-- Pre-populated via JS -->
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- TAB 4: SIDE QUESTS -->
+    <div id="tab-sidequests" class="settings-tab-pane" style="display: none;">
+      <div class="settings-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <div>
+            <h2 class="settings-card-title">Side Quests & Mini-Bounties</h2>
+            <p class="settings-card-desc" style="margin-bottom: 0;">Specialized bounties that reward specific achievements. Each side quest can run on its own schedule independent of the main event.</p>
+          </div>
+          <button type="button" class="btn btn-secondary" onclick="addSettingsSideQuestRow()" style="font-size: 13px; padding: 6px 14px;">+ Add Side Quest</button>
+        </div>
+
+        <div id="settingsSideQuestsContainer" style="display: flex; flex-direction: column; gap: 14px; margin-top: 16px;">
+          <!-- Pre-populated via JS -->
+        </div>
       </div>
     </div>
-    
-    <div>
-      <div class="form-group">
-        <label>Event Description (Markdown)</label>
-        <textarea name="description_markdown" class="input" rows="8" placeholder="Welcome to the biggest hackathon of the year...">{{ event.description_markdown or '' }}</textarea>
-      </div>
-      <div class="form-group">
-        <label>Rules & FAQs (Markdown)</label>
-        <textarea name="rules_markdown" class="input" rows="12" placeholder="## Rules...&#10;## FAQs...">{{ event.rules_markdown or '' }}</textarea>
+
+    <!-- TAB 5: SCORING RUBRICS (100% SUM) -->
+    <div id="tab-rubrics" class="settings-tab-pane" style="display: none;">
+      <div class="settings-card">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px;">
+          <div>
+            <h2 class="settings-card-title">Judging Scoring Rubric</h2>
+            <p class="settings-card-desc" style="margin-bottom: 0;">Define the scoring dimensions used by judges. Criteria weights <strong>must sum up to exactly 100%</strong>.</p>
+          </div>
+          {% if not has_scores %}
+          <div style="display: flex; gap: 8px;">
+            <button type="button" class="btn btn-secondary" onclick="autoBalanceSettingsRubrics()" style="font-size: 12px; padding: 5px 12px;">⚖️ Auto-Balance (100%)</button>
+            <button type="button" class="btn btn-secondary" onclick="addSettingsRubricRow()" style="font-size: 12px; padding: 5px 12px;">+ Add Criteria</button>
+          </div>
+          {% endif %}
+        </div>
+
+        {% if has_scores %}
+        <div class="alert alert-warning" style="margin-bottom: 20px; background: rgba(217, 119, 6, 0.1); border: 1px solid rgba(217, 119, 6, 0.3); padding: 14px 18px; border-radius: var(--radius); color: var(--warning);">
+          <strong>⚠️ Judging in Progress:</strong> Scores have already been submitted for this hackathon. Rubric criteria and weights are locked to protect existing scoring integrity.
+        </div>
+        {% else %}
+        <!-- Live Weight Banner -->
+        <div id="settingsRubricStatusBanner" style="padding: 12px 18px; border-radius: var(--radius); margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3);">
+          <div>
+            <span style="font-size: 14px; font-weight: 600;">Total Weight: </span>
+            <span id="settingsRubricTotalDisplay" style="font-size: 16px; font-weight: 700; color: #10b981;">100%</span>
+          </div>
+          <span id="settingsRubricStatusBadge" class="badge" style="background: #10b981; color: white;">✓ Exactly 100%</span>
+        </div>
+        {% endif %}
+
+        <div id="settingsRubricsContainer" style="display: flex; flex-direction: column; gap: 10px;">
+          <!-- Pre-populated via JS -->
+        </div>
       </div>
     </div>
-  </div>
-  
-  <div class="row-actions" style="margin-top: 24px;">
-    <button class="btn btn-primary" type="submit">Save Changes</button>
-  </div>
-</form>
+
+    <!-- Bottom Action Bar -->
+    <div style="margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+      <a href="/organizer/{{ event.id }}/dashboard" class="btn btn-secondary">Cancel</a>
+      <button type="submit" class="btn btn-primary" style="padding: 10px 28px; font-weight: 600; font-size: 14px;">Save All Changes</button>
+    </div>
+  </form>
+</div>
+
+<script>
+  // Initial server data
+  const initialPrizes = {{ event.prizes_list|tojson }};
+  const initialTracks = [
+    {% for t in tracks %}
+      { "id": "{{ t.id }}", "name": {{ t.name|tojson }}, "prize": {{ (t.prize or '')|tojson }} },
+    {% endfor %}
+  ];
+  const initialSideQuests = {{ event.side_quests_list|tojson }};
+  const initialCriteria = [
+    {% for c in criteria %}
+      { "id": "{{ c.id }}", "name": {{ c.name|tojson }}, "weight": {{ c.weight }} },
+    {% endfor %}
+  ];
+  const judgingLocked = {{ 'true' if has_scores else 'false' }};
+
+  function switchSettingsTab(tabId, btn) {
+    document.querySelectorAll('.settings-tab-pane').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+    const target = document.getElementById(tabId);
+    if (target) target.style.display = 'block';
+    if (btn) btn.classList.add('active');
+  }
+
+  function toggleSettingsTracksMode(val) {
+    const body = document.getElementById('settingsTracksSectionBody');
+    if (body) {
+      body.style.display = (val === 'custom') ? 'block' : 'none';
+    }
+  }
+
+  function clearSettingsTrackPrizes() {
+    document.querySelectorAll('#settingsTracksContainer .track-prize').forEach(input => {
+      input.value = '';
+    });
+  }
+
+  // --- Overall Prizes ---
+  function addSettingsPrizeRow(title = '', amount = '', desc = '') {
+    const container = document.getElementById('settingsPrizesContainer');
+    const row = document.createElement('div');
+    row.className = 'prize-row row-item';
+    row.style = 'display: flex; gap: 10px; align-items: center;';
+    row.innerHTML = `
+      <input type="text" class="input prize-title" placeholder="Prize Title (e.g. 1st Place)" style="flex: 2;" value="${title}">
+      <input type="text" class="input prize-amount" placeholder="Amount (e.g. $5,000)" style="flex: 1;" value="${amount}">
+      <input type="text" class="input prize-desc" placeholder="Details" style="flex: 2;" value="${desc}">
+      <button type="button" class="btn btn-ghost" onclick="this.parentElement.remove()" style="color: #ef4444; padding: 4px 8px;">&times;</button>
+    `;
+    container.appendChild(row);
+  }
+
+  // --- Tracks ---
+  function addSettingsTrackRow(name = '', prize = '', id = '') {
+    const container = document.getElementById('settingsTracksContainer');
+    const row = document.createElement('div');
+    row.className = 'track-row row-item';
+    row.style = 'display: flex; gap: 10px; align-items: center;';
+    row.innerHTML = `
+      <input type="hidden" class="track-id" value="${id}">
+      <input type="text" class="input track-name" placeholder="Track Name" style="flex: 2;" value="${name}">
+      <input type="text" class="input track-prize" placeholder="Track Prize (e.g. $1,000)" style="flex: 1;" value="${prize}">
+      <button type="button" class="btn btn-ghost" onclick="this.parentElement.remove()" style="color: #ef4444; padding: 4px 8px;">&times;</button>
+    `;
+    container.appendChild(row);
+  }
+
+  // --- Side Quests ---
+  function addSettingsSideQuestRow(title = '', prize = '', desc = '', start = '', end = '') {
+    const container = document.getElementById('settingsSideQuestsContainer');
+    const row = document.createElement('div');
+    row.className = 'sidequest-row row-item';
+    row.style = 'display: flex; flex-direction: column; gap: 10px;';
+    row.innerHTML = `
+      <div style="display: flex; gap: 10px; align-items: center;">
+        <input type="text" class="input quest-title" placeholder="Quest Title (e.g. Best UI/UX Polish)" style="flex: 2;" value="${title}">
+        <input type="text" class="input quest-prize" placeholder="Prize (e.g. $500)" style="flex: 1;" value="${prize}">
+        <button type="button" class="btn btn-ghost" onclick="this.closest('.sidequest-row').remove()" style="color: #ef4444; padding: 4px 8px;">&times;</button>
+      </div>
+      <input type="text" class="input quest-desc" placeholder="Criteria / Description" value="${desc}">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 12px;">
+        <div>
+          <label style="color: var(--text-muted); display: block; margin-bottom: 4px;">Quest Starts (UTC, Optional)</label>
+          <input type="datetime-local" class="input quest-start" style="padding: 6px 10px; font-size: 12px;" value="${start}">
+        </div>
+        <div>
+          <label style="color: var(--text-muted); display: block; margin-bottom: 4px;">Quest Ends (UTC, Optional)</label>
+          <input type="datetime-local" class="input quest-end" style="padding: 6px 10px; font-size: 12px;" value="${end}">
+        </div>
+      </div>
+    `;
+    container.appendChild(row);
+  }
+
+  // --- Rubrics ---
+  function addSettingsRubricRow(name = 'New Criteria', weight = 25, id = '') {
+    const container = document.getElementById('settingsRubricsContainer');
+    const row = document.createElement('div');
+    row.className = 'rubric-row row-item';
+    row.style = 'display: flex; gap: 10px; align-items: center;';
+    row.innerHTML = `
+      <input type="hidden" class="rubric-id" value="${id}">
+      <input type="text" class="input rubric-name" placeholder="Criteria Name" style="flex: 3;" value="${name}" ${judgingLocked ? 'disabled' : ''} oninput="updateSettingsRubricsTotal()">
+      <div style="display: flex; align-items: center; gap: 4px; flex: 1;">
+        <input type="number" class="input rubric-weight" min="1" max="100" value="${weight}" style="width: 100%; text-align: right;" ${judgingLocked ? 'disabled' : ''} oninput="updateSettingsRubricsTotal()">
+        <span style="font-weight: 600; color: var(--text-muted);">%</span>
+      </div>
+      ${judgingLocked ? '' : '<button type="button" class="btn btn-ghost" onclick="this.parentElement.remove(); updateSettingsRubricsTotal();" style="color: #ef4444; padding: 4px 8px;">&times;</button>'}
+    `;
+    container.appendChild(row);
+    updateSettingsRubricsTotal();
+  }
+
+  function calculateSettingsRubricSum() {
+    let sum = 0;
+    document.querySelectorAll('#settingsRubricsContainer .rubric-weight').forEach(inp => {
+      const v = parseInt(inp.value, 10);
+      if (!isNaN(v)) sum += v;
+    });
+    return sum;
+  }
+
+  function updateSettingsRubricsTotal() {
+    if (judgingLocked) return;
+    const sum = calculateSettingsRubricSum();
+    const display = document.getElementById('settingsRubricTotalDisplay');
+    const badge = document.getElementById('settingsRubricStatusBadge');
+    const banner = document.getElementById('settingsRubricStatusBanner');
+
+    if (display) display.innerText = sum + '%';
+    if (sum === 100) {
+      if (display) display.style.color = '#10b981';
+      if (badge) {
+        badge.style.background = '#10b981';
+        badge.innerText = '✓ Exactly 100%';
+      }
+      if (banner) {
+        banner.style.background = 'rgba(16, 185, 129, 0.1)';
+        banner.style.borderColor = 'rgba(16, 185, 129, 0.3)';
+      }
+    } else {
+      if (display) display.style.color = '#ef4444';
+      if (badge) {
+        badge.style.background = '#ef4444';
+        badge.innerText = (sum > 100 ? 'Over by ' + (sum - 100) + '%' : 'Under by ' + (100 - sum) + '%');
+      }
+      if (banner) {
+        banner.style.background = 'rgba(239, 68, 68, 0.1)';
+        banner.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+      }
+    }
+  }
+
+  function autoBalanceSettingsRubrics() {
+    if (judgingLocked) return;
+    const rows = document.querySelectorAll('#settingsRubricsContainer .rubric-weight');
+    if (rows.length === 0) return;
+    const count = rows.length;
+    const base = Math.floor(100 / count);
+    const remainder = 100 - (base * count);
+
+    rows.forEach((inp, idx) => {
+      inp.value = base + (idx === 0 ? remainder : 0);
+    });
+    updateSettingsRubricsTotal();
+  }
+
+  // --- Serialization & Validation ---
+  function serializeSettingsData() {
+    // Prizes
+    const prizes = [];
+    document.querySelectorAll('#settingsPrizesContainer .prize-row').forEach(r => {
+      const title = r.querySelector('.prize-title').value.trim();
+      const amount = r.querySelector('.prize-amount').value.trim();
+      const desc = r.querySelector('.prize-desc').value.trim();
+      if (title || amount) prizes.push({ title, amount, desc });
+    });
+    document.getElementById('hidden_settings_prizes_json').value = JSON.stringify(prizes);
+
+    // Tracks
+    const tracks = [];
+    const mode = document.querySelector('input[name="settings_tracks_mode"]:checked')?.value || 'open';
+    if (mode === 'custom') {
+      document.querySelectorAll('#settingsTracksContainer .track-row').forEach(r => {
+        const id = r.querySelector('.track-id')?.value || '';
+        const name = r.querySelector('.track-name').value.trim();
+        const prize = r.querySelector('.track-prize').value.trim();
+        if (name) tracks.push({ id, name, prize });
+      });
+    }
+    document.getElementById('hidden_settings_tracks_json').value = JSON.stringify(tracks);
+
+    // Side Quests
+    const quests = [];
+    document.querySelectorAll('#settingsSideQuestsContainer .sidequest-row').forEach(r => {
+      const title = r.querySelector('.quest-title').value.trim();
+      const prize = r.querySelector('.quest-prize').value.trim();
+      const desc = r.querySelector('.quest-desc').value.trim();
+      const start = r.querySelector('.quest-start')?.value || '';
+      const end = r.querySelector('.quest-end')?.value || '';
+      if (title || prize) quests.push({ title, prize, desc, starts_at: start, ends_at: end });
+    });
+    document.getElementById('hidden_settings_side_quests_json').value = JSON.stringify(quests);
+
+    // Rubrics
+    const rubrics = [];
+    document.querySelectorAll('#settingsRubricsContainer .rubric-row').forEach(r => {
+      const id = r.querySelector('.rubric-id')?.value || '';
+      const name = r.querySelector('.rubric-name').value.trim();
+      const weight = parseInt(r.querySelector('.rubric-weight').value.trim(), 10) || 0;
+      if (name) rubrics.push({ id, name, weight });
+    });
+    document.getElementById('hidden_settings_rubrics_json').value = JSON.stringify(rubrics);
+  }
+
+  function handleSettingsSubmit(e) {
+    const name = document.getElementById('inp_name').value.trim();
+    if (!name) {
+      alert('Event name is required.');
+      switchSettingsTab('tab-identity', document.querySelector('.tab-btn'));
+      e.preventDefault();
+      return false;
+    }
+
+    if (!judgingLocked) {
+      const total = calculateSettingsRubricSum();
+      if (total !== 100) {
+        alert('Rubric weights currently sum to ' + total + '%. They must equal exactly 100%. Please adjust or click "Auto-Balance (100%)" under the Scoring Rubrics tab.');
+        switchSettingsTab('tab-rubrics', document.querySelectorAll('.tab-btn')[4]);
+        e.preventDefault();
+        return false;
+      }
+    }
+
+    serializeSettingsData();
+    return true;
+  }
+
+  // --- Populate Initial Data on Load ---
+  document.addEventListener('DOMContentLoaded', function() {
+    // Populate Prizes
+    if (initialPrizes.length > 0) {
+      initialPrizes.forEach(p => addSettingsPrizeRow(p.title, p.amount, p.desc || p.details || ''));
+    } else {
+      addSettingsPrizeRow('1st Place - Grand Prize', '$5,000', 'Cash + Cloud Credits');
+    }
+
+    // Populate Tracks
+    if (initialTracks.length > 0) {
+      initialTracks.forEach(t => addSettingsTrackRow(t.name, t.prize || '', t.id));
+    } else {
+      addSettingsTrackRow('AI & Autonomous Agents', '$1,500');
+    }
+
+    // Populate Side Quests (1 default if empty)
+    if (initialSideQuests.length > 0) {
+      initialSideQuests.forEach(q => addSettingsSideQuestRow(q.title, q.prize || '', q.desc || q.criteria || '', q.starts_at || '', q.ends_at || ''));
+    } else {
+      addSettingsSideQuestRow('Best UI/UX Polish', '$500', 'Most delightful micro-interactions and aesthetic layout');
+    }
+
+    // Populate Rubrics
+    if (initialCriteria.length > 0) {
+      initialCriteria.forEach(c => addSettingsRubricRow(c.name, c.weight, c.id));
+    } else {
+      addSettingsRubricRow('Innovation & Originality', 25);
+      addSettingsRubricRow('Technical Execution', 25);
+      addSettingsRubricRow('Real-World Impact', 25);
+      addSettingsRubricRow('UI/UX & Polish', 25);
+    }
+
+    updateSettingsRubricsTotal();
+  });
+</script>
 {% endblock %}

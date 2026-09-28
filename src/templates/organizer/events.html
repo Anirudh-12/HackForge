@@ -41,15 +41,17 @@
   </div>
 
   <!-- Wizard Step Progress Bar -->
-  <div style="padding: 16px 28px; background: var(--surface); border-bottom: 1px solid var(--border);">
-    <div style="display: flex; justify-content: space-between; position: relative;">
+  <div style="padding: 14px 24px; background: var(--surface); border-bottom: 1px solid var(--border); overflow-x: auto;">
+    <div style="display: flex; justify-content: space-between; position: relative; min-width: 680px; gap: 4px;">
       <div id="step-ind-1" class="wizard-step-node active" onclick="goToSlide(1)"><span class="step-num">1</span><span class="step-label">Basics</span></div>
       <div id="step-ind-2" class="wizard-step-node" onclick="goToSlide(2)"><span class="step-num">2</span><span class="step-label">Dates</span></div>
       <div id="step-ind-3" class="wizard-step-node" onclick="goToSlide(3)"><span class="step-num">3</span><span class="step-label">Registration</span></div>
-      <div id="step-ind-4" class="wizard-step-node" onclick="goToSlide(4)"><span class="step-num">4</span><span class="step-label">Judging</span></div>
-      <div id="step-ind-5" class="wizard-step-node" onclick="goToSlide(5)"><span class="step-num">5</span><span class="step-label">Tracks & Prizes</span></div>
-      <div id="step-ind-6" class="wizard-step-node" onclick="goToSlide(6)"><span class="step-num">6</span><span class="step-label">Side Quests</span></div>
-      <div id="step-ind-7" class="wizard-step-node" onclick="goToSlide(7)"><span class="step-num">7</span><span class="step-label">Review</span></div>
+      <div id="step-ind-4" class="wizard-step-node" onclick="goToSlide(4)"><span class="step-num">4</span><span class="step-label">Submissions</span></div>
+      <div id="step-ind-5" class="wizard-step-node" onclick="goToSlide(5)"><span class="step-num">5</span><span class="step-label">Judging</span></div>
+      <div id="step-ind-6" class="wizard-step-node" onclick="goToSlide(6)"><span class="step-num">6</span><span class="step-label">Tracks & Prizes</span></div>
+      <div id="step-ind-7" class="wizard-step-node" onclick="goToSlide(7)"><span class="step-num">7</span><span class="step-label">Side Quests</span></div>
+      <div id="step-ind-8" class="wizard-step-node" onclick="goToSlide(8)"><span class="step-num">8</span><span class="step-label">Rubrics</span></div>
+      <div id="step-ind-9" class="wizard-step-node" onclick="goToSlide(9)"><span class="step-num">9</span><span class="step-label">Review</span></div>
     </div>
   </div>
 
@@ -58,9 +60,10 @@
     <input type="hidden" name="tracks_json" id="hidden_tracks_json" value="[]">
     <input type="hidden" name="prizes_json" id="hidden_prizes_json" value="[]">
     <input type="hidden" name="side_quests_json" id="hidden_side_quests_json" value="[]">
+    <input type="hidden" name="rubrics_json" id="hidden_rubrics_json" value="[]">
 
     <!-- Scrollable Modal Body -->
-    <div style="padding: 24px 28px; max-height: 58vh; overflow-y: auto;">
+    <div style="padding: 24px 28px; max-height: 60vh; overflow-y: auto;">
       
       <!-- SLIDE 1: BASICS -->
       <div id="wizard-slide-1" class="wizard-slide">
@@ -102,28 +105,50 @@
         </div>
       </div>
 
-      <!-- SLIDE 3: REGISTRATION & SUBMISSION WINDOW -->
+      <!-- SLIDE 3: REGISTRATION WINDOW (SEPARATE SLIDE) -->
       <div id="wizard-slide-3" class="wizard-slide" style="display: none;">
-        <h3 style="margin: 0 0 8px 0; font-size: 18px;">Step 3: Registration & Submission Window</h3>
-        <p style="margin: 0 0 20px 0; color: var(--text-muted); font-size: 14px;">Control the exact window during which participants can register and submit their project repositories and demos.</p>
+        <h3 style="margin: 0 0 8px 0; font-size: 18px;">Step 3: Registration Window</h3>
+        <p style="margin: 0 0 20px 0; color: var(--text-muted); font-size: 14px;">Open registrations in advance so participants can RSVP, form teams, and find teammates before the event starts.</p>
         
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 18px;">
           <div>
-            <label style="font-weight: 600; margin-bottom: 6px; display: block;">Registrations & Submissions Open (UTC)</label>
-            <input type="datetime-local" name="submissions_open" id="wizard_submissions_open" class="input">
-            <span style="font-size: 12px; color: var(--text-muted);">Builders can begin joining and drafting projects.</span>
+            <label style="font-weight: 600; margin-bottom: 6px; display: block;">Registrations Open (UTC)</label>
+            <input type="datetime-local" name="registrations_open" id="wizard_registrations_open" class="input">
+            <span style="font-size: 12px; color: var(--text-muted);">When hackers can sign up and start matchmaking.</span>
           </div>
           <div>
-            <label style="font-weight: 600; margin-bottom: 6px; display: block;">Registrations & Submissions Close (UTC)</label>
+            <label style="font-weight: 600; margin-bottom: 6px; display: block;">Registrations Close (UTC)</label>
+            <input type="datetime-local" name="registrations_close" id="wizard_registrations_close" class="input">
+            <span style="font-size: 12px; color: var(--text-muted);">Deadline for new participant sign-ups.</span>
+          </div>
+        </div>
+        <div style="padding: 12px 16px; background: rgba(37, 99, 235, 0.05); border: 1px solid rgba(37, 99, 235, 0.15); border-radius: var(--radius); font-size: 13px; color: var(--text-secondary);">
+          💡 <strong>Pro Tip:</strong> Opening registrations 1–3 weeks before hacking starts gives participants ample time to organize into balanced teams.
+        </div>
+      </div>
+
+      <!-- SLIDE 4: SUBMISSION WINDOW -->
+      <div id="wizard-slide-4" class="wizard-slide" style="display: none;">
+        <h3 style="margin: 0 0 8px 0; font-size: 18px;">Step 4: Project Submission Window</h3>
+        <p style="margin: 0 0 20px 0; color: var(--text-muted); font-size: 14px;">Control the period during which teams can create project drafts and submit repos and demos.</p>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 18px;">
+          <div>
+            <label style="font-weight: 600; margin-bottom: 6px; display: block;">Submissions Open (UTC)</label>
+            <input type="datetime-local" name="submissions_open" id="wizard_submissions_open" class="input">
+            <span style="font-size: 12px; color: var(--text-muted);">When teams can start submitting and editing projects.</span>
+          </div>
+          <div>
+            <label style="font-weight: 600; margin-bottom: 6px; display: block;">Submissions Close (UTC)</label>
             <input type="datetime-local" name="submissions_close" id="wizard_submissions_close" class="input">
             <span style="font-size: 12px; color: var(--text-muted);">Hard deadline for all project submissions.</span>
           </div>
         </div>
       </div>
 
-      <!-- SLIDE 4: JUDGING & RESULTS DATES -->
-      <div id="wizard-slide-4" class="wizard-slide" style="display: none;">
-        <h3 style="margin: 0 0 8px 0; font-size: 18px;">Step 4: Judging Period & Results Announcement</h3>
+      <!-- SLIDE 5: JUDGING & RESULTS DATES -->
+      <div id="wizard-slide-5" class="wizard-slide" style="display: none;">
+        <h3 style="margin: 0 0 8px 0; font-size: 18px;">Step 5: Judging Period & Results Announcement</h3>
         <p style="margin: 0 0 20px 0; color: var(--text-muted); font-size: 14px;">Set the evaluation window for judges and optional results reveal date.</p>
         
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 18px;">
@@ -146,10 +171,10 @@
         </div>
       </div>
 
-      <!-- SLIDE 5: TRACKS & PRIZES -->
-      <div id="wizard-slide-5" class="wizard-slide" style="display: none;">
-        <h3 style="margin: 0 0 8px 0; font-size: 18px;">Step 5: Tracks & Prizes</h3>
-        <p style="margin: 0 0 20px 0; color: var(--text-muted); font-size: 14px;">Add as many prizes as you want, either for the overall hackathon or per specific track.</p>
+      <!-- SLIDE 6: TRACKS & PRIZES (OPTIONAL TRACKS & REMOVE TRACK PRIZES) -->
+      <div id="wizard-slide-6" class="wizard-slide" style="display: none;">
+        <h3 style="margin: 0 0 8px 0; font-size: 18px;">Step 6: Tracks & Prizes</h3>
+        <p style="margin: 0 0 20px 0; color: var(--text-muted); font-size: 14px;">Configure overall hackathon prizes and optional track divisions.</p>
         
         <!-- Overall Prizes Section -->
         <div style="background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; margin-bottom: 24px;">
@@ -158,7 +183,6 @@
             <button type="button" class="btn btn-secondary" onclick="addPrizeRow()" style="font-size: 12px; padding: 4px 10px;">+ Add Prize</button>
           </div>
           <div id="prizesContainer" style="display: flex; flex-direction: column; gap: 10px;">
-            <!-- Seed 1 default prize row -->
             <div class="prize-row" style="display: flex; gap: 10px; align-items: center;">
               <input type="text" class="input prize-title" placeholder="Prize Title (e.g. 1st Place / Grand Prize)" style="flex: 2;" value="1st Place - Grand Prize">
               <input type="text" class="input prize-amount" placeholder="Amount (e.g. $10,000)" style="flex: 1;" value="$5,000">
@@ -168,58 +192,147 @@
           </div>
         </div>
 
-        <!-- Tracks Section -->
+        <!-- Tracks Structure Choice (Tracks are Optional) -->
         <div style="background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-            <h4 style="margin: 0; font-size: 16px; font-weight: 600;">Hackathon Tracks & Track Prizes</h4>
-            <button type="button" class="btn btn-secondary" onclick="addTrackRow()" style="font-size: 12px; padding: 4px 10px;">+ Add Track</button>
+          <div style="margin-bottom: 14px;">
+            <h4 style="margin: 0 0 4px 0; font-size: 16px; font-weight: 600;">Track Structure</h4>
+            <p style="margin: 0; color: var(--text-muted); font-size: 13px;">Tracks are completely optional. You can run an Open Innovation hackathon where all projects compete globally.</p>
           </div>
-          <div id="tracksContainer" style="display: flex; flex-direction: column; gap: 10px;">
-            <!-- Seed default track rows -->
-            <div class="track-row" style="display: flex; gap: 10px; align-items: center;">
-              <input type="text" class="input track-name" placeholder="Track Name (e.g. Artificial Intelligence)" style="flex: 2;" value="AI & Autonomous Agents">
-              <input type="text" class="input track-prize" placeholder="Track Prize (e.g. $2,000)" style="flex: 1;" value="$2,000">
-              <button type="button" class="btn btn-ghost" onclick="this.parentElement.remove()" style="color: #ef4444; padding: 4px 8px;">&times;</button>
+
+          <div style="display: flex; gap: 12px; margin-bottom: 16px;">
+            <label style="flex: 1; border: 1px solid var(--border); padding: 12px 14px; border-radius: var(--radius); cursor: pointer; display: flex; align-items: flex-start; gap: 10px; background: var(--surface);">
+              <input type="radio" name="wizard_tracks_mode" value="open" onchange="toggleWizardTracksMode(this.value)" checked style="margin-top: 3px;">
+              <div>
+                <strong style="display: block; font-size: 14px;">Open Innovation (No Tracks)</strong>
+                <span style="font-size: 12px; color: var(--text-muted);">All submissions compete together under the general hackathon prizes.</span>
+              </div>
+            </label>
+            <label style="flex: 1; border: 1px solid var(--border); padding: 12px 14px; border-radius: var(--radius); cursor: pointer; display: flex; align-items: flex-start; gap: 10px; background: var(--surface);">
+              <input type="radio" name="wizard_tracks_mode" value="custom" onchange="toggleWizardTracksMode(this.value)" style="margin-top: 3px;">
+              <div>
+                <strong style="display: block; font-size: 14px;">Multiple Categorized Tracks</strong>
+                <span style="font-size: 12px; color: var(--text-muted);">Divide hackathon into tracks (e.g. AI, Dev Tools, Web3) with optional track prizes.</span>
+              </div>
+            </label>
+          </div>
+
+          <!-- Tracks Container (hidden if open innovation) -->
+          <div id="tracksSectionBody" style="display: none; border-top: 1px dashed var(--border); padding-top: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+              <h5 style="margin: 0; font-size: 14px; font-weight: 600;">Defined Tracks</h5>
+              <div style="display: flex; gap: 8px;">
+                <button type="button" class="btn btn-secondary" onclick="clearAllTrackPrizes()" style="font-size: 12px; padding: 4px 10px; color: var(--text-secondary);" title="Clear prize fields for all tracks to award overall prizes only">✕ Remove Track Prizes</button>
+                <button type="button" class="btn btn-secondary" onclick="addTrackRow()" style="font-size: 12px; padding: 4px 10px;">+ Add Track</button>
+              </div>
             </div>
-            <div class="track-row" style="display: flex; gap: 10px; align-items: center;">
-              <input type="text" class="input track-name" placeholder="Track Name" style="flex: 2;" value="Developer Tooling & Infrastructure">
-              <input type="text" class="input track-prize" placeholder="Track Prize" style="flex: 1;" value="$1,500">
-              <button type="button" class="btn btn-ghost" onclick="this.parentElement.remove()" style="color: #ef4444; padding: 4px 8px;">&times;</button>
+            <div id="tracksContainer" style="display: flex; flex-direction: column; gap: 10px;">
+              <div class="track-row" style="display: flex; gap: 10px; align-items: center;">
+                <input type="text" class="input track-name" placeholder="Track Name (e.g. Artificial Intelligence)" style="flex: 2;" value="AI & Autonomous Agents">
+                <input type="text" class="input track-prize" placeholder="Track Prize (Optional, e.g. $1,000)" style="flex: 1;" value="$1,500">
+                <button type="button" class="btn btn-ghost" onclick="this.parentElement.remove()" style="color: #ef4444; padding: 4px 8px;">&times;</button>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- SLIDE 6: SIDE QUESTS -->
-      <div id="wizard-slide-6" class="wizard-slide" style="display: none;">
-        <h3 style="margin: 0 0 8px 0; font-size: 18px;">Step 6: Side Quests & Bounties</h3>
-        <p style="margin: 0 0 20px 0; color: var(--text-muted); font-size: 14px;">Side quests reward specialized achievements (e.g., best UI design, funniest meme hack, best open source documentation).</p>
+      <!-- SLIDE 7: SIDE QUESTS (1 DEFAULT & SEPARATE TIMELINE) -->
+      <div id="wizard-slide-7" class="wizard-slide" style="display: none;">
+        <h3 style="margin: 0 0 8px 0; font-size: 18px;">Step 7: Side Quests & Bounties</h3>
+        <p style="margin: 0 0 20px 0; color: var(--text-muted); font-size: 14px;">Side quests reward specialized achievements. Each side quest can run on its own schedule independent of the main event.</p>
         
         <div style="background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
             <h4 style="margin: 0; font-size: 16px; font-weight: 600;">Configured Side Quests</h4>
             <button type="button" class="btn btn-secondary" onclick="addSideQuestRow()" style="font-size: 12px; padding: 4px 10px;">+ Add Side Quest</button>
           </div>
-          <div id="sideQuestsContainer" style="display: flex; flex-direction: column; gap: 10px;">
-            <div class="sidequest-row" style="display: flex; gap: 10px; align-items: center;">
-              <input type="text" class="input quest-title" placeholder="Quest Title (e.g. Best UI/UX Polish)" style="flex: 2;" value="Best UI/UX Polish">
-              <input type="text" class="input quest-prize" placeholder="Prize (e.g. $500)" style="flex: 1;" value="$500">
-              <input type="text" class="input quest-desc" placeholder="Criteria / Description" style="flex: 2;" value="Most delightful micro-interactions and aesthetic layout">
-              <button type="button" class="btn btn-ghost" onclick="this.parentElement.remove()" style="color: #ef4444; padding: 4px 8px;">&times;</button>
-            </div>
-            <div class="sidequest-row" style="display: flex; gap: 10px; align-items: center;">
-              <input type="text" class="input quest-title" placeholder="Quest Title" style="flex: 2;" value="Wildest Innovation">
-              <input type="text" class="input quest-prize" placeholder="Prize" style="flex: 1;" value="$500">
-              <input type="text" class="input quest-desc" placeholder="Criteria / Description" style="flex: 2;" value="Most unconventional technical idea or concept">
-              <button type="button" class="btn btn-ghost" onclick="this.parentElement.remove()" style="color: #ef4444; padding: 4px 8px;">&times;</button>
+          <div id="sideQuestsContainer" style="display: flex; flex-direction: column; gap: 14px;">
+            <!-- Only 1 default side quest row -->
+            <div class="sidequest-row" style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; display: flex; flex-direction: column; gap: 10px;">
+              <div style="display: flex; gap: 10px; align-items: center;">
+                <input type="text" class="input quest-title" placeholder="Quest Title (e.g. Best UI/UX Polish)" style="flex: 2;" value="Best UI/UX Polish">
+                <input type="text" class="input quest-prize" placeholder="Prize (e.g. $500)" style="flex: 1;" value="$500">
+                <button type="button" class="btn btn-ghost" onclick="this.closest('.sidequest-row').remove()" style="color: #ef4444; padding: 4px 8px;">&times;</button>
+              </div>
+              <input type="text" class="input quest-desc" placeholder="Criteria / Description" value="Most delightful micro-interactions and aesthetic layout">
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 12px;">
+                <div>
+                  <label style="color: var(--text-muted); display: block; margin-bottom: 4px;">Quest Starts (UTC, Optional)</label>
+                  <input type="datetime-local" class="input quest-start" style="padding: 6px 10px; font-size: 12px;">
+                </div>
+                <div>
+                  <label style="color: var(--text-muted); display: block; margin-bottom: 4px;">Quest Ends (UTC, Optional)</label>
+                  <input type="datetime-local" class="input quest-end" style="padding: 6px 10px; font-size: 12px;">
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- SLIDE 7: REVIEW & LAUNCH -->
-      <div id="wizard-slide-7" class="wizard-slide" style="display: none;">
-        <h3 style="margin: 0 0 8px 0; font-size: 18px;">Step 7: Review & Launch</h3>
+      <!-- SLIDE 8: RUBRICS (MUST SUM UP TO 100%) -->
+      <div id="wizard-slide-8" class="wizard-slide" style="display: none;">
+        <h3 style="margin: 0 0 8px 0; font-size: 18px;">Step 8: Scoring Rubric</h3>
+        <p style="margin: 0 0 16px 0; color: var(--text-muted); font-size: 14px;">Define the criteria judges will score. The criteria weights <strong>must sum up to exactly 100%</strong>.</p>
+        
+        <!-- Live Weight Banner -->
+        <div id="rubricStatusBanner" style="padding: 12px 18px; border-radius: var(--radius); margin-bottom: 18px; display: flex; justify-content: space-between; align-items: center; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3);">
+          <div>
+            <span style="font-size: 14px; font-weight: 600;">Total Criteria Weight: </span>
+            <span id="rubricTotalDisplay" style="font-size: 16px; font-weight: 700; color: #10b981;">100%</span>
+          </div>
+          <span id="rubricStatusBadge" class="badge" style="background: #10b981; color: white;">✓ Exactly 100%</span>
+        </div>
+
+        <div style="background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+            <h4 style="margin: 0; font-size: 15px; font-weight: 600;">Evaluation Criteria</h4>
+            <div style="display: flex; gap: 8px;">
+              <button type="button" class="btn btn-secondary" onclick="autoBalanceRubrics()" style="font-size: 12px; padding: 4px 10px;">⚖️ Auto-Balance (100%)</button>
+              <button type="button" class="btn btn-secondary" onclick="addRubricRow()" style="font-size: 12px; padding: 4px 10px;">+ Add Criteria</button>
+            </div>
+          </div>
+          
+          <div id="rubricsContainer" style="display: flex; flex-direction: column; gap: 10px;">
+            <div class="rubric-row" style="display: flex; gap: 10px; align-items: center;">
+              <input type="text" class="input rubric-name" placeholder="Criteria Name (e.g. Technical Execution)" style="flex: 3;" value="Innovation & Originality" oninput="updateRubricsTotal()">
+              <div style="display: flex; align-items: center; gap: 4px; flex: 1;">
+                <input type="number" class="input rubric-weight" min="1" max="100" value="25" style="width: 100%; text-align: right;" oninput="updateRubricsTotal()">
+                <span style="font-weight: 600; color: var(--text-muted);">%</span>
+              </div>
+              <button type="button" class="btn btn-ghost" onclick="this.parentElement.remove(); updateRubricsTotal();" style="color: #ef4444; padding: 4px 8px;">&times;</button>
+            </div>
+            <div class="rubric-row" style="display: flex; gap: 10px; align-items: center;">
+              <input type="text" class="input rubric-name" placeholder="Criteria Name" style="flex: 3;" value="Technical Execution" oninput="updateRubricsTotal()">
+              <div style="display: flex; align-items: center; gap: 4px; flex: 1;">
+                <input type="number" class="input rubric-weight" min="1" max="100" value="25" style="width: 100%; text-align: right;" oninput="updateRubricsTotal()">
+                <span style="font-weight: 600; color: var(--text-muted);">%</span>
+              </div>
+              <button type="button" class="btn btn-ghost" onclick="this.parentElement.remove(); updateRubricsTotal();" style="color: #ef4444; padding: 4px 8px;">&times;</button>
+            </div>
+            <div class="rubric-row" style="display: flex; gap: 10px; align-items: center;">
+              <input type="text" class="input rubric-name" placeholder="Criteria Name" style="flex: 3;" value="Real-World Impact" oninput="updateRubricsTotal()">
+              <div style="display: flex; align-items: center; gap: 4px; flex: 1;">
+                <input type="number" class="input rubric-weight" min="1" max="100" value="25" style="width: 100%; text-align: right;" oninput="updateRubricsTotal()">
+                <span style="font-weight: 600; color: var(--text-muted);">%</span>
+              </div>
+              <button type="button" class="btn btn-ghost" onclick="this.parentElement.remove(); updateRubricsTotal();" style="color: #ef4444; padding: 4px 8px;">&times;</button>
+            </div>
+            <div class="rubric-row" style="display: flex; gap: 10px; align-items: center;">
+              <input type="text" class="input rubric-name" placeholder="Criteria Name" style="flex: 3;" value="UI/UX & Polish" oninput="updateRubricsTotal()">
+              <div style="display: flex; align-items: center; gap: 4px; flex: 1;">
+                <input type="number" class="input rubric-weight" min="1" max="100" value="25" style="width: 100%; text-align: right;" oninput="updateRubricsTotal()">
+                <span style="font-weight: 600; color: var(--text-muted);">%</span>
+              </div>
+              <button type="button" class="btn btn-ghost" onclick="this.parentElement.remove(); updateRubricsTotal();" style="color: #ef4444; padding: 4px 8px;">&times;</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SLIDE 9: REVIEW & LAUNCH -->
+      <div id="wizard-slide-9" class="wizard-slide" style="display: none;">
+        <h3 style="margin: 0 0 8px 0; font-size: 18px;">Step 9: Review & Launch</h3>
         <p style="margin: 0 0 20px 0; color: var(--text-muted); font-size: 14px;">Double-check your hackathon details before launching.</p>
         
         <div id="reviewSummaryCard" class="card" style="background: var(--bg); border: 1px solid var(--border); padding: 20px; display: flex; flex-direction: column; gap: 14px; font-size: 14px;">
@@ -253,6 +366,7 @@
     cursor: pointer;
     opacity: 0.6;
     transition: opacity 0.2s;
+    white-space: nowrap;
   }
   .wizard-step-node:hover {
     opacity: 0.9;
@@ -288,11 +402,12 @@
 
 <script>
   let currentSlide = 1;
-  const totalSlides = 7;
+  const totalSlides = 9;
 
   function openCreateEventWizard() {
     currentSlide = 1;
     showSlide(1);
+    updateRubricsTotal();
     document.getElementById('createEventModal').showModal();
   }
 
@@ -334,12 +449,32 @@
     }
   }
 
+  function toggleWizardTracksMode(val) {
+    const body = document.getElementById('tracksSectionBody');
+    if (body) {
+      body.style.display = (val === 'custom') ? 'block' : 'none';
+    }
+  }
+
+  function clearAllTrackPrizes() {
+    document.querySelectorAll('#tracksContainer .track-prize').forEach(input => {
+      input.value = '';
+    });
+  }
+
   function validateSlide(slideNum) {
     if (slideNum === 1) {
       const name = document.getElementById('wizard_name').value.trim();
       if (!name) {
         alert('Please enter a hackathon name before continuing.');
         document.getElementById('wizard_name').focus();
+        return false;
+      }
+    }
+    if (slideNum === 8) {
+      const total = calculateRubricSum();
+      if (total !== 100) {
+        alert('Rubric weights currently sum to ' + total + '%. They must equal exactly 100% (not 110%, 120%, etc.). You can click "Auto-Balance (100%)" to distribute weights evenly.');
         return false;
       }
     }
@@ -373,18 +508,99 @@
     container.appendChild(row);
   }
 
-  function addSideQuestRow(title = '', prize = '', desc = '') {
+  function addSideQuestRow(title = '', prize = '', desc = '', start = '', end = '') {
     const container = document.getElementById('sideQuestsContainer');
     const row = document.createElement('div');
     row.className = 'sidequest-row';
-    row.style = 'display: flex; gap: 10px; align-items: center;';
+    row.style = 'background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; display: flex; flex-direction: column; gap: 10px;';
     row.innerHTML = `
-      <input type="text" class="input quest-title" placeholder="Quest Title" style="flex: 2;" value="${title}">
-      <input type="text" class="input quest-prize" placeholder="Prize" style="flex: 1;" value="${prize}">
-      <input type="text" class="input quest-desc" placeholder="Criteria / Description" style="flex: 2;" value="${desc}">
-      <button type="button" class="btn btn-ghost" onclick="this.parentElement.remove()" style="color: #ef4444; padding: 4px 8px;">&times;</button>
+      <div style="display: flex; gap: 10px; align-items: center;">
+        <input type="text" class="input quest-title" placeholder="Quest Title" style="flex: 2;" value="${title}">
+        <input type="text" class="input quest-prize" placeholder="Prize" style="flex: 1;" value="${prize}">
+        <button type="button" class="btn btn-ghost" onclick="this.closest('.sidequest-row').remove()" style="color: #ef4444; padding: 4px 8px;">&times;</button>
+      </div>
+      <input type="text" class="input quest-desc" placeholder="Criteria / Description" value="${desc}">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 12px;">
+        <div>
+          <label style="color: var(--text-muted); display: block; margin-bottom: 4px;">Quest Starts (UTC, Optional)</label>
+          <input type="datetime-local" class="input quest-start" style="padding: 6px 10px; font-size: 12px;" value="${start}">
+        </div>
+        <div>
+          <label style="color: var(--text-muted); display: block; margin-bottom: 4px;">Quest Ends (UTC, Optional)</label>
+          <input type="datetime-local" class="input quest-end" style="padding: 6px 10px; font-size: 12px;" value="${end}">
+        </div>
+      </div>
     `;
     container.appendChild(row);
+  }
+
+  function addRubricRow(name = 'New Criteria', weight = 20) {
+    const container = document.getElementById('rubricsContainer');
+    const row = document.createElement('div');
+    row.className = 'rubric-row';
+    row.style = 'display: flex; gap: 10px; align-items: center;';
+    row.innerHTML = `
+      <input type="text" class="input rubric-name" placeholder="Criteria Name" style="flex: 3;" value="${name}" oninput="updateRubricsTotal()">
+      <div style="display: flex; align-items: center; gap: 4px; flex: 1;">
+        <input type="number" class="input rubric-weight" min="1" max="100" value="${weight}" style="width: 100%; text-align: right;" oninput="updateRubricsTotal()">
+        <span style="font-weight: 600; color: var(--text-muted);">%</span>
+      </div>
+      <button type="button" class="btn btn-ghost" onclick="this.parentElement.remove(); updateRubricsTotal();" style="color: #ef4444; padding: 4px 8px;">&times;</button>
+    `;
+    container.appendChild(row);
+    updateRubricsTotal();
+  }
+
+  function calculateRubricSum() {
+    let sum = 0;
+    document.querySelectorAll('.rubric-row .rubric-weight').forEach(inp => {
+      const v = parseInt(inp.value, 10);
+      if (!isNaN(v)) sum += v;
+    });
+    return sum;
+  }
+
+  function updateRubricsTotal() {
+    const sum = calculateRubricSum();
+    const display = document.getElementById('rubricTotalDisplay');
+    const badge = document.getElementById('rubricStatusBadge');
+    const banner = document.getElementById('rubricStatusBanner');
+    
+    if (display) display.innerText = sum + '%';
+    if (sum === 100) {
+      if (display) display.style.color = '#10b981';
+      if (badge) {
+        badge.style.background = '#10b981';
+        badge.innerText = '✓ Exactly 100%';
+      }
+      if (banner) {
+        banner.style.background = 'rgba(16, 185, 129, 0.1)';
+        banner.style.borderColor = 'rgba(16, 185, 129, 0.3)';
+      }
+    } else {
+      if (display) display.style.color = '#ef4444';
+      if (badge) {
+        badge.style.background = '#ef4444';
+        badge.innerText = (sum > 100 ? 'Over by ' + (sum - 100) + '%' : 'Under by ' + (100 - sum) + '%');
+      }
+      if (banner) {
+        banner.style.background = 'rgba(239, 68, 68, 0.1)';
+        banner.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+      }
+    }
+  }
+
+  function autoBalanceRubrics() {
+    const rows = document.querySelectorAll('.rubric-row .rubric-weight');
+    if (rows.length === 0) return;
+    const count = rows.length;
+    const base = Math.floor(100 / count);
+    const remainder = 100 - (base * count);
+    
+    rows.forEach((inp, idx) => {
+      inp.value = base + (idx === 0 ? remainder : 0);
+    });
+    updateRubricsTotal();
   }
 
   function serializeWizardData() {
@@ -398,24 +614,38 @@
     });
     document.getElementById('hidden_prizes_json').value = JSON.stringify(prizes);
 
-    // Tracks
+    // Tracks (Only if custom tracks enabled)
     const tracks = [];
-    document.querySelectorAll('.track-row').forEach(r => {
-      const name = r.querySelector('.track-name').value.trim();
-      const prize = r.querySelector('.track-prize').value.trim();
-      if (name) tracks.push({ name, prize });
-    });
+    const mode = document.querySelector('input[name="wizard_tracks_mode"]:checked')?.value || 'open';
+    if (mode === 'custom') {
+      document.querySelectorAll('#tracksContainer .track-row').forEach(r => {
+        const name = r.querySelector('.track-name').value.trim();
+        const prize = r.querySelector('.track-prize').value.trim();
+        if (name) tracks.push({ name, prize });
+      });
+    }
     document.getElementById('hidden_tracks_json').value = JSON.stringify(tracks);
 
-    // Side Quests
+    // Side Quests with independent timelines
     const quests = [];
     document.querySelectorAll('.sidequest-row').forEach(r => {
       const title = r.querySelector('.quest-title').value.trim();
       const prize = r.querySelector('.quest-prize').value.trim();
       const desc = r.querySelector('.quest-desc').value.trim();
-      if (title || prize) quests.push({ title, prize, desc });
+      const start = r.querySelector('.quest-start')?.value || '';
+      const end = r.querySelector('.quest-end')?.value || '';
+      if (title || prize) quests.push({ title, prize, desc, starts_at: start, ends_at: end });
     });
     document.getElementById('hidden_side_quests_json').value = JSON.stringify(quests);
+
+    // Rubrics
+    const rubrics = [];
+    document.querySelectorAll('.rubric-row').forEach(r => {
+      const name = r.querySelector('.rubric-name').value.trim();
+      const weight = parseInt(r.querySelector('.rubric-weight').value.trim(), 10) || 0;
+      if (name) rubrics.push({ name, weight });
+    });
+    document.getElementById('hidden_rubrics_json').value = JSON.stringify(rubrics);
   }
 
   function renderReviewSummary() {
@@ -424,6 +654,8 @@
     const tagline = document.getElementById('wizard_tagline').value.trim() || 'No tagline provided';
     const eventStarts = document.getElementById('wizard_event_starts').value || 'TBA';
     const eventEnds = document.getElementById('wizard_event_ends').value || 'TBA';
+    const regOpen = document.getElementById('wizard_registrations_open').value || 'TBA';
+    const regClose = document.getElementById('wizard_registrations_close').value || 'TBA';
     const subOpen = document.getElementById('wizard_submissions_open').value || 'TBA';
     const subClose = document.getElementById('wizard_submissions_close').value || 'TBA';
     const judgeOpen = document.getElementById('wizard_judging_open').value || 'TBA';
@@ -433,6 +665,7 @@
     const prizes = JSON.parse(document.getElementById('hidden_prizes_json').value || '[]');
     const tracks = JSON.parse(document.getElementById('hidden_tracks_json').value || '[]');
     const quests = JSON.parse(document.getElementById('hidden_side_quests_json').value || '[]');
+    const rubrics = JSON.parse(document.getElementById('hidden_rubrics_json').value || '[]');
 
     const card = document.getElementById('reviewSummaryCard');
     card.innerHTML = `
@@ -443,42 +676,50 @@
 
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
         <div>
-          <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase;">Event Duration</div>
+          <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase;">Event Lifecycle</div>
           <div><strong>Start:</strong> ${eventStarts}</div>
           <div><strong>End:</strong> ${eventEnds}</div>
         </div>
         <div>
-          <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase;">Registration / Submissions</div>
+          <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase;">Registration Window</div>
+          <div><strong>Open:</strong> ${regOpen}</div>
+          <div><strong>Close:</strong> ${regClose}</div>
+        </div>
+        <div>
+          <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase;">Submission Window</div>
           <div><strong>Open:</strong> ${subOpen}</div>
           <div><strong>Close:</strong> ${subClose}</div>
         </div>
         <div>
-          <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase;">Judging Period</div>
-          <div><strong>Open:</strong> ${judgeOpen}</div>
-          <div><strong>Close:</strong> ${judgeClose}</div>
-        </div>
-        <div>
-          <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase;">Results Date</div>
-          <div>${resDate}</div>
+          <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase;">Judging & Results</div>
+          <div><strong>Judging:</strong> ${judgeOpen} to ${judgeClose}</div>
+          <div><strong>Results:</strong> ${resDate}</div>
         </div>
       </div>
 
       <div style="border-top: 1px solid var(--border); padding-top: 10px;">
-        <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">Prizes (${prizes.length}) & Tracks (${tracks.length})</div>
+        <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px;">Prizes (${prizes.length}) & Tracks (${tracks.length === 0 ? 'Open Innovation' : tracks.length})</div>
         <div style="display: flex; flex-wrap: wrap; gap: 8px;">
           ${prizes.map(p => `<span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">🏆 ${p.title} (${p.amount})</span>`).join('')}
-          ${tracks.map(t => `<span class="badge" style="background: rgba(59, 130, 246, 0.15); color: var(--accent);">🎯 ${t.name} ${t.prize ? '— ' + t.prize : ''}</span>`).join('')}
+          ${tracks.length === 0 ? '<span class="badge" style="background: rgba(59, 130, 246, 0.1); color: var(--accent);">🌐 Open Innovation (No Tracks)</span>' : tracks.map(t => `<span class="badge" style="background: rgba(59, 130, 246, 0.15); color: var(--accent);">🎯 ${t.name} ${t.prize ? '— ' + t.prize : ''}</span>`).join('')}
         </div>
       </div>
 
       ${quests.length > 0 ? `
       <div style="border-top: 1px solid var(--border); padding-top: 10px;">
-        <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">Side Quests (${quests.length})</div>
+        <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px;">Side Quests (${quests.length})</div>
         <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-          ${quests.map(q => `<span class="badge" style="background: rgba(168, 85, 247, 0.15); color: #a855f7;">⚡ ${q.title} (${q.prize})</span>`).join('')}
+          ${quests.map(q => `<span class="badge" style="background: rgba(168, 85, 247, 0.15); color: #a855f7;">⚡ ${q.title} (${q.prize})${q.starts_at ? ' · ' + q.starts_at.slice(0, 10) : ''}</span>`).join('')}
         </div>
       </div>
       ` : ''}
+
+      <div style="border-top: 1px solid var(--border); padding-top: 10px;">
+        <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px;">Scoring Rubrics (${rubrics.length} Criteria · Total: ${rubrics.reduce((a, b) => a + b.weight, 0)}%)</div>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+          ${rubrics.map(r => `<span class="badge" style="background: rgba(100, 116, 139, 0.15); color: var(--text-primary); font-weight: 500;">⚖️ ${r.name}: ${r.weight}%</span>`).join('')}
+        </div>
+      </div>
     `;
   }
 
@@ -486,6 +727,11 @@
     if (!validateSlide(1)) {
       e.preventDefault();
       showSlide(1);
+      return false;
+    }
+    if (!validateSlide(8)) {
+      e.preventDefault();
+      showSlide(8);
       return false;
     }
     serializeWizardData();

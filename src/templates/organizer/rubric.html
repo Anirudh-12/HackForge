@@ -1,50 +1,346 @@
 {% extends "base_app.html" %}
-{% block title %}Rubric{% endblock %}
+{% block title %}Scoring Rubric - {{ event.name }}{% endblock %}
+
 {% block content %}
-<h1>Scoring Rubric</h1>
+<div style="max-width: 900px; margin: 0 auto; padding-bottom: 60px;">
+  <!-- Header Bar -->
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; gap: 16px; flex-wrap: wrap;">
+    <div>
+      <div style="font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); margin-bottom: 4px;">
+        Evaluation & Scoring
+      </div>
+      <h1 style="margin: 0 0 6px 0; font-size: 1.75rem; font-weight: 700; letter-spacing: -0.02em;">Scoring Rubric</h1>
+      <p style="margin: 0; color: var(--text-secondary); font-size: 0.95rem;">
+        Define evaluation criteria and their percentage weights. The combined weights must add up to exactly <strong>100%</strong>.
+      </p>
+    </div>
 
-{% if has_scores %}
-<div class="alert alert-warning">
-  <strong>Judging has started!</strong> You cannot edit the rubric because scores have already been submitted. Changing criteria or weights now would invalidate existing scores.
-</div>
-{% endif %}
+    {% if not has_scores %}
+    <div>
+      <button id="openAddCriteriaBtn" class="btn btn-primary" onclick="openAddCriteriaModal()" style="display: inline-flex; align-items: center; gap: 8px; font-weight: 600; padding: 10px 18px; border-radius: var(--radius); box-shadow: 0 2px 8px rgba(var(--accent-rgb), 0.25);">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        Add Criterion
+      </button>
+    </div>
+    {% endif %}
+  </div>
 
-<table class="data-table">
-  <tr>
-    <th>Criteria</th>
-    <th>Weight</th>
-    <th>Actions</th>
-  </tr>
-  {% for c in criteria %}
-  <tr>
-    <td>{{ c.name }}</td>
-    <td>{{ c.weight }}</td>
-    <td>
+  {% if error %}
+  <div style="background: rgba(220, 38, 38, 0.08); border: 1px solid rgba(220, 38, 38, 0.3); border-radius: var(--radius); padding: 14px 18px; margin-bottom: 24px; display: flex; align-items: center; gap: 12px; color: var(--danger);">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+    <div style="font-weight: 500;">{{ error }}</div>
+  </div>
+  {% endif %}
+
+  {% if has_scores %}
+  <div class="alert alert-warning" style="background: rgba(217, 119, 6, 0.08); border: 1px solid rgba(217, 119, 6, 0.3); border-radius: var(--radius); padding: 16px 20px; margin-bottom: 24px; display: flex; align-items: flex-start; gap: 14px;">
+    <div style="font-size: 20px; line-height: 1;">🔒</div>
+    <div>
+      <div style="font-weight: 700; color: var(--warning); margin-bottom: 4px;">Judging has started! Rubric is locked</div>
+      <div style="color: var(--text-secondary); font-size: 0.9rem;">
+        You cannot edit criteria or modify weights because judges have already submitted scores for this hackathon. Modifying the rubric now would invalidate existing evaluations.
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Weight Balance Summary Card -->
+  <div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px 24px; margin-bottom: 24px; box-shadow: var(--shadow);">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 14px;">
+      <div>
+        <span style="font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted);">Total Allocation</span>
+        <div style="display: flex; align-items: baseline; gap: 10px; margin-top: 2px;">
+          <span id="currentTotalDisplay" style="font-size: 2.2rem; font-weight: 800; letter-spacing: -0.03em; color: {% if total_weight == 100 %}var(--success){% elif total_weight < 100 %}var(--warning){% else %}var(--danger){% endif %};">
+            {{ total_weight }}%
+          </span>
+          <span style="font-size: 1.1rem; color: var(--text-muted); font-weight: 600;">/ 100%</span>
+        </div>
+      </div>
+
+      <div style="text-align: right;">
+        {% if total_weight == 100 %}
+          <span class="badge" style="background: rgba(22, 163, 74, 0.12); color: var(--success); border: 1px solid rgba(22, 163, 74, 0.3); font-size: 0.9rem; padding: 6px 14px; font-weight: 700; border-radius: 9999px;">
+            ✓ Exactly 100% (Balanced)
+          </span>
+        {% elif total_weight < 100 %}
+          <span class="badge" style="background: rgba(217, 119, 6, 0.12); color: var(--warning); border: 1px solid rgba(217, 119, 6, 0.3); font-size: 0.9rem; padding: 6px 14px; font-weight: 700; border-radius: 9999px;">
+            ⚠️ Incomplete: {{ 100 - total_weight }}% Remaining
+          </span>
+        {% else %}
+          <span class="badge" style="background: rgba(220, 38, 38, 0.12); color: var(--danger); border: 1px solid rgba(220, 38, 38, 0.3); font-size: 0.9rem; padding: 6px 14px; font-weight: 700; border-radius: 9999px;">
+            ❌ Exceeds 100% by {{ total_weight - 100 }}%
+          </span>
+        {% endif %}
+        <div style="margin-top: 6px; font-size: 0.85rem; color: var(--text-muted);">
+          {{ criteria|length }} criteria configured &bull; Available: <strong>{{ remaining_weight }}%</strong>
+        </div>
+      </div>
+    </div>
+
+    <!-- Allocation Progress Bar -->
+    <div style="height: 10px; width: 100%; background: var(--bg); border-radius: 9999px; overflow: hidden; border: 1px solid var(--border);">
+      <div style="height: 100%; width: {{ [total_weight, 100]|min }}%; background: {% if total_weight == 100 %}var(--success){% elif total_weight < 100 %}var(--warning){% else %}var(--danger){% endif %}; transition: width 0.3s ease; border-radius: 9999px;"></div>
+    </div>
+  </div>
+
+  <!-- Criteria List -->
+  <div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow);">
+    <div style="padding: 16px 20px; background: var(--bg); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+      <h3 style="margin: 0; font-size: 1rem; font-weight: 600;">Evaluation Criteria ({{ criteria|length }})</h3>
+      <span style="font-size: 0.85rem; color: var(--text-muted);">Judges score each project against these criteria (1-10 scale)</span>
+    </div>
+
+    {% if criteria %}
+    <table class="data-table" style="margin: 0; width: 100%;">
+      <thead>
+        <tr>
+          <th style="width: 50px; text-align: center;">#</th>
+          <th>Criterion Name</th>
+          <th style="width: 140px; text-align: center;">Weight (%)</th>
+          <th style="width: 200px;">Proportion</th>
+          {% if not has_scores %}
+          <th style="width: 100px; text-align: right;">Actions</th>
+          {% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in criteria %}
+        <tr>
+          <td style="text-align: center; color: var(--text-muted); font-weight: 600;">{{ loop.index }}</td>
+          <td>
+            <div style="font-weight: 600; color: var(--text-primary); font-size: 0.95rem;">{{ c.name }}</div>
+          </td>
+          <td style="text-align: center;">
+            <span class="badge" style="font-size: 0.9rem; font-weight: 700; background: var(--accent-subtle); color: var(--accent); padding: 4px 12px; border-radius: 6px;">
+              {{ c.weight }}%
+            </span>
+          </td>
+          <td>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <div style="flex: 1; height: 6px; background: var(--bg); border-radius: 3px; overflow: hidden; border: 1px solid var(--border);">
+                <div style="height: 100%; width: {{ c.weight }}%; background: var(--accent); border-radius: 3px;"></div>
+              </div>
+              <span style="font-size: 0.8rem; color: var(--text-muted); min-width: 32px;">{{ c.weight }}%</span>
+            </div>
+          </td>
+          {% if not has_scores %}
+          <td style="text-align: right;">
+            <form method="post" action="/organizer/{{ event.id }}/rubric/{{ c.id }}/remove" style="display:inline;" onsubmit="return confirm('Remove criterion \'{{ c.name }}\' ({{ c.weight }}%)?');">
+              <button class="btn btn-ghost" type="submit" style="color: var(--danger); padding: 6px 10px; font-size: 0.85rem;" title="Remove Criterion">
+                Remove
+              </button>
+            </form>
+          </td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr style="background: var(--bg); font-weight: 700;">
+          <td colspan="2" style="text-align: right; padding-right: 20px;">Total Allocated Weight:</td>
+          <td style="text-align: center; font-size: 1rem; color: {% if total_weight == 100 %}var(--success){% elif total_weight < 100 %}var(--warning){% else %}var(--danger){% endif %};">
+            {{ total_weight }}%
+          </td>
+          <td colspan="{% if not has_scores %}2{% else %}1{% endif %}">
+            {% if total_weight == 100 %}
+              <span style="color: var(--success); font-size: 0.85rem; font-weight: 600;">✓ Fully Allocated (100%)</span>
+            {% else %}
+              <span style="color: var(--warning); font-size: 0.85rem; font-weight: 600;">{{ 100 - total_weight }}% remaining to reach 100%</span>
+            {% endif %}
+          </td>
+        </tr>
+      </tfoot>
+    </table>
+    {% else %}
+    <div style="text-align: center; padding: 48px 24px;">
+      <div style="font-size: 40px; margin-bottom: 12px; color: var(--text-muted);">⚖️</div>
+      <h3 style="margin: 0 0 6px 0; font-size: 1.1rem;">No Criteria Configured</h3>
+      <p style="margin: 0 0 18px 0; color: var(--text-secondary); font-size: 0.9rem;">
+        Add evaluation criteria to configure how judges will grade submissions.
+      </p>
       {% if not has_scores %}
-      <form method="post" action="/organizer/{{ event.id }}/rubric/{{ c.id }}/remove" style="display:inline;">
-        <button class="btn btn-secondary" type="submit">Remove</button>
-      </form>
+      <button class="btn btn-primary" onclick="openAddCriteriaModal()">+ Add First Criterion</button>
       {% endif %}
-    </td>
-  </tr>
-  {% endfor %}
-  <tr>
-    <td><strong>Total</strong></td>
-    <td><strong>{{ total_weight }}</strong></td>
-    <td></td>
-  </tr>
-</table>
+    </div>
+    {% endif %}
+  </div>
+</div>
 
 {% if not has_scores %}
-<h2>Add Criteria</h2>
-<form method="post" action="/organizer/{{ event.id }}/rubric">
-  <label>Name</label>
-  <input type="text" name="name" required>
-  
-  <label>Weight (e.g., 20)</label>
-  <input type="number" name="weight" min="1" required>
+<!-- Add Criteria Modal (Only displayed when clicking "+ Add Criterion") -->
+<dialog id="addCriteriaModal" style="border: 1px solid var(--border); border-radius: 12px; padding: 0; max-width: 520px; width: 100%; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); background: var(--surface); color: var(--text-primary);">
+  <div style="padding: 20px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+    <div>
+      <h2 style="margin: 0; font-size: 1.25rem; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+        <span style="color: var(--accent);">⚖️</span> Add Scoring Criterion
+      </h2>
+      <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 2px;">
+        Available weight capacity: <strong id="modalRemainingCapacity" style="color: var(--accent);">{{ remaining_weight }}%</strong>
+      </div>
+    </div>
+    <button type="button" class="btn btn-ghost" onclick="closeAddCriteriaModal()" style="padding: 4px 8px; font-size: 22px; line-height: 1; border-radius: 6px;">&times;</button>
+  </div>
 
-  <div class="row-actions"><button class="btn btn-primary" type="submit">Add Criteria</button></div>
-</form>
+  <form method="post" action="/organizer/{{ event.id }}/rubric" id="addCriteriaForm" style="padding: 24px; margin: 0;" onsubmit="return validateCriterionSubmission(event)">
+    <!-- Criterion Name Input -->
+    <div style="margin-bottom: 20px;">
+      <label for="criterionNameInput" style="display: block; font-weight: 600; margin-bottom: 6px; font-size: 0.9rem;">
+        Criterion Name <span style="color: var(--danger);">*</span>
+      </label>
+      <input type="text" id="criterionNameInput" name="name" class="input" placeholder="e.g. Technical Execution & Architecture" required style="width: 100%; padding: 10px 14px; font-size: 0.95rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); color: var(--text-primary);">
+      <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;">
+        A descriptive title that guides judges on what to evaluate.
+      </div>
+    </div>
+
+    <!-- Criterion Weight Input -->
+    <div style="margin-bottom: 20px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+        <label for="criterionWeightInput" style="font-weight: 600; font-size: 0.9rem;">
+          Weight Percentage (%) <span style="color: var(--danger);">*</span>
+        </label>
+        <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary);">
+          Max allowed: <span id="maxAllowedWeightDisplay">{{ remaining_weight }}</span>%
+        </span>
+      </div>
+
+      <div style="position: relative; display: flex; align-items: center;">
+        <input type="number" id="criterionWeightInput" name="weight" class="input" min="1" max="{{ remaining_weight }}" placeholder="e.g. 25" required style="width: 100%; padding: 10px 36px 10px 14px; font-size: 1.05rem; font-weight: 600; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); color: var(--text-primary);" oninput="handleWeightInput()">
+        <span style="position: absolute; right: 14px; font-weight: 700; color: var(--text-muted); font-size: 1rem; pointer-events: none;">%</span>
+      </div>
+
+      <!-- Real-Time Calculation & Validation Feedback -->
+      <div id="weightFeedbackBox" style="margin-top: 10px; padding: 10px 14px; border-radius: 6px; font-size: 0.85rem; background: var(--bg); border: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <span>New Total: </span>
+          <strong id="newTotalDisplay" style="font-size: 0.95rem; color: var(--accent);">{{ total_weight }}%</strong>
+          <span style="color: var(--text-muted);"> / 100%</span>
+        </div>
+        <div id="weightWarningMsg" style="font-weight: 600; font-size: 0.85rem;"></div>
+      </div>
+    </div>
+
+    <!-- Quick Weight Presets (if capacity allows) -->
+    {% if remaining_weight > 0 %}
+    <div style="margin-bottom: 24px;">
+      <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 6px;">Quick Presets:</div>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        {% if remaining_weight >= 10 %}
+        <button type="button" class="btn btn-secondary" onclick="setPresetWeight(10)" style="padding: 4px 10px; font-size: 0.8rem;">10%</button>
+        {% endif %}
+        {% if remaining_weight >= 20 %}
+        <button type="button" class="btn btn-secondary" onclick="setPresetWeight(20)" style="padding: 4px 10px; font-size: 0.8rem;">20%</button>
+        {% endif %}
+        {% if remaining_weight >= 25 %}
+        <button type="button" class="btn btn-secondary" onclick="setPresetWeight(25)" style="padding: 4px 10px; font-size: 0.8rem;">25%</button>
+        {% endif %}
+        {% if remaining_weight >= 30 %}
+        <button type="button" class="btn btn-secondary" onclick="setPresetWeight(30)" style="padding: 4px 10px; font-size: 0.8rem;">30%</button>
+        {% endif %}
+        <button type="button" class="btn btn-secondary" onclick="setPresetWeight({{ remaining_weight }})" style="padding: 4px 10px; font-size: 0.8rem; font-weight: 600; color: var(--accent);">
+          Fill Remaining ({{ remaining_weight }}%)
+        </button>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Modal Actions -->
+    <div style="display: flex; justify-content: flex-end; gap: 12px; border-top: 1px solid var(--border); padding-top: 18px; margin-top: 8px;">
+      <button type="button" class="btn btn-secondary" onclick="closeAddCriteriaModal()">Cancel</button>
+      <button type="submit" id="submitCriterionBtn" class="btn btn-primary" style="font-weight: 600; min-width: 130px;" {% if remaining_weight <= 0 %}disabled{% endif %}>
+        Add Criterion
+      </button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+  const CURRENT_TOTAL = {{ total_weight }};
+  const REMAINING_WEIGHT = {{ remaining_weight }};
+
+  function openAddCriteriaModal() {
+    const modal = document.getElementById('addCriteriaModal');
+    if (REMAINING_WEIGHT <= 0) {
+      alert("Total rubric weight has already reached 100%! To add new criteria, please first remove or reduce the weight of existing criteria.");
+      return;
+    }
+    modal.showModal();
+    document.getElementById('criterionNameInput').focus();
+    handleWeightInput();
+  }
+
+  function closeAddCriteriaModal() {
+    const modal = document.getElementById('addCriteriaModal');
+    modal.close();
+  }
+
+  function setPresetWeight(w) {
+    const input = document.getElementById('criterionWeightInput');
+    input.value = w;
+    handleWeightInput();
+  }
+
+  function handleWeightInput() {
+    const input = document.getElementById('criterionWeightInput');
+    const val = parseInt(input.value, 10) || 0;
+    const newTotal = CURRENT_TOTAL + val;
+    const submitBtn = document.getElementById('submitCriterionBtn');
+    const totalDisplay = document.getElementById('newTotalDisplay');
+    const warningMsg = document.getElementById('weightWarningMsg');
+    const feedbackBox = document.getElementById('weightFeedbackBox');
+
+    totalDisplay.textContent = newTotal + '%';
+
+    if (val <= 0) {
+      submitBtn.disabled = true;
+      totalDisplay.style.color = 'var(--text-muted)';
+      warningMsg.textContent = 'Enter weight >= 1%';
+      warningMsg.style.color = 'var(--text-muted)';
+      feedbackBox.style.borderColor = 'var(--border)';
+    } else if (newTotal > 100) {
+      submitBtn.disabled = true;
+      totalDisplay.style.color = 'var(--danger)';
+      const overflow = newTotal - 100;
+      warningMsg.textContent = `❌ Exceeds 100% by ${overflow}%! Max allowed: ${REMAINING_WEIGHT}%`;
+      warningMsg.style.color = 'var(--danger)';
+      feedbackBox.style.borderColor = 'rgba(220, 38, 38, 0.4)';
+      feedbackBox.style.background = 'rgba(220, 38, 38, 0.05)';
+    } else if (newTotal === 100) {
+      submitBtn.disabled = false;
+      totalDisplay.style.color = 'var(--success)';
+      warningMsg.textContent = '✓ Perfectly balances to 100%';
+      warningMsg.style.color = 'var(--success)';
+      feedbackBox.style.borderColor = 'rgba(22, 163, 74, 0.4)';
+      feedbackBox.style.background = 'rgba(22, 163, 74, 0.05)';
+    } else {
+      submitBtn.disabled = false;
+      totalDisplay.style.color = 'var(--warning)';
+      const rem = 100 - newTotal;
+      warningMsg.textContent = `${rem}% will remain to reach 100%`;
+      warningMsg.style.color = 'var(--warning)';
+      feedbackBox.style.borderColor = 'rgba(217, 119, 6, 0.4)';
+      feedbackBox.style.background = 'rgba(217, 119, 6, 0.05)';
+    }
+  }
+
+  function validateCriterionSubmission(e) {
+    const input = document.getElementById('criterionWeightInput');
+    const val = parseInt(input.value, 10) || 0;
+    if (val <= 0) {
+      alert("Weight must be at least 1%.");
+      e.preventDefault();
+      return false;
+    }
+    if (CURRENT_TOTAL + val > 100) {
+      alert(`Total weight cannot exceed 100%! Current total is ${CURRENT_TOTAL}%, so the maximum weight you can add is ${REMAINING_WEIGHT}%.`);
+      e.preventDefault();
+      return false;
+    }
+    return true;
+  }
+</script>
 {% endif %}
 {% endblock %}

@@ -188,7 +188,9 @@ def explore(request: Request, db: Session = Depends(get_db), user: User | None =
         j_close = as_utc(e.judging_close)
         s_open = as_utc(e.submissions_open)
         
-        if s_open and now < s_open:
+        if j_close and now > j_close:
+            completed.append(e)
+        elif s_open and now < s_open:
             upcoming.append(e)
         else:
             ongoing.append(e)

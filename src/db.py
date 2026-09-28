@@ -39,8 +39,11 @@ def init_db() -> None:
             res = conn.execute(text("PRAGMA table_info(events)")).fetchall()
             existing_cols = {row[1] for row in res}
             new_cols = [
+                ("tagline", "TEXT"),
                 ("event_starts", "DATETIME"),
                 ("event_ends", "DATETIME"),
+                ("registrations_open", "DATETIME"),
+                ("registrations_close", "DATETIME"),
                 ("results_date", "DATETIME"),
                 ("prizes_json", "TEXT"),
                 ("side_quests_json", "TEXT"),

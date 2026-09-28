@@ -8,3 +8,12 @@ data/*.db-journal
 .pytest_cache/
 .coverage
 htmlcov/
+hackforge.db
+*.db
+
+# Generated seed assets (created at runtime by seed_assets.py)
+src/static/banners/
+src/static/projects/
+
+# User-uploaded files (runtime data, never committed)
+src/static/uploads/

@@ -8,10 +8,11 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Uplo
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
+import json
 from src.auth import require_role
 from src.context import base_context
 from src.db import get_db
-from src.models import AuditLog, Event, Project, Team, Track, User
+from src.models import AuditLog, Event, Project, Team, Track, User, RubricCriteria, Score
 from src.queries import event_tracks
 from src.seed import new_id
 from src.templating import templates
@@ -59,6 +60,8 @@ def create_event(
     description: str = Form(""),
     event_starts: str = Form(""),
     event_ends: str = Form(""),
+    registrations_open: str = Form(""),
+    registrations_close: str = Form(""),
     submissions_open: str = Form(""),
     submissions_close: str = Form(""),
     judging_open: str = Form(""),
@@ -67,20 +70,21 @@ def create_event(
     tracks_json: str = Form(""),
     prizes_json: str = Form(""),
     side_quests_json: str = Form(""),
+    rubrics_json: str = Form(""),
     db: Session = Depends(get_db),
     user: User = Depends(require_role("organizer", "admin")),
 ):
-    import json
     desc = description.strip()
-    if tagline.strip() and not desc.startswith(tagline.strip()):
-        desc = f"**{tagline.strip()}**\n\n{desc}" if desc else tagline.strip()
 
     event = Event(
         id=new_id("evt"),
         name=name.strip(),
+        tagline=tagline.strip() or None,
         description_markdown=desc or None,
         event_starts=_dt(event_starts),
         event_ends=_dt(event_ends),
+        registrations_open=_dt(registrations_open),
+        registrations_close=_dt(registrations_close),
         submissions_open=_dt(submissions_open),
         submissions_close=_dt(submissions_close),
         judging_open=_dt(judging_open),
@@ -101,6 +105,17 @@ def create_event(
                 t_prize = item.get("prize", "").strip() if isinstance(item, dict) else None
                 if t_name:
                     db.add(Track(id=new_id("trk"), event_id=event.id, name=t_name, prize=t_prize or None))
+        except Exception:
+            pass
+
+    if rubrics_json.strip():
+        try:
+            rubric_items = json.loads(rubrics_json)
+            for r_item in rubric_items:
+                r_name = r_item.get("name", "").strip() if isinstance(r_item, dict) else ""
+                r_weight = int(r_item.get("weight", 0)) if isinstance(r_item, dict) else 0
+                if r_name and r_weight > 0:
+                    db.add(RubricCriteria(id=new_id("rub"), event_id=event.id, name=r_name, weight=r_weight))
         except Exception:
             pass
 
@@ -243,6 +258,12 @@ def event_settings(
     event = db.get(Event, event_id)
     if event is None:
         raise HTTPException(status_code=404, detail="event not found")
+
+    tracks = db.query(Track).filter_by(event_id=event_id).all()
+    criteria = db.query(RubricCriteria).filter_by(event_id=event_id).all()
+    has_scores = db.query(Score).filter_by(event_id=event_id).count() > 0
+    total_weight = sum(c.weight for c in criteria)
+
     return templates.TemplateResponse(
         request=request,
         name="organizer/event.html",
@@ -252,6 +273,10 @@ def event_settings(
             event=event,
             user=user,
             role="organizer",
+            tracks=tracks,
+            criteria=criteria,
+            has_scores=has_scores,
+            total_weight=total_weight,
         ),
     )
 
@@ -260,12 +285,22 @@ def event_settings(
 def save_event(
     event_id: str,
     name: str = Form(...),
+    tagline: str = Form(""),
+    event_starts: str = Form(""),
+    event_ends: str = Form(""),
+    registrations_open: str = Form(""),
+    registrations_close: str = Form(""),
     submissions_open: str = Form(""),
     submissions_close: str = Form(""),
     judging_open: str = Form(""),
     judging_close: str = Form(""),
+    results_date: str = Form(""),
     description_markdown: str = Form(""),
     rules_markdown: str = Form(""),
+    prizes_json: str = Form(""),
+    tracks_json: str = Form(""),
+    side_quests_json: str = Form(""),
+    rubrics_json: str = Form(""),
     banner_image: UploadFile = File(None),
     db: Session = Depends(get_db),
     user: User = Depends(require_role("organizer", "admin")),
@@ -275,12 +310,29 @@ def save_event(
         raise HTTPException(status_code=404, detail="event not found")
 
     event.name = name.strip()
-    event.submissions_open = _dt(submissions_open)
-    event.submissions_close = _dt(submissions_close)
-    event.judging_open = _dt(judging_open)
-    event.judging_close = _dt(judging_close)
+    event.tagline = tagline.strip() or None
+    if event_starts:
+        event.event_starts = _dt(event_starts)
+    if event_ends:
+        event.event_ends = _dt(event_ends)
+    if registrations_open:
+        event.registrations_open = _dt(registrations_open)
+    if registrations_close:
+        event.registrations_close = _dt(registrations_close)
+    if submissions_open:
+        event.submissions_open = _dt(submissions_open)
+    if submissions_close:
+        event.submissions_close = _dt(submissions_close)
+    if judging_open:
+        event.judging_open = _dt(judging_open)
+    if judging_close:
+        event.judging_close = _dt(judging_close)
+    if results_date:
+        event.results_date = _dt(results_date)
     event.description_markdown = description_markdown.strip()
     event.rules_markdown = rules_markdown.strip()
+    event.prizes_json = prizes_json.strip() or None
+    event.side_quests_json = side_quests_json.strip() or None
 
     if banner_image and banner_image.filename:
         upload_dir = "src/static/uploads"
@@ -291,6 +343,55 @@ def save_event(
         event.banner_image_path = (
             f"/static/uploads/{event_id}_banner_{banner_image.filename}"
         )
+
+    # Tracks synchronization
+    if tracks_json is not None and tracks_json.strip():
+        try:
+            track_items = json.loads(tracks_json)
+            existing_tracks = {t.id: t for t in db.query(Track).filter_by(event_id=event_id).all()}
+            kept_ids = set()
+            for item in track_items:
+                t_name = item.get("name", "").strip() if isinstance(item, dict) else str(item).strip()
+                t_prize = item.get("prize", "").strip() if isinstance(item, dict) else None
+                t_id = item.get("id") if isinstance(item, dict) else None
+                if not t_name:
+                    continue
+                if t_id and t_id in existing_tracks:
+                    trk = existing_tracks[t_id]
+                    trk.name = t_name
+                    trk.prize = t_prize or None
+                    kept_ids.add(t_id)
+                else:
+                    new_trk = Track(id=new_id("trk"), event_id=event_id, name=t_name, prize=t_prize or None)
+                    db.add(new_trk)
+            for t_id, trk in existing_tracks.items():
+                if t_id not in kept_ids:
+                    db.query(Project).filter_by(track_id=t_id).update({"track_id": None})
+                    db.query(JudgeTrack).filter_by(track_id=t_id).delete()
+                    db.delete(trk)
+        except Exception:
+            pass
+    elif tracks_json is not None:
+        # Empty string or empty array passed -> user chose Open Innovation (0 tracks)
+        existing_tracks = db.query(Track).filter_by(event_id=event_id).all()
+        for trk in existing_tracks:
+            db.query(Project).filter_by(track_id=trk.id).update({"track_id": None})
+            db.query(JudgeTrack).filter_by(track_id=trk.id).delete()
+            db.delete(trk)
+
+    # Rubrics synchronization (only when scores don't yet exist)
+    has_scores = db.query(Score).filter_by(event_id=event_id).count() > 0
+    if not has_scores and rubrics_json and rubrics_json.strip():
+        try:
+            rubric_items = json.loads(rubrics_json)
+            db.query(RubricCriteria).filter_by(event_id=event_id).delete()
+            for r_item in rubric_items:
+                r_name = r_item.get("name", "").strip() if isinstance(r_item, dict) else ""
+                r_weight = int(r_item.get("weight", 0)) if isinstance(r_item, dict) else 0
+                if r_name and r_weight > 0:
+                    db.add(RubricCriteria(id=new_id("rub"), event_id=event_id, name=r_name, weight=r_weight))
+        except Exception:
+            pass
 
     db.add(
         AuditLog(
@@ -722,6 +823,7 @@ from src.models import RubricCriteria, Score
 def rubric_page(
     event_id: str,
     request: Request,
+    error: str | None = None,
     db: Session = Depends(get_db),
     user: User = Depends(require_role("organizer", "admin")),
 ):
@@ -731,6 +833,7 @@ def rubric_page(
 
     criteria = db.query(RubricCriteria).filter_by(event_id=event_id).all()
     has_scores = db.query(Score).filter_by(event_id=event_id).first() is not None
+    total_weight = sum(c.weight for c in criteria)
 
     return templates.TemplateResponse(
         request=request,
@@ -742,8 +845,10 @@ def rubric_page(
             user=user,
             role="organizer",
             criteria=criteria,
-            total_weight=sum(c.weight for c in criteria),
+            total_weight=total_weight,
+            remaining_weight=max(0, 100 - total_weight),
             has_scores=has_scores,
+            error=error,
         ),
     )
 
@@ -751,6 +856,7 @@ def rubric_page(
 @router.post("/organizer/{event_id}/rubric")
 def add_rubric_criteria(
     event_id: str,
+    request: Request,
     name: str = Form(...),
     weight: int = Form(...),
     db: Session = Depends(get_db),
@@ -766,6 +872,20 @@ def add_rubric_criteria(
             status_code=400, detail="Cannot edit rubric after judging has started"
         )
 
+    if weight <= 0:
+        raise HTTPException(
+            status_code=400, detail="Criterion weight must be at least 1%"
+        )
+
+    current_criteria = db.query(RubricCriteria).filter_by(event_id=event_id).all()
+    current_total = sum(c.weight for c in current_criteria)
+    if current_total + weight > 100:
+        remaining = max(0, 100 - current_total)
+        raise HTTPException(
+            status_code=400,
+            detail=f"Total rubric weight cannot exceed 100%. Current total is {current_total}%, so remaining available weight is {remaining}%.",
+        )
+
     db.add(
         RubricCriteria(
             id=new_id("cr"),
@@ -778,7 +898,7 @@ def add_rubric_criteria(
         AuditLog(
             event_id=event.id,
             actor_id=user.id,
-            message=f"{user.name} added rubric criteria {name.strip()}",
+            message=f"{user.name} added rubric criteria {name.strip()} ({weight}%)",
             created_at=utcnow(),
         )
     )

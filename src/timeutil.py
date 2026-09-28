@@ -28,6 +28,13 @@ def submissions_open(event) -> bool:
     closes = as_utc(event.submissions_close)
     if opens and now < opens:
         return False
-    if closes and now >= closes:
+    return not (closes and now >= closes)
+
+
+def registrations_open(event) -> bool:
+    now = utcnow()
+    opens = as_utc(getattr(event, "registrations_open", None))
+    closes = as_utc(getattr(event, "registrations_close", None))
+    if opens and now < opens:
         return False
-    return True
+    return not (closes and now >= closes)

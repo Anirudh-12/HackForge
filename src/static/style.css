@@ -6,10 +6,16 @@
   --text-secondary: #6b6b6b;
   --text-muted: #a0a0a0;
   --accent: #2563eb;
+  --accent-rgb: 37, 99, 235;
+  --primary: var(--accent);
+  --primary-rgb: 37, 99, 235;
   --accent-subtle: #eff6ff;
   --success: #16a34a;
+  --success-rgb: 22, 163, 74;
   --warning: #d97706;
+  --warning-rgb: 217, 119, 6;
   --danger: #dc2626;
+  --danger-rgb: 220, 38, 38;
   --radius: 8px;
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   --sidebar: 240px;

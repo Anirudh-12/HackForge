@@ -30,14 +30,34 @@ cd hackforge
 python3 -m venv venv
 source venv/bin/activate  # On Windows: .\venv\Scripts\activate
 
-# 2. Install dependencies (standard FastAPI + SQLAlchemy)
+# 2. Install dependencies (standard FastAPI + SQLAlchemy + Pillow)
 pip install -r requirements.txt
 
-# 3. Seed fixtures and run portal
+# 3. (Optional) Pre-generate seed banner & project cover images
+#    The server does this automatically on first boot, but you can
+#    run it standalone to inspect the generated JPEGs beforehand:
+python -m src.seed_assets
+
+# 4. Seed fixtures and run portal
 python -m uvicorn src.main:app --host 127.0.0.1 --port 8080 --reload
 ```
 
----
+### Seed Data Generation
+
+HackForge auto-generates all seed media assets (event banners and project covers) as **JPEG images** on first boot — no manual step required. If you want to regenerate them without restarting the server (e.g. after changing palette data in `seed_assets.py`), run:
+
+```bash
+# Regenerate all banner & project cover JPEGs
+python -m src.seed_assets
+```
+
+Generated files land in:
+- `src/static/banners/evt_01.jpg` … `evt_10.jpg` — event banner images
+- `src/static/projects/prj_*.jpg` — project cover images
+
+> **Note:** These directories are listed in `.gitignore` and are **never committed** to the repository. They are created fresh on each new deployment, matching the same JPEG format used for real user-uploaded banners.
+
+
 
 ## 🔑 Pre-Seeded Test Credentials
 

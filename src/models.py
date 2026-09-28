@@ -31,8 +31,11 @@ class Event(Base):
 
     id: Mapped[str] = mapped_column(String, primary_key=True)
     name: Mapped[str] = mapped_column(String, nullable=False)
+    tagline: Mapped[str | None] = mapped_column(String, nullable=True)
     event_starts: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     event_ends: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    registrations_open: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    registrations_close: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     submissions_open: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     submissions_close: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     judging_open: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

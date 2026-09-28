@@ -12,20 +12,22 @@
   
   .gallery-desc { color: var(--text-secondary); font-size: 1rem; margin-bottom: 24px; }
   
-  .filter-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 24px; }
+  .filter-row { margin-bottom: 20px; }
   .filter-group { display: flex; gap: 12px; flex-wrap: wrap; }
   .filter-item { display: flex; flex-direction: column; gap: 6px; }
   .filter-item label { margin: 0; font-size: 12px; color: var(--text-muted); font-weight: 500; }
   .filter-item select { padding: 8px 32px 8px 12px; border-radius: 6px; border: 1px solid var(--border); background-color: var(--surface); color: var(--text-primary); font-size: 14px; box-shadow: 0 1px 2px rgba(0,0,0,0.02); min-width: 160px; appearance: none; background-image: url('data:image/svg+xml;charset=US-ASCII,<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>'); background-repeat: no-repeat; background-position: right 12px center; }
   
   .tabs { display: flex; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 4px; }
-  .tabs button, .tabs a { padding: 6px 16px; font-size: 14px; border: none; background: transparent; border-radius: 6px; cursor: pointer; color: var(--text-secondary); text-decoration: none; }
+  .tabs button, .tabs a { padding: 6px 16px; font-size: 14px; border: none; background: transparent; border-radius: 6px; cursor: pointer; color: var(--text-secondary); text-decoration: none; transition: all 0.15s; }
   .tabs button.active, .tabs a.active { background: var(--accent); color: white; font-weight: 500; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
   
-  .meta-row { display: flex; justify-content: flex-end; align-items: center; gap: 16px; margin-bottom: 24px; }
-  .meta-row .count { color: var(--text-secondary); font-size: 14px; }
+  .meta-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 24px; }
+  .meta-right { display: flex; align-items: center; gap: 16px; }
+  .meta-row .count { color: var(--text-secondary); font-size: 14px; font-weight: 500; }
   .view-toggles { display: flex; gap: 4px; }
-  .view-toggles button { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); cursor: pointer; }
+  .view-toggles button { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); cursor: pointer; transition: all 0.15s; }
+  .view-toggles button:hover { color: var(--text-primary); border-color: var(--text-muted); }
   .view-toggles button.active { color: var(--accent); background: var(--accent-subtle); border-color: var(--accent-subtle); }
   
   .project-card { display: flex; flex-direction: column; border-radius: 12px; overflow: hidden; background: var(--surface); border: 1px solid var(--border); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); transition: transform 0.2s, box-shadow 0.2s; text-decoration: none; color: inherit; }
@@ -99,19 +101,6 @@
   }
 </style>
 
-<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding-bottom: 14px; border-bottom: 1px solid var(--border);">
-  <a href="javascript:history.length > 1 ? history.back() : window.location.href='/login'" class="btn btn-secondary" style="display: inline-flex; align-items: center; gap: 8px; font-weight: 500; font-size: 13px;">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-    Back
-  </a>
-  {% if user %}
-  <a href="/login" class="btn btn-ghost" style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--accent); font-weight: 500;">
-    <span>Go to Workspace</span>
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-  </a>
-  {% endif %}
-</div>
-
 <div class="gallery-header">
   <div class="gallery-subtitle">Project Gallery</div>
   <div class="gallery-title-row">
@@ -173,31 +162,33 @@
         </select>
       </div>
     </div>
-    
-    <div class="tabs" style="align-self: flex-end; margin-bottom: 2px;">
-      <button type="button" class="active">All Projects</button>
-      <button type="button">Featured</button>
-      <button type="button">Popular</button>
-    </div>
   </div>
 </form>
 
 <div class="meta-row">
-  <div class="count">{{ projects|length }} projects</div>
-  <div class="view-toggles">
-    <button type="button" id="btn-projects-grid" class="active" onclick="setProjectsView('grid')" title="Grid View">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
-    </button>
-    <button type="button" id="btn-projects-list" onclick="setProjectsView('list')" title="List View">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
-    </button>
+  <div class="tabs">
+    <button type="button" class="active" onclick="filterGalleryTab('all', this)">All Projects</button>
+    <button type="button" onclick="filterGalleryTab('featured', this)">Featured</button>
+    <button type="button" onclick="filterGalleryTab('popular', this)">Popular</button>
+  </div>
+  
+  <div class="meta-right">
+    <div class="count">{{ projects|length }} projects</div>
+    <div class="view-toggles">
+      <button type="button" id="btn-projects-grid" class="active" onclick="setProjectsView('grid')" title="Grid View">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+      </button>
+      <button type="button" id="btn-projects-list" onclick="setProjectsView('list')" title="Details View">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+      </button>
+    </div>
   </div>
 </div>
 
 <div id="projectsContainer" class="grid-3">
   {% for project in projects %}
   {% set rand = (project.id|length) % 6 + 1 %}
-  <a class="project-card" href="/projects/{{ project.id }}">
+  <a class="project-card" href="/projects/{{ project.id }}" data-votes="{{ vote_counts.get(project.id, 0) }}" data-comments="{{ comment_counts.get(project.id, 0) }}" data-has-cover="{{ 'true' if project.cover_image_path else 'false' }}">
     <div class="card-cover {% if not project.cover_image_path %}gradient-{{ rand }}{% endif %}" {% if project.cover_image_path %}style="background-image: url('{{ project.cover_image_path }}');"{% endif %}>
       <div class="event-badge">{{ project.event.name }}</div>
       <div class="card-title-area">
@@ -324,6 +315,28 @@ function setProjectsView(viewMode) {
     listBtn.style.color = 'var(--text-muted)';
     listBtn.style.background = 'var(--surface)';
     localStorage.setItem('hackforge_projects_view', 'grid');
+  }
+}
+
+function filterGalleryTab(tab, btn) {
+  document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const cards = Array.from(document.querySelectorAll('.project-card'));
+  if (tab === 'all') {
+    cards.forEach(c => c.style.display = '');
+  } else if (tab === 'popular') {
+    cards.forEach(c => {
+      const v = parseInt(c.getAttribute('data-votes') || '0', 10);
+      const com = parseInt(c.getAttribute('data-comments') || '0', 10);
+      c.style.display = (v > 0 || com > 0) ? '' : 'none';
+    });
+    const visible = cards.filter(c => c.style.display !== 'none');
+    if (visible.length === 0) cards.forEach(c => c.style.display = '');
+  } else if (tab === 'featured') {
+    cards.forEach((c, idx) => {
+      const hasCover = c.getAttribute('data-has-cover') === 'true';
+      c.style.display = (hasCover || idx < 6) ? '' : 'none';
+    });
   }
 }
 

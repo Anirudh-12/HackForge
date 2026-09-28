@@ -49,4 +49,6 @@ def test_gallery_visitor_sidebar(client):
     assert "toggleSidebar()" in response.text
     # No toggle button outside sidebar
     assert "topbarSidebarToggle" not in response.text
+    # No back button in gallery ui section
+    assert "history.back()" not in response.text
 

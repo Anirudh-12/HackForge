@@ -61,7 +61,7 @@ def test_explore_page_controls_and_filters(client: TestClient):
 def test_gallery_page_controls_and_navigation(client: TestClient):
     resp = client.get("/projects")
     assert resp.status_code == 200
-    assert "history.back()" in resp.text
+    assert "history.back()" not in resp.text
     assert "btn-projects-grid" in resp.text
     assert "btn-projects-list" in resp.text
     assert "setProjectsView" in resp.text
