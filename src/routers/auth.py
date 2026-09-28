@@ -64,9 +64,9 @@ def login(
 
 
 @router.get("/register")
-def register_form(request: Request, db: Session = Depends(get_db)):
+def register_form(request: Request, next: str = "", db: Session = Depends(get_db)):
     return templates.TemplateResponse(request=request, name="register.html", context=
-        base_context(request=request, event=default_event(db), user=None, role="visitor", error=None),
+        base_context(request=request, event=default_event(db), user=None, role="visitor", next=next, error=None),
     )
 
 
@@ -76,6 +76,7 @@ def register(
     name: str = Form(...),
     email: str = Form(...),
     password: str = Form(...),
+    next: str = Form(""),
     db: Session = Depends(get_db),
 ):
     email_norm = email.strip().lower()
@@ -88,6 +89,7 @@ def register(
                     event=default_event(db),
                     user=None,
                     role="visitor",
+                    next=next,
                     error="An account with that email already exists.",
                 ),
                 status_code=400,
@@ -110,7 +112,10 @@ def register(
     if event:
         upsert_membership(db, event.id, user.id, "participant")
     db.commit()
-    response = RedirectResponse(home_for(db, user), status_code=303)
+    dest = next if next and next.startswith("/") else home_for(db, user)
+    if dest in ("/", "/login", "/register"):
+        dest = home_for(db, user)
+    response = RedirectResponse(dest, status_code=303)
     set_session_cookie(response, user.id)
     return response
 

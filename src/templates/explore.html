@@ -360,10 +360,14 @@
       const matchesQuery = !query || cardSearch.includes(query);
 
       if (matchesStatus && matchesQuery) {
-        card.style.display = '';
+        card.classList.remove('hidden');
+        card.setAttribute('data-hidden', 'false');
+        card.style.removeProperty('display');
         visibleCount++;
       } else {
-        card.style.display = 'none';
+        card.classList.add('hidden');
+        card.setAttribute('data-hidden', 'true');
+        card.style.setProperty('display', 'none', 'important');
       }
     });
 
@@ -391,6 +395,7 @@
       detailedBtn.style.color = 'var(--text-muted)';
       localStorage.setItem('hackforge_events_view', 'grid');
     }
+    applyFilters();
   }
 
   // Restore saved view preference
@@ -398,6 +403,8 @@
     const saved = localStorage.getItem('hackforge_events_view');
     if (saved === 'detailed') {
       setEventsView('detailed');
+    } else {
+      applyFilters();
     }
   });
 </script>

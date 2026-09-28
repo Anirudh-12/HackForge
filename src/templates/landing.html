@@ -2,17 +2,74 @@
 {% block title %}Hackforge{% endblock %}
 {% block content %}
 <section class="hero">
-  <h1>RUN YOUR HACKATHON<br>WITHOUT THE SPREADSHEET CHAOS.</h1>
-  <p>Open-source hackathon submission and judging platform. Self-host it. Own the data.</p>
+  <div class="hero-badge">
+    <span class="badge-dot"></span>
+    Open-Source &amp; Self-Hosted
+  </div>
+  <h1 class="hero-title">
+    Run your hackathon<br>
+    <span>without the spreadsheet chaos.</span>
+  </h1>
+  <p class="hero-subtitle">
+    The modern platform for project submissions, fair Z-score judging, and community showcases. Deploy in minutes with full data ownership.
+  </p>
   <div class="row-actions">
-    <a class="btn btn-primary" href="/register">Create Hackathon</a>
+    <a class="btn btn-primary" href="/register">Create Hackathon &rarr;</a>
     <a class="btn btn-secondary" href="/projects">Explore Events</a>
   </div>
+  <div class="hero-stats">
+    <div class="hero-stat-item">
+      <span class="hero-stat-check">&#10003;</span> 100% Data Ownership
+    </div>
+    <div class="hero-stat-item">
+      <span class="hero-stat-check">&#10003;</span> Fair Z-Score Judging
+    </div>
+    <div class="hero-stat-item">
+      <span class="hero-stat-check">&#10003;</span> Zero Vendor Lock-in
+    </div>
+  </div>
 </section>
-<div class="feature-row">
-  <div>submissions</div>
-  <div>judging</div>
-  <div>voting</div>
-  <div>results</div>
+
+<section class="minimal-features">
+  <div class="minimal-card">
+    <div class="card-icon">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M16 16v1a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v1"></path>
+        <path d="M18 8h4a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-4"></path>
+        <circle cx="8" cy="12" r="2"></circle>
+      </svg>
+    </div>
+    <h3>Submissions &amp; Teams</h3>
+    <p>Markdown documentation, media demos, repo links, and frictionless teammate invite codes for seamless collaboration.</p>
+  </div>
+
+  <div class="minimal-card">
+    <div class="card-icon">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="20" x2="18" y2="10"></line>
+        <line x1="12" y1="20" x2="12" y2="4"></line>
+        <line x1="6" y1="20" x2="6" y2="14"></line>
+      </svg>
+    </div>
+    <h3>Fair Z-Score Judging</h3>
+    <p>Automated score normalization and pairwise comparisons that neutralize individual judge bias automatically.</p>
+  </div>
+
+  <div class="minimal-card">
+    <div class="card-icon">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+      </svg>
+    </div>
+    <h3>Showcase &amp; Sealed Voting</h3>
+    <p>Searchable public project galleries with cryptographically sealed community ballots until the winners are declared.</p>
+  </div>
+</section>
+
+<div class="minimal-terminal">
+  <div class="terminal-text">
+    <span class="terminal-prompt">$</span> git clone https://github.com/hackforge/hackforge &amp;&amp; docker compose up
+  </div>
+  <a class="terminal-btn" href="/register">Get Started</a>
 </div>
 {% endblock %}

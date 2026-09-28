@@ -87,13 +87,17 @@
   }
 </style>
 
-<div class="dashboard-header" style="margin-top: 16px; display: flex; justify-content: space-between; align-items: center;">
+<div class="dashboard-header" style="margin-top: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
   <div>
+    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 6px;">
+      <a href="/judge/{{ event.id }}/dashboard" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.85rem; text-decoration: none;">&larr; Judge Dashboard</a>
+      <span style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; color: var(--text-muted); letter-spacing: 0.5px;">Pairwise Comparison</span>
+    </div>
     <h1 style="font-size: 2.2rem; margin: 0 0 8px 0;">Pairwise Judging</h1>
-    <p style="color: var(--text-muted); font-size: 1.1rem; margin: 0;">Compare two projects side-by-side and select the better one.</p>
+    <p style="color: var(--text-muted); font-size: 1.05rem; margin: 0;">Compare two projects side-by-side. Scores and ELO update automatically on your dashboard.</p>
   </div>
   {% if total_comparisons is defined %}
-    <div style="background: rgba(var(--primary-rgb), 0.1); color: var(--primary); padding: 8px 16px; border-radius: 20px; font-weight: bold;">
+    <div style="background: rgba(var(--primary-rgb), 0.1); color: var(--primary); padding: 8px 18px; border-radius: 20px; font-weight: bold; border: 1px solid rgba(var(--primary-rgb), 0.2);">
       {{ total_comparisons }} Comparisons Made
     </div>
   {% endif %}
@@ -115,6 +119,14 @@
         {% endif %}
       </div>
       <h2 class="project-title">{{ p1.title }}</h2>
+      <div style="display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;">
+        <span style="font-size: 0.8rem; font-weight: 600; padding: 3px 8px; border-radius: 4px; background: rgba(var(--primary-rgb), 0.1); color: var(--primary);">
+          Score: {{ p1_stats.score }}/10
+        </span>
+        <span style="font-size: 0.8rem; padding: 3px 8px; border-radius: 4px; background: var(--surface-hover, #f8fafc); border: 1px solid var(--border-color); color: var(--text-muted);">
+          ELO {{ p1_stats.elo|round|int }} ({{ p1_stats.wins }}W - {{ p1_stats.losses }}L)
+        </span>
+      </div>
       <p class="project-desc">{{ p1.summary }}</p>
       
       <form class="pairwise-form" method="post" action="/judge/{{ event.id }}/pairwise" style="margin: 0;">
@@ -142,6 +154,14 @@
         {% endif %}
       </div>
       <h2 class="project-title">{{ p2.title }}</h2>
+      <div style="display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;">
+        <span style="font-size: 0.8rem; font-weight: 600; padding: 3px 8px; border-radius: 4px; background: rgba(var(--primary-rgb), 0.1); color: var(--primary);">
+          Score: {{ p2_stats.score }}/10
+        </span>
+        <span style="font-size: 0.8rem; padding: 3px 8px; border-radius: 4px; background: var(--surface-hover, #f8fafc); border: 1px solid var(--border-color); color: var(--text-muted);">
+          ELO {{ p2_stats.elo|round|int }} ({{ p2_stats.wins }}W - {{ p2_stats.losses }}L)
+        </span>
+      </div>
       <p class="project-desc">{{ p2.summary }}</p>
       
       <form class="pairwise-form" method="post" action="/judge/{{ event.id }}/pairwise" style="margin: 0;">

@@ -5,6 +5,7 @@
   <h1>Create an account</h1>
   {% if error %}<div class="flash flash-error">{{ error }}</div>{% endif %}
   <form method="post" action="/register">
+    {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
     <label>Name</label>
     <input type="text" name="name" required>
     <label>Email</label>
@@ -13,7 +14,13 @@
     <input type="password" name="password" required>
     <div class="row-actions">
       <button class="btn btn-primary" type="submit">Register</button>
+      <a class="btn btn-ghost" href="/login{% if next %}?next={{ next }}{% endif %}">Sign in</a>
     </div>
   </form>
+  <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border); text-align: center;">
+    <a class="btn btn-secondary" href="/login{% if next %}?next={{ next }}{% endif %}" id="already-user-btn" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px; font-weight: 500; text-decoration: none;">
+      Already a user? Sign in
+    </a>
+  </div>
 </div>
 {% endblock %}
