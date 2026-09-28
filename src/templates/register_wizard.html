@@ -86,8 +86,94 @@
   .team-option-card input[type="radio"] {
     margin-right: 12px;
   }
+
+  /* Skills Tag Input */
+  .skills-tag-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    min-height: 48px;
+    cursor: text;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .skills-tag-container:focus-within {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.2);
+  }
+  .skills-pill-tag {
+    background: rgba(var(--primary-rgb), 0.12);
+    color: var(--primary);
+    border: 1px solid rgba(var(--primary-rgb), 0.25);
+    border-radius: 9999px;
+    padding: 4px 10px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    user-select: none;
+    animation: skillPop 0.15s ease-out;
+  }
+  @keyframes skillPop {
+    from { opacity: 0; transform: scale(0.85); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  .skills-pill-tag .skill-remove-btn {
+    cursor: pointer;
+    opacity: 0.65;
+    font-size: 1.1rem;
+    line-height: 1;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    width: 16px;
+    height: 16px;
+    transition: opacity 0.15s, color 0.15s;
+  }
+  .skills-pill-tag .skill-remove-btn:hover {
+    opacity: 1;
+    color: var(--danger, #ef4444);
+  }
+  .skills-pill-input {
+    border: none;
+    outline: none;
+    background: transparent;
+    flex: 1;
+    min-width: 160px;
+    padding: 4px 0;
+    font-size: 0.95rem;
+    color: var(--text-primary);
+  }
+  .skills-pill-input::placeholder {
+    color: var(--text-muted);
+    font-size: 0.88rem;
+  }
 </style>
 
+{% if is_completed or not reg_open %}
+<div class="wizard-container" style="text-align: center; padding: 48px 32px;">
+  <div style="font-size: 3rem; margin-bottom: 16px;">🛑</div>
+  <h1 style="margin: 0 0 12px 0;">Registration Closed</h1>
+  <p style="color: var(--text-muted); font-size: 1.05rem; max-width: 480px; margin: 0 auto 32px; line-height: 1.5;">
+    {% if is_completed %}
+      <strong>{{ event.name }}</strong> has already concluded and results have been published. Registrations cannot be accepted for completed hackathons.
+    {% else %}
+      Registration for <strong>{{ event.name }}</strong> is currently closed.
+    {% endif %}
+  </p>
+  <div style="display: flex; gap: 12px; justify-content: center;">
+    <a href="/events/{{ event.id }}" class="btn btn-secondary">View Hackathon Page</a>
+    <a href="/projects?event_id={{ event.id }}" class="btn btn-primary">Browse Project Gallery &rarr;</a>
+  </div>
+</div>
+{% else %}
 <div class="wizard-container">
   <h1 style="margin-top: 0; text-align: center;">Join {{ event.name }}</h1>
   <p style="text-align: center; color: var(--text-muted); margin-bottom: 32px;">Complete your registration to access the hackathon dashboard.</p>
@@ -107,9 +193,9 @@
       
       <div style="margin-bottom: 24px;">
         <label style="display: block; margin-bottom: 8px; font-weight: 500;">Skills &amp; Technologies</label>
-        <div id="skills-tag-box" style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); min-height: 48px; cursor: text;" onclick="document.getElementById('skills-pill-input').focus()">
+        <div class="skills-tag-container" id="skills-tag-box" onclick="document.getElementById('skills-pill-input').focus()">
           <div id="skills-pill-list" style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center;"></div>
-          <input type="text" id="skills-pill-input" placeholder="Type a skill and press comma or Enter (e.g. React, Python)..." style="border: none; outline: none; background: transparent; flex: 1; min-width: 180px; padding: 4px 0; font-size: 14px; color: var(--text-primary);">
+          <input type="text" id="skills-pill-input" class="skills-pill-input" placeholder="Type a skill and press comma or Enter (e.g. React, Python)..." autocomplete="off">
         </div>
         <input type="hidden" name="skills_offered" id="skills_offered_hidden" value="">
         <span style="font-size: 12px; color: var(--text-muted); margin-top: 6px; display: block;">Separate skills by typing a comma (,) or pressing Enter.</span>
@@ -196,6 +282,9 @@
 
 <script>
   function goToStep(stepNumber) {
+    if (skillsInput && skillsInput.value.trim()) {
+      addSkill(skillsInput.value);
+    }
     document.querySelectorAll('.wizard-step').forEach(el => el.classList.remove('active'));
     document.getElementById('step-' + stepNumber).classList.add('active');
     
@@ -225,23 +314,32 @@
   const skillsHidden = document.getElementById('skills_offered_hidden');
 
   function renderSkills() {
+    if (!skillsContainer || !skillsHidden) return;
     skillsContainer.innerHTML = '';
     skillsList.forEach((skill, idx) => {
       const tag = document.createElement('span');
-      tag.style.cssText = 'background: rgba(var(--primary-rgb), 0.12); color: var(--primary); border: 1px solid rgba(var(--primary-rgb), 0.25); border-radius: 999px; padding: 4px 10px; font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px;';
-      tag.innerHTML = `<span>${escapeHtml(skill)}</span><span style="cursor: pointer; opacity: 0.7; font-weight: bold; font-size: 14px;" onclick="removeSkill(${idx})">&times;</span>`;
+      tag.className = 'skills-pill-tag';
+      tag.innerHTML = `<span>${escapeHtml(skill)}</span><span class="skill-remove-btn" title="Remove skill" onclick="removeSkill(${idx})">&times;</span>`;
       skillsContainer.appendChild(tag);
     });
     skillsHidden.value = skillsList.join(', ');
   }
 
   function addSkill(val) {
-    const trimmed = val.replace(/,/g, '').trim();
-    if (trimmed && !skillsList.includes(trimmed)) {
-      skillsList.push(trimmed);
+    if (!val) return;
+    const parts = val.split(',');
+    let added = false;
+    parts.forEach(p => {
+      const trimmed = p.trim();
+      if (trimmed && !skillsList.some(s => s.toLowerCase() === trimmed.toLowerCase())) {
+        skillsList.push(trimmed);
+        added = true;
+      }
+    });
+    if (added) {
       renderSkills();
     }
-    skillsInput.value = '';
+    if (skillsInput) skillsInput.value = '';
   }
 
   function removeSkill(idx) {
@@ -274,8 +372,7 @@
     skillsInput.addEventListener('paste', (e) => {
       e.preventDefault();
       const paste = (e.clipboardData || window.clipboardData).getData('text');
-      const parts = paste.split(',');
-      parts.forEach(p => addSkill(p));
+      addSkill(paste);
     });
 
     skillsInput.addEventListener('blur', () => {
@@ -284,6 +381,16 @@
       }
     });
   }
+
+  const wizardForm = document.getElementById('wizard-form');
+  if (wizardForm) {
+    wizardForm.addEventListener('submit', () => {
+      if (skillsInput && skillsInput.value.trim()) {
+        addSkill(skillsInput.value);
+      }
+    });
+  }
 </script>
+{% endif %}
 
 {% endblock %}

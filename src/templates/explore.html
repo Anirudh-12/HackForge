@@ -373,6 +373,8 @@
         <a href="/events/{{ event.id }}" class="btn btn-secondary">View Details</a>
         {% if registered_event_ids and event.id in registered_event_ids %}
         <a href="/participant/{{ event.id }}/dashboard" class="btn btn-primary" style="flex:1;">Workspace &rarr;</a>
+        {% elif status_filter == 'past' %}
+        <a href="/events/{{ event.id }}" class="btn btn-secondary" style="flex:1;">View Event &rarr;</a>
         {% else %}
         <a href="/events/{{ event.id }}" class="btn btn-primary" style="flex:1;">Register &rarr;</a>
         {% endif %}

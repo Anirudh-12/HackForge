@@ -1,7 +1,7 @@
 # ⚖️ HackForge — Judging Engine & Normalization Proof
 
 > **Mathematical proof, edge-case derivations, and Bradley-Terry pairwise modeling.**  
-> *Addresses the Normalization Proof (Hard) and Pairwise Mode (Hard) bonus challenges.*
+> *Addresses the Normalization Proof (Hard) and Pairwise Mode (Hard) evaluation systems.*
 
 ---
 
@@ -11,11 +11,11 @@ In any hackathon with more than ~10 projects, no single judge can review every s
 
 1. **Calibration Disparity:** Lenient judges assign raw scores in the $[4.0, 5.0]$ range; harsh judges assign $[1.5, 3.0]$.
 2. **Assignment Inequity:** A superior project evaluated exclusively by a harsh judge receives a lower raw average than a mediocre project evaluated by a lenient judge.
-3. **Cognitive Scale Fatigue:** As judges review multiple projects, their internal threshold drifts. Numerical Likert scales (1–5) suffer low inter-rater reliability.
+3. **Cognitive Scale Fatigue:** As judges review multiple projects, their internal threshold drifts. Numerical Likert scales (1–5 or 1–10) suffer low inter-rater reliability.
 
 HackForge solves this through a dual-engine architecture:
 - **Per-Track Z-Score Normalization** for rubric evaluations.
-- **Bradley-Terry Pairwise ELO Estimation** for comparative judgments.
+- **Bradley-Terry Pairwise ELO Estimation** with auto-sync to rubric evaluations for binary comparative judgments.
 
 ---
 
@@ -35,14 +35,17 @@ For project $i$ evaluated by judge $j$ over $C$ criteria with weights $w_c$:
 
 $$s_{i,j} = \frac{\sum_{c=1}^C w_c \cdot v_{i,j,c}}{\sum_{c=1}^C w_c}$$
 
-where $v_{i,j,c} \in \{1, 2, 3, 4, 5\}$ is the score assigned to criterion $c$.
+where $v_{i,j,c} \in \{1, 2, \dots, 10\}$ is the score assigned to criterion $c$.
 
 #### Step 2: Judge Distribution Parameters
-We calculate the empirical mean $\mu_{j,t}$ and sample standard deviation $\sigma_{j,t}$:
+We calculate the empirical mean $\mu_{j,t}$ and standard deviation $\sigma_{j,t}$ over the judge's assigned track evaluations:
 
 $$\mu_{j,t} = \frac{1}{N_j} \sum_{i=1}^{N_j} s_{i,j}$$
 
+For $N_j > 1$:
 $$\sigma_{j,t} = \sqrt{\frac{1}{N_j} \sum_{i=1}^{N_j} (s_{i,j} - \mu_{j,t})^2}$$
+
+For $N_j \le 1$, $\sigma_{j,t} = 0$.
 
 #### Step 3: Z-Score Standardization
 The raw score is mapped to its standard deviation distance from that specific judge's mean:
@@ -91,7 +94,7 @@ If a judge exhibits zero variance, they provide zero discriminating signal betwe
 *Condition:* A judge reviews exactly one project in a given track ($N=1$).  
 *Proof:*
 $$\mu_{j,t} = s_{1,j}$$
-$$\sigma_{j,t} = \sqrt{\frac{1}{1} (s_{1,j} - s_{1,j})^2} = 0$$
+$$\sigma_{j,t} = 0 \quad (\text{enforced in code for } N \le 1)$$
 By Theorem 1, $\sigma=0$, mapping safely to the neutral baseline of $50.0$.
 
 #### Theorem 3: Conflict of Interest Exclusion
@@ -128,6 +131,25 @@ $$R'_L = R_L + K \cdot (0 - P(L > W))$$
 Because $P(W > L) + P(L > W) = 1$:
 $$\Delta R_W + \Delta R_L = K(1 - P(W > L)) + K(-P(L > W)) = K(1 - (P(W > L) + P(L > W))) = 0$$
 Total rating points in the system are strictly conserved. Ratings dynamically converge toward the true underlying quality ranking as comparison volume increases.
+
+### 3.5 Intelligent Pair Selection & Side Randomization
+In `src/routers/judge.py`, pairwise presentation uses active heuristics:
+1. **Uncompared Pairs First:** Pairs of assigned projects that have never been compared by this judge are selected before repeated pairs.
+2. **Min-Load Balancing:** Among eligible pairs, the algorithm chooses the pair with the fewest total comparisons to date ($\min(\text{comps}(A) + \text{comps}(B))$), ensuring uniform evaluation coverage across all projects.
+3. **50% Side Randomization:** Projects are randomly flipped between left and right cards with probability $0.5$, neutralizing first-option bias.
+4. **Idempotent Upsert:** If a judge revisits a pair, the existing comparison is updated in place, preventing duplicate voting records for the same pair.
+
+### 3.6 Auto-Sync to Rubric Scoring
+To avoid fragmenting evaluations, `sync_pairwise_scores()` translates a judge's pairwise ELO rankings directly into standard `Score` records across criteria:
+
+$$\text{Rubric Score} = \max\left(1, \min\left(10, \operatorname{round}\left(7.0 + \frac{\text{ELO} - 1500.0}{33.0}\right)\right)\right)$$
+
+- Baseline $1500 \implies 7/10$
+- $1400 \implies 4/10$
+- $1600 \implies 10/10$
+- The record's comment is set to `"Pairwise ELO: {elo} ({wins}W - {losses}L)"`.
+
+This bridges the qualitative and quantitative paradigms: judges can evaluate entirely via binary comparisons, while the rest of the scoring pipeline consumes normalized scores.
 
 ---
 

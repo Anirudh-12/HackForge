@@ -79,9 +79,32 @@
     </div>
   {% endif %}
 
+  {% if request.query_params.get('error') == 'completed' %}
+    <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #f87171; padding: 12px 18px; border-radius: 8px; margin-bottom: 24px; display: flex; align-items: center; gap: 10px;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+      <span><strong>Registration Closed:</strong> This hackathon has already completed. You cannot register for past events.</span>
+    </div>
+  {% elif request.query_params.get('error') == 'closed' %}
+    <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); color: #f59e0b; padding: 12px 18px; border-radius: 8px; margin-bottom: 24px; display: flex; align-items: center; gap: 10px;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+      <span><strong>Registration Closed:</strong> Registration for this hackathon is currently closed.</span>
+    </div>
+  {% endif %}
+
   <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 32px; border-bottom: 1px solid var(--border); padding-bottom: 24px;">
     <div>
-      <h1 style="margin: 0 0 8px 0; font-size: 2.5rem;">{{ event.name }}</h1>
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px; flex-wrap: wrap;">
+        <h1 style="margin: 0; font-size: 2.5rem;">{{ event.name }}</h1>
+        {% if is_completed %}
+          <span style="background: rgba(148, 163, 184, 0.15); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.35); padding: 4px 12px; border-radius: 999px; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; display: inline-flex; align-items: center; gap: 6px;">
+            <span style="width: 7px; height: 7px; border-radius: 50%; background: #94a3b8;"></span>Completed
+          </span>
+        {% elif not reg_open %}
+          <span style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.35); padding: 4px 12px; border-radius: 999px; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">
+            Registration Closed
+          </span>
+        {% endif %}
+      </div>
       {% if event.tagline %}
         <p style="margin: 0 0 12px 0; font-size: 1.15rem; color: var(--text-secondary);">{{ event.tagline }}</p>
       {% endif %}
@@ -100,12 +123,20 @@
     </div>
     <div style="display: flex; gap: 12px; align-items: center;">
       <a href="/projects?event_id={{ event.id }}" class="btn btn-ghost">View Gallery</a>
-      {% if user %}
-        {% if role and role != 'visitor' %}
-          <a href="/{{ role }}/{{ event.id }}/dashboard" class="btn btn-primary">Go to Dashboard</a>
-        {% else %}
-          <button onclick="document.getElementById('register-modal').style.display='flex'" class="btn btn-primary">Join Hackathon</button>
-        {% endif %}
+      {% if user and role and role != 'visitor' %}
+        <a href="/{{ role }}/{{ event.id }}/dashboard" class="btn btn-primary">Go to Dashboard</a>
+      {% elif is_completed %}
+        <button class="btn btn-secondary" disabled style="opacity: 0.65; cursor: not-allowed; display: inline-flex; align-items: center; gap: 6px;" title="This hackathon has already completed.">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>
+          Hackathon Completed
+        </button>
+      {% elif not reg_open %}
+        <button class="btn btn-secondary" disabled style="opacity: 0.65; cursor: not-allowed; display: inline-flex; align-items: center; gap: 6px;" title="Registrations are closed.">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>
+          Registration Closed
+        </button>
+      {% elif user %}
+        <button onclick="document.getElementById('register-modal').style.display='flex'" class="btn btn-primary">Join Hackathon</button>
       {% else %}
         <a href="/login?next=/events/{{ event.id }}" class="btn btn-primary">Join Hackathon</a>
       {% endif %}
@@ -211,8 +242,78 @@
     border-color: var(--accent); background: rgba(37, 99, 235, 0.05);
   }
   .team-option-card input[type="radio"] { margin-right: 12px; }
+
+  /* Skills Tag Input */
+  .skills-tag-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    min-height: 48px;
+    cursor: text;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .skills-tag-container:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+  }
+  .skills-pill-tag {
+    background: rgba(37, 99, 235, 0.12);
+    color: var(--accent);
+    border: 1px solid rgba(37, 99, 235, 0.25);
+    border-radius: 9999px;
+    padding: 4px 10px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    user-select: none;
+    animation: skillPop 0.15s ease-out;
+  }
+  @keyframes skillPop {
+    from { opacity: 0; transform: scale(0.85); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  .skills-pill-tag .skill-remove-btn {
+    cursor: pointer;
+    opacity: 0.65;
+    font-size: 1.1rem;
+    line-height: 1;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    width: 16px;
+    height: 16px;
+    transition: opacity 0.15s, color 0.15s;
+  }
+  .skills-pill-tag .skill-remove-btn:hover {
+    opacity: 1;
+    color: var(--danger, #ef4444);
+  }
+  .skills-pill-input {
+    border: none;
+    outline: none;
+    background: transparent;
+    flex: 1;
+    min-width: 160px;
+    padding: 4px 0;
+    font-size: 0.95rem;
+    color: var(--text-color, #f8fafc);
+  }
+  .skills-pill-input::placeholder {
+    color: var(--text-muted);
+    font-size: 0.88rem;
+  }
 </style>
 
+{% if not is_completed and reg_open %}
 <div class="modal-overlay" id="register-modal">
   <div class="wizard-container">
     <button class="close-btn" onclick="document.getElementById('register-modal').style.display='none'">&times;</button>
@@ -233,8 +334,13 @@
         <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 24px;">Tell us a bit about yourself so teams can find you (optional).</p>
         
         <div style="margin-bottom: 24px;">
-          <label style="display: block; margin-bottom: 8px; font-weight: 500;">Skills & Technologies</label>
-          <input type="text" name="skills_offered" class="input" placeholder="e.g. React, Python, UI Design, APIs">
+          <label style="display: block; margin-bottom: 8px; font-weight: 500;">Skills &amp; Technologies</label>
+          <div class="skills-tag-container" id="skills-tag-box" onclick="document.getElementById('skills-pill-input').focus()">
+            <div id="skills-pill-list" style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center;"></div>
+            <input type="text" id="skills-pill-input" class="skills-pill-input" placeholder="Type a skill and press comma or Enter (e.g. React, Python)..." autocomplete="off">
+          </div>
+          <input type="hidden" name="skills_offered" id="skills_offered_hidden" value="">
+          <span style="font-size: 12px; color: var(--text-muted); margin-top: 6px; display: block;">Separate skills by typing a comma (,) or pressing Enter.</span>
         </div>
         
         <div style="margin-bottom: 24px;">
@@ -316,6 +422,7 @@
     </form>
   </div>
 </div>
+{% endif %}
 
 <script src="/static/marked.min.js"></script>
 <script type="text/markdown" id="raw-description">{{ event.description_markdown or 'No description provided.' }}</script>
@@ -341,6 +448,9 @@
     }
   }
   function goToStep(stepNumber) {
+    if (skillsInput && skillsInput.value.trim()) {
+      addSkill(skillsInput.value);
+    }
     document.querySelectorAll('.wizard-step').forEach(el => el.classList.remove('active'));
     document.getElementById('step-' + stepNumber).classList.add('active');
     
@@ -361,6 +471,90 @@
     
     if (action === 'create') document.querySelector('input[name="team_name"]').focus();
     if (action === 'join') document.querySelector('input[name="invite_token"]').focus();
+  }
+
+  // Comma-segmented skills tagging logic
+  const skillsList = [];
+  const skillsInput = document.getElementById('skills-pill-input');
+  const skillsContainer = document.getElementById('skills-pill-list');
+  const skillsHidden = document.getElementById('skills_offered_hidden');
+
+  function renderSkills() {
+    if (!skillsContainer || !skillsHidden) return;
+    skillsContainer.innerHTML = '';
+    skillsList.forEach((skill, idx) => {
+      const tag = document.createElement('span');
+      tag.className = 'skills-pill-tag';
+      tag.innerHTML = `<span>${escapeHtml(skill)}</span><span class="skill-remove-btn" title="Remove skill" onclick="removeSkill(${idx})">&times;</span>`;
+      skillsContainer.appendChild(tag);
+    });
+    skillsHidden.value = skillsList.join(', ');
+  }
+
+  function addSkill(val) {
+    if (!val) return;
+    const parts = val.split(',');
+    let added = false;
+    parts.forEach(p => {
+      const trimmed = p.trim();
+      if (trimmed && !skillsList.some(s => s.toLowerCase() === trimmed.toLowerCase())) {
+        skillsList.push(trimmed);
+        added = true;
+      }
+    });
+    if (added) {
+      renderSkills();
+    }
+    if (skillsInput) skillsInput.value = '';
+  }
+
+  function removeSkill(idx) {
+    skillsList.splice(idx, 1);
+    renderSkills();
+  }
+
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.innerText = text;
+    return div.innerHTML;
+  }
+
+  if (skillsInput) {
+    skillsInput.addEventListener('keydown', (e) => {
+      if (e.key === ',' || e.key === 'Enter') {
+        e.preventDefault();
+        addSkill(skillsInput.value);
+      } else if (e.key === 'Backspace' && !skillsInput.value && skillsList.length > 0) {
+        removeSkill(skillsList.length - 1);
+      }
+    });
+
+    skillsInput.addEventListener('input', (e) => {
+      if (skillsInput.value.includes(',')) {
+        addSkill(skillsInput.value);
+      }
+    });
+
+    skillsInput.addEventListener('paste', (e) => {
+      e.preventDefault();
+      const paste = (e.clipboardData || window.clipboardData).getData('text');
+      addSkill(paste);
+    });
+
+    skillsInput.addEventListener('blur', () => {
+      if (skillsInput.value.trim()) {
+        addSkill(skillsInput.value);
+      }
+    });
+  }
+
+  const wizardForm = document.getElementById('wizard-form');
+  if (wizardForm) {
+    wizardForm.addEventListener('submit', () => {
+      if (skillsInput && skillsInput.value.trim()) {
+        addSkill(skillsInput.value);
+      }
+    });
   }
 </script>
 {% endblock %}

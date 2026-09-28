@@ -8,10 +8,10 @@
 HackForge is an open-source, self-hostable hackathon submission and judging platform. Built on **FastAPI**, **SQLAlchemy**, and **SQLite**, it provides a high-performance REST API designed with **strict backend-enforced role isolation**, **tamper-evident audit logging**, **real-time HMAC-signed webhooks**, and **verifiable credentials**.
 
 ### Core Tenets:
-1. **The One Command Rule**: Fully operable offline with zero external dependencies (`docker compose up` starts a fully functional, seeded portal).
+1. **The One-Command Offline Rule**: Fully operable offline with zero external dependencies (`docker compose up` starts a fully functional, seeded portal with 10 multi-state hackathons and official DOGFOOD fixtures).
 2. **Backend-Enforced Role Isolation**: Access controls exist in HTTP route handlers and database queries, never merely hidden on the frontend.
 3. **Cryptographic Integrity**: Signed judge participation records and verifiable certificates resist tampering and Sybil manipulation.
-4. **Developer-First Design**: OpenAPI 3.1 schema auto-generation, interactive Swagger UI (`/docs`), ReDoc (`/redoc`), and an interactive, role-tailored documentation portal (`/api/docs`).
+4. **Developer-First Design**: OpenAPI 3.1 schema auto-generation, interactive Swagger UI (`/docs`), and a custom, role-tailored documentation portal (`/api/docs`).
 
 ---
 
@@ -39,18 +39,26 @@ Authorization: Bearer org_1.bc826db9afa5c5272756f589e832f78160fce069fea518188662
 | View Public Project Details (`/projects/{id}`) | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Public Record / Cert Verification (`/verify/...`) | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Embed Gallery Widget (`/embed/gallery/{id}`) | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Submit Project (`/projects/new`) | ❌ | ✅ | ❌ | ❌ | ✅ |
+| Register for Event (`/events/{id}/register`) | ❌ | ✅ | ✅ | ✅ | ✅ |
+| Submit Project (`/projects/new`, `/participant/{id}/submit`) | ❌ | ✅ | ❌ | ❌ | ✅ |
+| Request to Join Team (`/participant/{id}/request_join`)| ❌ | ✅ | ❌ | ❌ | ✅ |
+| Accept / Decline Join Requests (`/participant/...`) | ❌ | ✅ (Leader)| ❌ | ❌ | ✅ |
 | Cast Community Peer Vote (`/api/projects/{id}/vote`) | ❌ | ✅ | ❌ | ❌ | ✅ |
+| Revoke Community Vote (`DELETE /api/projects/{id}/vote`)| ❌ | ✅ | ❌ | ❌ | ✅ |
 | Post Project Comment (`/api/projects/{id}/comments`) | ❌ | ✅ | ✅ | ✅ | ✅ |
 | Read Own Scores (`/api/judge/scores`) | ❌ | ❌ | ✅ | ✅ | ✅ |
 | Read Peer Judge Scores (`/api/judge/scores?judge=...`) | ❌ | ❌ | **403** | ✅ | ✅ |
+| Pairwise Evaluation (`/judge/{id}/pairwise`) | ❌ | ❌ | ✅ | ✅ | ✅ |
 | Generate Signed Judging Record (`/api/judge/{id}/record`) | ❌ | ❌ | ✅ | ✅ | ✅ |
+| View / Download Certificate (`/api/certificates/{id}/download`)| ❌ | ✅ (Eligible)| ✅ | ✅ | ✅ |
 | View Live Judging Dashboard (`/organizer/{id}/dashboard`) | ❌ | ❌ | ❌ | ✅ | ✅ |
 | Export Results CSV (`/api/export.csv`) | ❌ | ❌ | ❌ | ✅ | ✅ |
-| Full Event JSON Export (`/api/events/{id}/export/full.json`) | ❌ | ❌ | ❌ | ✅ | ✅ |
-| Register Webhook (`/api/events/{id}/webhooks`) | ❌ | ❌ | ❌ | ✅ | ✅ |
+| Export Projects CSV (`/api/events/{id}/export/projects.csv`)| ❌ | ❌ | ❌ | ✅ | ✅ |
+| Full Event JSON Export (`/api/events/{id}/export/full.json`)| ❌ | ❌ | ❌ | ✅ | ✅ |
+| Inspect & Export Audit Logs (`/api/events/{id}/audit`)| ❌ | ❌ | ❌ | ✅ | ✅ |
+| Manage Webhooks (`/api/events/{id}/webhooks`) | ❌ | ❌ | ❌ | ✅ | ✅ |
 | Bulk Import Projects (`/api/events/{id}/import/projects`) | ❌ | ❌ | ❌ | ✅ | ✅ |
-| Generate Certificates (`/api/events/{id}/certificates/generate`)| ❌ | ❌ | ❌ | ✅ | ✅ |
+| Bulk Generate Certificates (`/api/events/{id}/certificates/generate`)| ❌ | ❌ | ❌ | ✅ | ✅ |
 
 ---
 
@@ -69,7 +77,12 @@ Authorization: Bearer org_1.bc826db9afa5c5272756f589e832f78160fce069fea518188662
       -H "Cookie: session=<organizer_token>"
     ```
 
-#### 2. Full Event Archival JSON Export (T4)
+#### 2. Export Projects CSV
+*   **Path**: `GET /api/events/{event_id}/export/projects.csv`
+*   **Auth**: Organizer or Admin session
+*   **Response**: `text/csv` spreadsheet export with metadata, summaries, repositories, demo links, and tech stacks.
+
+#### 3. Full Event Archival JSON Export (T4)
 *   **Path**: `GET /api/events/{event_id}/export/full.json`
 *   **Auth**: Organizer or Admin session
 *   **Response**: `application/json` full database dump including metadata, tracks, criteria, projects, judge scores, comments, community votes, and audit ledger.
@@ -79,7 +92,7 @@ Authorization: Bearer org_1.bc826db9afa5c5272756f589e832f78160fce069fea518188662
       -H "Cookie: session=<organizer_token>"
     ```
 
-#### 3. Bulk Import Projects (T4)
+#### 4. Bulk Import Projects (T4)
 *   **Path**: `POST /api/events/{event_id}/import/projects`
 *   **Auth**: Organizer or Admin session
 *   **Payload**: JSON array of project definitions:
@@ -93,12 +106,20 @@ Authorization: Bearer org_1.bc826db9afa5c5272756f589e832f78160fce069fea518188662
       }
     ]
     ```
-*   **Response**: `{"success": true, "imported_count": 1}`
+*   **Response**: `{"success": true, "imported_count": 1, "message": "Successfully imported 1 projects"}`
 
-#### 4. Bulk Generate Verifiable Certificates (T4)
+#### 5. Bulk Generate Verifiable Certificates (T4)
 *   **Path**: `POST /api/events/{event_id}/certificates/generate`
 *   **Auth**: Organizer or Admin session
-*   **Response**: Bulk creates `Certificate` records for all participants and judges with tamper-evident codes.
+*   **Response**: Bulk creates `Certificate` records with tamper-evident verification codes (`CERT-PRT-...` and `CERT-JDG-...`). Automatically purges ineligible participant records where no project was submitted.
+
+#### 6. Audit Log Inspection & Export
+*   **Path**: `GET /api/events/{event_id}/audit`
+*   **Auth**: Organizer or Admin session
+*   **Query Parameters**: `q` (free-text search), `category` (`auth`, `projects`, `scoring`, `voting`, `admin`)
+*   **Export Endpoints**:
+    *   `GET /organizer/{event_id}/audit/export.csv`
+    *   `GET /organizer/{event_id}/audit/export.json`
 
 ---
 
@@ -116,10 +137,15 @@ Authorization: Bearer org_1.bc826db9afa5c5272756f589e832f78160fce069fea518188662
 
 #### 2. Peer Score Isolation Enforcement (T2 Acceptance Check)
 *   **Path**: `GET /api/judge/scores?judge=jdg_01`
-*   **Auth**: When requested as a peer judge (e.g. `judge_b`), the backend returns **HTTP 401 or 403 Forbidden**.
+*   **Auth**: When requested as a peer judge (e.g. `judge_b`), the backend returns **HTTP 403 Forbidden**.
 *   **Rationale**: Prevents score anchoring, collusion, and bias.
 
-#### 3. Cryptographically Signed Judge Participation Record (T4)
+#### 3. Pairwise Evaluation & Auto-Sync
+*   **Paths**:
+    *   `GET /judge/{event_id}/pairwise`: Returns pairwise comparison interface with intelligent min-load pair selection and 50% presentation side randomization.
+    *   `POST /judge/{event_id}/pairwise`: Submits head-to-head decision (`winner_id`, `loser_id`), updates Bradley-Terry ELO, and immediately synchronizes to standard rubric `Score` records (`sync_pairwise_scores`).
+
+#### 4. Cryptographically Signed Judge Participation Record (T4)
 *   **Path**: `GET /api/judge/{event_id}/record`
 *   **Auth**: Assigned Judge session
 *   **Response**:
@@ -144,10 +170,10 @@ Authorization: Bearer org_1.bc826db9afa5c5272756f589e832f78160fce069fea518188662
 ### 3.3. Participant Endpoints
 
 #### 1. Project Submission & Drafts (T1)
-*   **Path**: `POST /projects/new`
-*   **Auth**: Registered participant session
-*   **Deadline Enforcement**: If `submissions_close` has passed, returns HTTP 4xx (e.g. 400 Bad Request or 403 Forbidden).
-*   **Payload**:
+*   **Path**: `POST /projects/new` or `POST /participant/{event_id}/submit`
+*   **Auth**: Registered participant session belonging to a team
+*   **Deadline Enforcement**: If `submissions_close` has passed, returns `HTTP 400 Bad Request` ("Submissions are closed").
+*   **Payload (JSON or multipart/form-data)**:
     ```json
     {
       "title": "HackForge",
@@ -159,32 +185,32 @@ Authorization: Bearer org_1.bc826db9afa5c5272756f589e832f78160fce069fea518188662
     }
     ```
 
-#### 2. Community Peer Voting (T3)
+#### 2. Team Join Requests & Invitations
+*   `POST /participant/{event_id}/request_join`: Sends join request to team leader.
+*   `POST /participant/{event_id}/requests/{request_id}/accept`: Leader accepts request, adding user to team.
+*   `POST /participant/{event_id}/requests/{request_id}/decline`: Leader declines request.
+*   `POST /participant/{event_id}/requests/{request_id}/cancel`: User cancels pending request.
+
+#### 3. Community Peer Voting (T3)
 *   **Path**: `POST /api/projects/{project_id}/vote`
 *   **Auth**: Registered participant session
 *   **Anti-Abuse Controls**:
-    *   **Self-Voting**: Blocked with HTTP 403 Forbidden.
-    *   **Rate Limit**: Max 10 requests / 60 seconds (HTTP 429).
-    *   **Toggle Behavior**: Subsequent requests for the same project toggle the vote off; requests for a new project move the vote atomically.
-*   **Response**:
-    ```json
-    {
-      "success": true,
-      "voted": true,
-      "project_id": "prj_01",
-      "message": "Vote cast successfully"
-    }
-    ```
+    *   **Single Ballot Per Event**: Enforced by database constraint `uq_vote_user_event`.
+    *   **Atomic Ballot Transfer**: Voting for another project moves the vote atomically; re-voting toggles/unvotes.
+    *   **Self-Voting Prohibition**: Blocked with `HTTP 403 Forbidden`.
+    *   **Rate Limiting**: Max 10 requests / 60 seconds (`HTTP 429 Too Many Requests`).
+*   **Explicit Revocation**: `DELETE /api/projects/{project_id}/vote`
 
-#### 3. Query Vote Status (T3 Results Isolation)
+#### 4. Query Vote Status (T3 Results Isolation)
 *   **Path**: `GET /api/projects/{project_id}/vote-status`
 *   **Results Hiding**: If `results_published` is `False`, `vote_count` returns `null` to eliminate premature disclosure.
 
-#### 4. Project Comments & Discussion (T3)
+#### 5. Project Comments & Discussion (T3)
 *   **Path**: `POST /api/projects/{project_id}/comments`
 *   **Auth**: Authenticated session
 *   **Payload**: `{"content": "Brilliant architecture and clean code!"}`
-*   **Sanitization**: All HTML entities are escaped server-side via `html.escape()` before storage. Max 2,000 characters.
+*   **Sanitization**: All HTML entities escaped server-side via `html.escape()`. Max 2,000 characters.
+*   **Deletion**: `DELETE /api/projects/{project_id}/comments/{comment_id}` restricted to author or event organizers.
 
 ---
 
@@ -194,7 +220,7 @@ Authorization: Bearer org_1.bc826db9afa5c5272756f589e832f78160fce069fea518188662
 *   **Path**: `GET /projects`
 *   **Auth**: None (completely public)
 *   **Query Parameters**:
-    *   `q`: Free text search in title/summary
+    *   `q`: Free-text search in title/summary
     *   `track`: Track filter
     *   `tech`: Technology stack filter
     *   `sort=random`: Deterministic session-seeded ballot shuffle (T3)
@@ -220,6 +246,9 @@ Authorization: Bearer org_1.bc826db9afa5c5272756f589e832f78160fce069fea518188662
 #### 3. Public Verification Routes
 *   `GET /verify/record/{record_id}`: Validates cryptographic HMAC signature of judge participation records.
 *   `GET /verify/certificate/{code}`: Validates authenticity and awards of attendee credentials.
+
+#### 4. Certificate SVG Download
+*   `GET /api/certificates/{cert_id}/download`: Returns a standalone, vector-rendered SVG certificate suitable for export and printing.
 
 ---
 
@@ -261,13 +290,15 @@ Every webhook HTTP POST delivery includes:
 import hmac
 import hashlib
 
-def verify_hackforge_webhook(secret: str, raw_body: bytes, signature_header: str) -> bool:
+
+def verify_hackforge_webhook(
+    secret: str, raw_body: bytes, signature_header: str
+) -> bool:
     """Verifies that the webhook payload originated from HackForge."""
-    expected_sig = "sha256=" + hmac.new(
-        secret.encode("utf-8"),
-        raw_body,
-        hashlib.sha256
-    ).hexdigest()
+    expected_sig = (
+        "sha256="
+        + hmac.new(secret.encode("utf-8"), raw_body, hashlib.sha256).hexdigest()
+    )
     return hmac.compare_digest(signature_header, expected_sig)
 ```
 
@@ -284,7 +315,16 @@ function verifyWebhook(secret, rawBody, signatureHeader) {
 
 ---
 
-## 5. Error Code Standards
+## 5. Interactive Documentation Hub (`/api/docs`)
+
+HackForge ships with an interactive, role-tailored API documentation portal located at `/api/docs`:
+- **Role Tabs**: Switch between Organizer, Judge, Participant, and Public views (`?role=organizer|judge|participant|public`).
+- **Contextual cURL Generators**: When logged in, cURL code snippets are dynamically populated with your active session token.
+- **Copy-to-Clipboard**: One-click command copying for rapid terminal testing.
+
+---
+
+## 6. Error Code Standards
 
 HackForge adheres to standard RFC HTTP status codes:
 
@@ -293,9 +333,9 @@ HackForge adheres to standard RFC HTTP status codes:
 | **200** | OK | Request succeeded; body returned |
 | **201** | Created | Resource created successfully |
 | **303** | See Other | Redirect after successful HTML form submission |
-| **400** | Bad Request | Malformed payload, invalid JSON, or missing required fields |
+| **400** | Bad Request | Malformed payload, closed submission deadline, or duplicate name collision |
 | **401** | Unauthorized | Missing or expired authentication token/cookie |
-| **403** | Forbidden | Insufficient permissions (e.g., judge accessing peer scores, non-participant voting, self-voting) |
-| **404** | Not Found | Target event, project, user, or certificate not found |
-| **429** | Too Many Requests | Rate limit exceeded (sliding window abuse prevention) |
+| **403** | Forbidden | Insufficient permissions (judge accessing peer scores, non-participant voting, self-voting) |
+| **404** | Not Found | Target event, project, user, certificate, or webhook not found |
+| **429** | Too Many Requests | Rate limit exceeded (sliding-window abuse prevention for voting and comments) |
 | **500** | Internal Error | Unhandled server error |

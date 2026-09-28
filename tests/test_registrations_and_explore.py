@@ -110,3 +110,45 @@ def test_registrations_sidebar_collapsible_items_and_placement(client: TestClien
     assert 'id="sidebarCollapseBtn"' in response.text
     assert "toggleSidebar()" in response.text
 
+
+def test_cannot_register_for_completed_hackathon(client: TestClient, auth_cookies):
+    cookies = auth_cookies["participant"]
+    
+    # 1. Event landing page for completed hackathon (evt_03)
+    res_landing = client.get("/events/evt_03", cookies=cookies)
+    assert res_landing.status_code == 200
+    assert "Completed" in res_landing.text
+    assert "Hackathon Completed" in res_landing.text
+    assert "Join Hackathon" not in res_landing.text
+    assert 'id="register-modal"' not in res_landing.text
+
+    # 2. GET registration wizard for completed hackathon redirects
+    res_wizard = client.get("/events/evt_03/register", cookies=cookies, follow_redirects=False)
+    assert res_wizard.status_code == 303
+    assert "/events/evt_03?error=completed" in res_wizard.headers.get("location", "")
+
+    # 3. POST registration wizard for completed hackathon returns 400
+    res_submit = client.post(
+        "/events/evt_03/register",
+        data={
+            "skills_offered": "Python, AI",
+            "looking_for_team": True,
+            "team_action": "solo",
+        },
+        cookies=cookies,
+    )
+    assert res_submit.status_code == 400
+    assert "already completed" in res_submit.text
+
+    # 4. POST join for completed hackathon returns 400
+    res_join = client.post("/events/evt_03/join", cookies=cookies)
+    assert res_join.status_code == 400
+    assert "already completed" in res_join.text
+
+    # 5. Open hackathon (evt_10) displays interactive skill tags container and allows registration
+    res_open = client.get("/events/evt_10", cookies=cookies)
+    assert res_open.status_code == 200
+    assert "skills-tag-box" in res_open.text
+    assert "skills-pill-input" in res_open.text
+
+
