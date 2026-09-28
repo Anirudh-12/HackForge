@@ -6,6 +6,18 @@ from src.main import app
 from src.auth import make_session_token
 
 
+@pytest.fixture(scope="session", autouse=True)
+def setup_db():
+    from src.db import init_db, SessionLocal
+    from src.seed import seed
+    init_db()
+    db = SessionLocal()
+    try:
+        seed(db)
+    finally:
+        db.close()
+
+
 @pytest.fixture(scope="session")
 def client():
     with TestClient(app) as c:

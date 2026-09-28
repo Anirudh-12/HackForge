@@ -781,6 +781,7 @@ def seed(db: Session) -> None:
         judging_close=parse_iso_utc("2026-03-08T18:00:00Z"),
         results_date=parse_iso_utc("2026-03-10T12:00:00Z"),
         results_published=False,  # Finished hackathon (judging closed), allows voting tests
+        community_voting_enabled=True,
     )
     db.add(evt_01)
     db.flush()

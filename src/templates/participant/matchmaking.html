@@ -177,66 +177,144 @@
   <p>Match with other hackers and form the ultimate squad.</p>
 </div>
 
-<div class="mm-layout">
-<div>
+<div class="mm-top-grid" style="display: grid; grid-template-columns: 1fr 340px; gap: 24px; margin-bottom: 20px;">
+  <!-- Status / Settings card -->
+  <div class="status-card" style="margin-bottom: 0;">
+    <h2>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      My Matchmaking Status
+    </h2>
+    <form method="post" action="/participant/{{ event.id }}/matchmaking" id="mmStatusForm">
+      <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin-bottom: 18px; padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg);">
+        <input type="checkbox" name="looking_for_team" value="true" id="lookingCheck"
+               {% if membership and membership.looking_for_team %}checked{% endif %}
+               style="width: 16px; height: 16px; accent-color: var(--accent);">
+        <span style="font-weight: 600;">I am actively looking for a team</span>
+      </label>
 
-<!-- Status / Settings card -->
-<div class="status-card">
-  <h2>
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-    My Matchmaking Status
-  </h2>
-  <form method="post" action="/participant/{{ event.id }}/matchmaking" id="mmStatusForm">
-    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin-bottom: 18px; padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg);">
-      <input type="checkbox" name="looking_for_team" value="true" id="lookingCheck"
-             {% if membership and membership.looking_for_team %}checked{% endif %}
-             style="width: 16px; height: 16px; accent-color: var(--accent);">
-      <span style="font-weight: 600;">I am actively looking for a team</span>
-    </label>
-
-    <div>
-      <label style="display: block; margin-bottom: 8px; font-weight: 600; font-size: 0.88rem;">Skills Offered</label>
-      <div class="skill-input-wrap" id="skillsWrap" onclick="document.getElementById('skillInput').focus()">
-        {% if membership and membership.skills_offered %}
-          {% for sk in membership.skills_offered.split(',') %}
-            {% if sk.strip() %}
-            <span class="skill-pill">
-              {{ sk.strip() }}
-              <span class="rm" onclick="removePill(this, '{{ sk.strip() }}')">&times;</span>
-            </span>
-            {% endif %}
-          {% endfor %}
-        {% endif %}
-        <input type="text" id="skillInput" placeholder="Add a skill..." autocomplete="off"
-               onkeydown="handleSkillInput(event)" />
+      <div>
+        <label style="display: block; margin-bottom: 8px; font-weight: 600; font-size: 0.88rem;">Skills Offered</label>
+        <div class="skill-input-wrap" id="skillsWrap" onclick="document.getElementById('skillInput').focus()">
+          {% if membership and membership.skills_offered %}
+            {% for sk in membership.skills_offered.split(',') %}
+              {% if sk.strip() %}
+              <span class="skill-pill">
+                {{ sk.strip() }}
+                <span class="rm" onclick="removePill(this, '{{ sk.strip() }}')">&times;</span>
+              </span>
+              {% endif %}
+            {% endfor %}
+          {% endif %}
+          <input type="text" id="skillInput" placeholder="Add a skill..." autocomplete="off"
+                 onkeydown="handleSkillInput(event)" />
+        </div>
+        <input type="hidden" name="skills_offered" id="skillsHidden"
+               value="{{ membership.skills_offered if membership and membership.skills_offered else '' }}">
+        <p style="color: var(--text-muted); font-size: 0.78rem; margin: 6px 0 0 0;">Press Enter or comma to add a skill</p>
       </div>
-      <input type="hidden" name="skills_offered" id="skillsHidden"
-             value="{{ membership.skills_offered if membership and membership.skills_offered else '' }}">
-      <p style="color: var(--text-muted); font-size: 0.78rem; margin: 6px 0 0 0;">Press Enter or comma to add a skill</p>
-    </div>
 
-    <button type="submit" class="btn btn-primary" style="margin-top: 18px;">Update Status</button>
-  </form>
+      <button type="submit" class="btn btn-primary" style="margin-top: 18px;">Update Status</button>
+    </form>
+  </div>
+
+  <!-- Right Side: Invitations & My Team -->
+  <div style="display: flex; flex-direction: column; gap: 20px;">
+    {% if pending_invitations %}
+    <div class="inv-panel">
+      <div class="inv-panel-header">
+        <h3>My Invitations</h3>
+        <span class="badge" style="background: var(--accent); color: #fff;">{{ pending_invitations|length }}</span>
+      </div>
+      {% for inv in pending_invitations %}
+      <div class="inv-item">
+        <img src="/users/{{ inv.team.members[0].user_id if inv.team and inv.team.members else 'x' }}/avatar.svg" alt="">
+        <div class="inv-item-info">
+          <strong>{{ inv.team.name if inv.team else "A Team" }}</strong>
+          <span>Invited you to join their team</span>
+        </div>
+        <div class="inv-actions">
+          <form method="post" action="/participant/{{ event.id }}/invitations/{{ inv.id }}/decline" style="margin:0;">
+            <button class="btn btn-secondary" style="padding: 5px 10px; font-size: 0.78rem;">Decline</button>
+          </form>
+          <form method="post" action="/participant/{{ event.id }}/invitations/{{ inv.id }}/accept" style="margin:0;">
+            <button class="btn btn-primary" style="padding: 5px 10px; font-size: 0.78rem;">Accept</button>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- My Team (if in one) -->
+    {% if team %}
+    <div class="inv-panel">
+      <div class="inv-panel-header">
+        <h3>My Team</h3>
+        <span class="badge">{{ team.members|length }}/4</span>
+      </div>
+      {% for m in team.members %}
+      <div class="inv-item">
+        <img src="/users/{{ m.user_id }}/avatar.svg" class="" alt="">
+        <div class="inv-item-info">
+          <strong>{{ m.user.name if m.user else "Member" }}</strong>
+          <span>{{ team.name }}</span>
+        </div>
+      </div>
+      {% endfor %}
+      {% if team.invite_token %}
+      <div style="padding: 14px 20px; border-top: 1px solid var(--border);">
+        <div style="font-size: 0.78rem; font-weight: 600; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em;">Invite Link</div>
+        <div style="background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; font-size: 0.8rem; font-family: monospace; word-break: break-all;">
+          {{ request.url.scheme }}://{{ request.url.netloc }}/join/{{ team.invite_token }}
+        </div>
+        <button onclick="navigator.clipboard.writeText('{{ request.url.scheme }}://{{ request.url.netloc }}/join/{{ team.invite_token }}')" class="btn btn-secondary" style="margin-top: 8px; width: 100%; font-size: 0.82rem;">📋 Copy Invite Link</button>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+    
+    {% if not pending_invitations and not team %}
+    <div class="inv-panel" style="padding: 24px; text-align: center; color: var(--text-muted); display: flex; flex-direction: column; justify-content: center; h-100;">
+      <div style="font-size: 2rem; margin-bottom: 12px;">📨</div>
+      <div style="font-size: 0.95rem; font-weight: 600; color: var(--text-primary);">No Invitations Yet</div>
+      <div style="font-size: 0.85rem; margin-top: 6px;">When teams invite you, they'll appear here.</div>
+    </div>
+    {% endif %}
+  </div>
 </div>
 
 <!-- Search / filter bar -->
-<div class="mm-search-bar">
-  <input type="text" id="mmSearch" placeholder="🔍 Search teams by name, skills, or description..." oninput="filterMM()" />
-  <select id="mmRoleFilter" onchange="filterMM()">
-    <option value="">All Roles</option>
-    <option value="backend">Backend</option>
-    <option value="frontend">Frontend</option>
-    <option value="ml">ML / Data</option>
-    <option value="design">Design</option>
-    <option value="devops">DevOps</option>
-  </select>
-  <select id="mmSkillFilter" onchange="filterMM()">
-    <option value="">All Skills</option>
-    <option value="python">Python</option>
-    <option value="react">React</option>
-    <option value="node">Node.js</option>
-    <option value="ml">Machine Learning</option>
-  </select>
+<div class="mm-search-bar" style="background: var(--surface); padding: 12px 16px; border: 1px solid var(--border); border-radius: 12px; margin-bottom: 24px;">
+  <div style="display: flex; gap: 12px; width: 100%; align-items: center; flex-wrap: wrap;">
+    <div style="position: relative; flex: 2; min-width: 250px;">
+      <span style="position: absolute; left: 14px; top: 10px; opacity: 0.5;">🔍</span>
+      <input type="text" id="mmSearch" placeholder="Search teams by name, skills, or description..." oninput="filterMM()" style="width: 100%; padding-left: 36px; border: 1px solid var(--border); border-radius: 8px; padding-top: 9px; padding-bottom: 9px; padding-right: 14px; outline: none; background: var(--bg);" />
+    </div>
+    <select id="mmEventFilter" onchange="filterMM()" style="flex: 1; min-width: 130px; border: 1px solid var(--border); border-radius: 8px; padding: 9px 14px; outline: none; background: var(--bg);">
+      <option value="">All Hackathons</option>
+      <option value="{{ event.id }}">{{ event.name }}</option>
+    </select>
+    <select id="mmRoleFilter" onchange="filterMM()" style="flex: 1; min-width: 120px; border: 1px solid var(--border); border-radius: 8px; padding: 9px 14px; outline: none; background: var(--bg);">
+      <option value="">All Roles</option>
+      <option value="backend">Backend</option>
+      <option value="frontend">Frontend</option>
+      <option value="ml">ML / Data</option>
+      <option value="design">Design</option>
+      <option value="devops">DevOps</option>
+    </select>
+    <select id="mmSkillFilter" onchange="filterMM()" style="flex: 1; min-width: 120px; border: 1px solid var(--border); border-radius: 8px; padding: 9px 14px; outline: none; background: var(--bg);">
+      <option value="">All Skills</option>
+      <option value="python">Python</option>
+      <option value="react">React</option>
+      <option value="node">Node.js</option>
+      <option value="ml">Machine Learning</option>
+    </select>
+    <select id="mmAvailFilter" onchange="filterMM()" style="flex: 1; min-width: 120px; border: 1px solid var(--border); border-radius: 8px; padding: 9px 14px; outline: none; background: var(--bg);">
+      <option value="">Availability</option>
+      <option value="actively_looking">Actively Looking</option>
+      <option value="open">Open to Join</option>
+    </select>
+  </div>
 </div>
 
 <!-- Two-column: Open Teams | Solo Hackers -->
@@ -245,7 +323,7 @@
   <!-- OPEN TEAMS -->
   <div>
     <div class="mm-section-header">
-      <h2>Open Teams</h2>
+      <h2>Open Teams <span style="font-size: 0.85rem; font-weight: normal; color: var(--text-muted); margin-left: 6px;">Teams looking for members</span></h2>
       <span class="mm-count" id="teamsCount">{{ open_teams|length }} teams</span>
     </div>
     <div id="teamsList">
@@ -295,7 +373,7 @@
   <!-- SOLO HACKERS -->
   <div>
     <div class="mm-section-header">
-      <h2>Solo Hackers</h2>
+      <h2>Solo Hackers <span style="font-size: 0.85rem; font-weight: normal; color: var(--text-muted); margin-left: 6px;">Individual hackers looking for a team</span></h2>
       <span class="mm-count" id="hackersCount">{{ solo_users|length }} hackers</span>
     </div>
     <div id="hackersList">
@@ -342,66 +420,6 @@
   </div>
 
 </div><!-- end mm-grid -->
-</div><!-- end main column -->
-
-<!-- Right sidebar: Invitations -->
-<div>
-  {% if pending_invitations %}
-  <div class="inv-panel" style="margin-bottom: 20px;">
-    <div class="inv-panel-header">
-      <h3>My Invitations</h3>
-      <span class="badge" style="background: var(--accent); color: #fff;">{{ pending_invitations|length }}</span>
-    </div>
-    {% for inv in pending_invitations %}
-    <div class="inv-item">
-      <img src="/users/{{ inv.team.members[0].user_id if inv.team and inv.team.members else 'x' }}/avatar.svg" alt="">
-      <div class="inv-item-info">
-        <strong>{{ inv.team.name if inv.team else "A Team" }}</strong>
-        <span>Invited you to join their team</span>
-      </div>
-      <div class="inv-actions">
-        <form method="post" action="/participant/{{ event.id }}/invitations/{{ inv.id }}/decline" style="margin:0;">
-          <button class="btn btn-secondary" style="padding: 5px 10px; font-size: 0.78rem;">Decline</button>
-        </form>
-        <form method="post" action="/participant/{{ event.id }}/invitations/{{ inv.id }}/accept" style="margin:0;">
-          <button class="btn btn-primary" style="padding: 5px 10px; font-size: 0.78rem;">Accept</button>
-        </form>
-      </div>
-    </div>
-    {% endfor %}
-  </div>
-  {% endif %}
-
-  <!-- My Team (if in one) -->
-  {% if team %}
-  <div class="inv-panel">
-    <div class="inv-panel-header">
-      <h3>My Team</h3>
-      <span class="badge">{{ team.members|length }}/4</span>
-    </div>
-    {% for m in team.members %}
-    <div class="inv-item">
-      <img src="/users/{{ m.user_id }}/avatar.svg" class="" alt="">
-      <div class="inv-item-info">
-        <strong>{{ m.user.name if m.user else "Member" }}</strong>
-        <span>{{ team.name }}</span>
-      </div>
-    </div>
-    {% endfor %}
-    {% if team.invite_token %}
-    <div style="padding: 14px 20px; border-top: 1px solid var(--border);">
-      <div style="font-size: 0.78rem; font-weight: 600; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em;">Invite Link</div>
-      <div style="background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; font-size: 0.8rem; font-family: monospace; word-break: break-all;">
-        {{ request.url.scheme }}://{{ request.url.netloc }}/join/{{ team.invite_token }}
-      </div>
-      <button onclick="navigator.clipboard.writeText('{{ request.url.scheme }}://{{ request.url.netloc }}/join/{{ team.invite_token }}')" class="btn btn-secondary" style="margin-top: 8px; width: 100%; font-size: 0.82rem;">📋 Copy Invite Link</button>
-    </div>
-    {% endif %}
-  </div>
-  {% endif %}
-
-</div><!-- end sidebar -->
-</div><!-- end mm-layout -->
 
 <script>
 // Skills pill input
