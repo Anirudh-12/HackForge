@@ -975,3 +975,129 @@ def remove_judge(
     )
     db.commit()
     return RedirectResponse(f"/organizer/{event_id}/judges", status_code=303)
+
+
+@router.post("/organizer/{event_id}/judges/auto-assign")
+def auto_assign_judges(
+    event_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_role("organizer", "admin")),
+):
+    """Randomly assign projects to judges as equally as possible.
+    Each judge gets roughly the same number of projects and each project
+    gets roughly the same number of judges.
+    """
+    import random as _random
+    from src.models import EventMember, JudgeTrack
+
+    event = db.get(Event, event_id)
+    if event is None:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    # Get all judges for this event
+    judge_members = (
+        db.query(EventMember)
+        .filter_by(event_id=event_id, role="judge")
+        .all()
+    )
+    judge_ids = [jm.user_id for jm in judge_members]
+
+    if not judge_ids:
+        raise HTTPException(status_code=400, detail="No judges assigned to this event yet. Invite judges first.")
+
+    # Get all submitted (non-draft, non-disqualified) projects
+    projects = (
+        db.query(Project)
+        .filter_by(event_id=event_id, is_draft=False, is_disqualified=False)
+        .all()
+    )
+
+    if not projects:
+        raise HTTPException(status_code=400, detail="No submitted projects found to assign.")
+
+    # Remove existing JudgeTrack assignments for this event so we start fresh
+    db.query(JudgeTrack).filter_by(event_id=event_id).delete()
+
+    # Determine how many judges per project (aim for 2-3, or all judges if fewer than that)
+    judges_per_project = min(len(judge_ids), max(2, len(judge_ids) // max(len(projects), 1) + 1))
+    judges_per_project = min(judges_per_project, len(judge_ids))
+
+    # Track how many projects each judge gets
+    judge_load: dict[str, int] = {jid: 0 for jid in judge_ids}
+
+    # For each project, assign the least-loaded judges
+    project_assignments: dict[str, list[str]] = {}
+    shuffled_projects = list(projects)
+    _random.shuffle(shuffled_projects)
+
+    # Create a virtual "track" for projects without a real track
+    virtual_track_id = "__all__"
+    # Ensure virtual track exists (we may need it for JudgeTrack)
+    # For trackless events we use the project's track_id or a placeholder
+    for p in shuffled_projects:
+        # Sort judges by load (ascending)
+        sorted_judges = sorted(judge_ids, key=lambda jid: judge_load[jid])
+        assigned = sorted_judges[:judges_per_project]
+        project_assignments[p.id] = assigned
+        track_id = p.track_id or virtual_track_id
+
+        for jid in assigned:
+            judge_load[jid] += 1
+            # Ensure JudgeTrack row exists for this judge/track combo
+            # Use the project's track; for trackless events use event_id as pseudo-track
+            jt_track = p.track_id if p.track_id else event_id  # pseudo-track
+            # We store assignment in JudgeTrack; if no real track, store event_id
+            existing_jt = (
+                db.query(JudgeTrack)
+                .filter_by(event_id=event_id, judge_id=jid, track_id=jt_track)
+                .first()
+            )
+            if not existing_jt:
+                db.add(JudgeTrack(event_id=event_id, judge_id=jid, track_id=jt_track))
+
+    db.add(
+        AuditLog(
+            event_id=event.id,
+            actor_id=user.id,
+            message=(
+                f"{user.name} auto-assigned {len(projects)} projects to {len(judge_ids)} judges "
+                f"({judges_per_project} judges per project)"
+            ),
+            created_at=utcnow(),
+        )
+    )
+    db.commit()
+    return RedirectResponse(f"/organizer/{event_id}/judges", status_code=303)
+
+
+@router.post("/organizer/{event_id}/community-voting")
+def toggle_community_voting(
+    event_id: str,
+    enabled: bool = Form(False),
+    prize_description: str = Form(""),
+    db: Session = Depends(get_db),
+    user: User = Depends(require_role("organizer", "admin")),
+):
+    """Enable or disable community voting for an event, with optional prize info."""
+    event = db.get(Event, event_id)
+    if event is None:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    event.community_voting_enabled = enabled
+    if prize_description.strip():
+        import json
+        event.community_voting_prize_json = json.dumps({"description": prize_description.strip()})
+    else:
+        event.community_voting_prize_json = None
+
+    db.add(
+        AuditLog(
+            event_id=event.id,
+            actor_id=user.id,
+            message=f"{user.name} {'enabled' if enabled else 'disabled'} community voting for '{event.name}'",
+            created_at=utcnow(),
+        )
+    )
+    db.commit()
+    return RedirectResponse(f"/organizer/{event_id}/dashboard", status_code=303)
+

@@ -1,163 +1,479 @@
 {% extends "base_app.html" %}
-{% block title %}Matchmaking{% endblock %}
+{% block title %}Find a Team — {{ event.name if event else "HackForge" }}{% endblock %}
 {% block content %}
 <style>
-  .match-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 32px;
-    margin-top: 24px;
-  }
-  .match-card {
+  .mm-header { margin-bottom: 28px; }
+  .mm-header h1 { margin: 0 0 4px 0; font-size: 2rem; font-weight: 800; }
+  .mm-header p { margin: 0; color: var(--text-muted); font-size: 1rem; }
+
+  .mm-layout { display: grid; grid-template-columns: 1fr 320px; gap: 28px; }
+
+  /* Status card */
+  .status-card {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 20px;
-    margin-bottom: 16px;
+    border-radius: 14px;
+    padding: 24px;
+    margin-bottom: 28px;
+  }
+  .status-card h2 { margin: 0 0 16px 0; font-size: 1rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+  .skill-pill-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .skill-pill {
+    background: rgba(var(--primary-rgb), 0.08);
+    color: var(--accent);
+    border: 1px solid rgba(var(--primary-rgb), 0.2);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    display: inline-flex; align-items: center; gap: 6px;
+    cursor: pointer;
+  }
+  .skill-pill .rm { color: var(--text-muted); font-size: 1rem; line-height: 1; }
+  .skill-pill .rm:hover { color: var(--danger); }
+  .skill-input-wrap {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-  .match-card h3 {
-    margin: 0 0 4px 0;
-    font-size: 1.1rem;
-  }
-  .match-card p {
-    margin: 0;
-    color: var(--text-muted);
-    font-size: 0.9rem;
-  }
-  .match-card .skills {
-    margin-top: 8px;
-    display: flex;
+    flex-wrap: wrap;
     gap: 6px;
+    align-items: center;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    min-height: 44px;
+    cursor: text;
+    transition: border-color 0.15s;
+    background: var(--bg);
+  }
+  .skill-input-wrap:focus-within { border-color: var(--accent); }
+  .skill-input-wrap input {
+    border: none; outline: none; background: transparent;
+    font-size: 0.9rem; color: var(--text-primary);
+    flex: 1; min-width: 120px;
+    padding: 2px 0;
+  }
+
+  /* Search / filter bar */
+  .mm-search-bar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
     flex-wrap: wrap;
   }
-  .match-card .skill-tag {
-    background: rgba(var(--primary-rgb), 0.1);
-    color: var(--primary);
-    padding: 2px 8px;
-    border-radius: 4px;
-    font-size: 0.75rem;
-    font-weight: 500;
+  .mm-search-bar input {
+    flex: 1; min-width: 200px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 9px 14px;
+    font-size: 0.88rem; color: var(--text-primary); outline: none;
   }
-  .status-box {
+  .mm-search-bar input:focus { border-color: var(--accent); }
+  .mm-search-bar select {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 9px 14px;
+    font-size: 0.88rem; color: var(--text-primary); outline: none;
+  }
+
+  /* Two-column grid for teams + hackers */
+  .mm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+
+  .mm-section-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 16px;
+  }
+  .mm-section-header h2 { margin: 0; font-size: 1.05rem; font-weight: 700; }
+  .mm-count { font-size: 0.8rem; color: var(--text-muted); background: var(--border); padding: 2px 8px; border-radius: 10px; }
+
+  /* Team card */
+  .team-card {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 24px;
-    margin-bottom: 32px;
+    border-radius: 12px;
+    padding: 18px;
+    margin-bottom: 12px;
+    transition: all 0.18s ease;
+    position: relative;
   }
+  .team-card:hover { border-color: var(--accent); box-shadow: 0 4px 16px rgba(37,99,235,0.1); }
+  .team-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+  .team-card h3 { margin: 0; font-size: 0.95rem; font-weight: 700; }
+  .team-card-meta { font-size: 0.78rem; color: var(--text-muted); margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+  .team-card-desc { font-size: 0.83rem; color: var(--text-secondary); margin: 0 0 12px 0; line-height: 1.5; }
+  .team-needed-tags { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 12px; }
+  .needed-tag {
+    background: rgba(239,68,68,0.08); color: #dc2626;
+    border: 1px solid rgba(239,68,68,0.2);
+    padding: 2px 8px; border-radius: 4px; font-size: 0.72rem; font-weight: 600;
+  }
+  .skill-tag-sm {
+    background: rgba(var(--primary-rgb),0.07); color: var(--accent);
+    padding: 2px 8px; border-radius: 4px; font-size: 0.72rem; font-weight: 600;
+  }
+  .member-avatars { display: flex; }
+  .member-avatars img {
+    width: 26px; height: 26px; border-radius: 50%;
+    border: 2px solid var(--surface);
+    margin-left: -8px; position: relative;
+  }
+  .member-avatars img:first-child { margin-left: 0; }
+  .time-ago { font-size: 0.75rem; color: var(--text-muted); }
+
+  /* Hacker card */
+  .hacker-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 18px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    transition: all 0.18s ease;
+  }
+  .hacker-card:hover { border-color: var(--accent); box-shadow: 0 4px 16px rgba(37,99,235,0.08); }
+  .hacker-avatar { width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0; }
+  .hacker-info { flex: 1; min-width: 0; }
+  .hacker-info h4 { margin: 0 0 2px 0; font-size: 0.9rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hacker-info .event-tag { font-size: 0.72rem; color: var(--accent); font-weight: 600; }
+  .hacker-skills { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 6px; }
+  .active-dot { width: 7px; height: 7px; background: #16a34a; border-radius: 50%; display: inline-block; margin-right: 4px; }
+
+  /* Invitations panel */
+  .inv-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  .inv-panel-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .inv-panel-header h3 { margin: 0; font-size: 0.95rem; font-weight: 700; }
+  .inv-item {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .inv-item:last-child { border-bottom: none; }
+  .inv-item img { width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0; }
+  .inv-item-info { flex: 1; min-width: 0; }
+  .inv-item-info strong { display: block; font-size: 0.88rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .inv-item-info span { font-size: 0.78rem; color: var(--text-muted); }
+  .inv-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+  .empty-state {
+    text-align: center; padding: 48px 24px;
+    background: var(--surface); border: 1px dashed var(--border);
+    border-radius: 12px; color: var(--text-muted);
+  }
+  .empty-state svg { opacity: 0.3; margin-bottom: 12px; }
+
+  @media (max-width: 900px) { .mm-layout { grid-template-columns: 1fr; } }
+  @media (max-width: 600px) { .mm-grid { grid-template-columns: 1fr; } }
 </style>
 
-<div class="dashboard-header" style="margin-top: 16px;">
-  <h1 style="font-size: 2.2rem; margin: 0 0 8px 0;">Find a Team</h1>
-  <p style="color: var(--text-muted); font-size: 1.1rem; margin: 0;">Match with other hackers and form the ultimate squad.</p>
+<div class="mm-header">
+  <h1>Find a Team</h1>
+  <p>Match with other hackers and form the ultimate squad.</p>
 </div>
 
-<div class="status-box">
-  <h2 style="margin-top: 0;">My Matchmaking Status</h2>
-  <form method="post" action="/participant/{{ event.id }}/matchmaking" style="display: flex; flex-direction: column; gap: 16px; max-width: 500px;">
-    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-      <input type="checkbox" name="looking_for_team" value="true" {% if membership and membership.looking_for_team %}checked{% endif %}>
-      <span>I am actively looking for a team</span>
+<div class="mm-layout">
+<div>
+
+<!-- Status / Settings card -->
+<div class="status-card">
+  <h2>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    My Matchmaking Status
+  </h2>
+  <form method="post" action="/participant/{{ event.id }}/matchmaking" id="mmStatusForm">
+    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin-bottom: 18px; padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg);">
+      <input type="checkbox" name="looking_for_team" value="true" id="lookingCheck"
+             {% if membership and membership.looking_for_team %}checked{% endif %}
+             style="width: 16px; height: 16px; accent-color: var(--accent);">
+      <span style="font-weight: 600;">I am actively looking for a team</span>
     </label>
-    
+
     <div>
-      <label style="display: block; margin-bottom: 4px; font-weight: 500;">Skills Offered (e.g. React, Python, UI/UX)</label>
-      <input type="text" name="skills_offered" class="input" value="{{ membership.skills_offered or '' }}" placeholder="List your skills...">
+      <label style="display: block; margin-bottom: 8px; font-weight: 600; font-size: 0.88rem;">Skills Offered</label>
+      <div class="skill-input-wrap" id="skillsWrap" onclick="document.getElementById('skillInput').focus()">
+        {% if membership and membership.skills_offered %}
+          {% for sk in membership.skills_offered.split(',') %}
+            {% if sk.strip() %}
+            <span class="skill-pill">
+              {{ sk.strip() }}
+              <span class="rm" onclick="removePill(this, '{{ sk.strip() }}')">&times;</span>
+            </span>
+            {% endif %}
+          {% endfor %}
+        {% endif %}
+        <input type="text" id="skillInput" placeholder="Add a skill..." autocomplete="off"
+               onkeydown="handleSkillInput(event)" />
+      </div>
+      <input type="hidden" name="skills_offered" id="skillsHidden"
+             value="{{ membership.skills_offered if membership and membership.skills_offered else '' }}">
+      <p style="color: var(--text-muted); font-size: 0.78rem; margin: 6px 0 0 0;">Press Enter or comma to add a skill</p>
     </div>
-    
-    <button type="submit" class="btn btn-primary" style="align-self: flex-start;">Update Status</button>
+
+    <button type="submit" class="btn btn-primary" style="margin-top: 18px;">Update Status</button>
   </form>
 </div>
 
-<div class="match-grid">
-  <!-- Solo Users Column -->
-  <div>
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-      <h2 style="margin: 0;">Solo Hackers</h2>
-      <span style="font-size: 13px; color: var(--text-muted);">{{ solo_users|length }} available</span>
-    </div>
-    {% if not solo_users %}
-      <div style="text-align: center; padding: 48px 24px; background: var(--surface); border: 1px dashed var(--border); border-radius: var(--radius);">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="color: var(--text-muted); margin-bottom: 16px;">
-          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-          <circle cx="9" cy="7" r="4"></circle>
-          <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-          <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-        </svg>
-        <h3 style="margin: 0 0 8px 0; color: var(--text-color);">No solo hackers</h3>
-        <p style="color: var(--text-muted); margin: 0; font-size: 0.95rem;">Everyone seems to be in a team right now. Check back later!</p>
-      </div>
-    {% else %}
-      <div class="scrollable-match-list">
-        {% for member in solo_users %}
-          <div class="match-card">
-            <div style="display: flex; gap: 16px; align-items: flex-start;">
-              <img src="/users/{{ member.user.id }}/avatar.svg" style="width: 48px; height: 48px; border-radius: 50%; object-fit: cover;">
-              <div>
-                <h3>{{ member.user.name }}</h3>
-                <p>{{ member.user.email }}</p>
-                {% if member.skills_offered %}
-                  <div class="skills">
-                    {% for skill in member.skills_offered.split(',') %}
-                      <span class="skill-tag">{{ skill.strip() }}</span>
-                    {% endfor %}
-                  </div>
-                {% endif %}
-              </div>
-            </div>
-            {% if team %}
-              <form method="post" action="/participant/{{ event.id }}/invite_user" style="margin: 0;">
-                <input type="hidden" name="target_user_id" value="{{ member.user.id }}">
-                <button type="submit" class="btn btn-secondary">Invite to Team</button>
-              </form>
-            {% endif %}
-          </div>
-        {% endfor %}
-      </div>
-    {% endif %}
-  </div>
-
-  <!-- Open Teams Column -->
-  <div>
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-      <h2 style="margin: 0;">Open Teams</h2>
-      <span style="font-size: 13px; color: var(--text-muted);">{{ open_teams|length }} available</span>
-    </div>
-    {% if not open_teams %}
-      <div style="text-align: center; padding: 48px 24px; background: var(--surface); border: 1px dashed var(--border); border-radius: var(--radius);">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="color: var(--text-muted); margin-bottom: 16px;">
-          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-        </svg>
-        <h3 style="margin: 0 0 8px 0; color: var(--text-color);">No open teams</h3>
-        <p style="color: var(--text-muted); margin: 0; font-size: 0.95rem;">There are no teams currently looking for members. Why not create one?</p>
-      </div>
-    {% else %}
-      <div class="scrollable-match-list">
-        {% for t in open_teams %}
-          <div class="match-card">
-            <div style="flex-grow: 1;">
-              <h3>{{ t.name }}</h3>
-              <p>{{ t.members|length }} / 4 members</p>
-              <div style="display: flex; gap: -8px; margin-top: 8px;">
-                {% for m in t.members %}
-                  <img src="/users/{{ m.user.id }}/avatar.svg" style="width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--surface); margin-left: -8px; position: relative; z-index: {{ loop.index }};" title="{{ m.user.name }}">
-                {% endfor %}
-              </div>
-            </div>
-            {% if not team %}
-              <form method="post" action="/participant/{{ event.id }}/request_join" style="margin: 0;">
-                <input type="hidden" name="target_team_id" value="{{ t.id }}">
-                <button type="submit" class="btn btn-secondary">Request to Join</button>
-              </form>
-            {% endif %}
-          </div>
-        {% endfor %}
-      </div>
-    {% endif %}
-  </div>
+<!-- Search / filter bar -->
+<div class="mm-search-bar">
+  <input type="text" id="mmSearch" placeholder="🔍 Search teams by name, skills, or description..." oninput="filterMM()" />
+  <select id="mmRoleFilter" onchange="filterMM()">
+    <option value="">All Roles</option>
+    <option value="backend">Backend</option>
+    <option value="frontend">Frontend</option>
+    <option value="ml">ML / Data</option>
+    <option value="design">Design</option>
+    <option value="devops">DevOps</option>
+  </select>
+  <select id="mmSkillFilter" onchange="filterMM()">
+    <option value="">All Skills</option>
+    <option value="python">Python</option>
+    <option value="react">React</option>
+    <option value="node">Node.js</option>
+    <option value="ml">Machine Learning</option>
+  </select>
 </div>
 
+<!-- Two-column: Open Teams | Solo Hackers -->
+<div class="mm-grid">
+
+  <!-- OPEN TEAMS -->
+  <div>
+    <div class="mm-section-header">
+      <h2>Open Teams</h2>
+      <span class="mm-count" id="teamsCount">{{ open_teams|length }} teams</span>
+    </div>
+    <div id="teamsList">
+    {% if not open_teams %}
+    <div class="empty-state">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      <h3 style="margin: 0 0 6px 0; color: var(--text-primary);">No open teams</h3>
+      <p style="margin: 0; font-size: 0.9rem;">Why not create one?</p>
+    </div>
+    {% else %}
+    {% for t in open_teams %}
+    <div class="team-card" data-search="{{ t.name|lower }} {% for m in t.members %}{{ (m.user.name or '')|lower }} {% endfor %}">
+      <div class="team-card-header">
+        <div>
+          <h3>{{ t.name }}</h3>
+          <div class="team-card-meta">
+            <span style="background: rgba(var(--accent-rgb, var(--primary-rgb)),0.08); color: var(--accent); padding: 1px 6px; border-radius: 4px; font-weight: 700; font-size: 0.72rem;">{{ event.name }}</span>
+            {{ t.members|length }} / 4 members
+          </div>
+        </div>
+        <div>
+          <div class="member-avatars">
+            {% for m in t.members[:4] %}
+            <img src="/users/{{ m.user_id }}/avatar.svg" title="{{ m.user.name if m.user else '' }}" alt="">
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      {% if not team %}
+      <div style="display: flex; gap: 10px; margin-top: 10px;">
+        <form method="post" action="/participant/{{ event.id }}/request_join" style="margin: 0; flex: 1;">
+          <input type="hidden" name="target_team_id" value="{{ t.id }}">
+          <button type="submit" class="btn btn-primary" style="width: 100%; font-size: 0.85rem;">Request to Join</button>
+        </form>
+        <a href="/projects" class="btn btn-secondary" style="font-size: 0.85rem; padding: 8px 14px;">View Project</a>
+      </div>
+      {% else %}
+      <div style="color: var(--text-muted); font-size: 0.82rem; margin-top: 8px;">You are already in a team.</div>
+      {% endif %}
+    </div>
+    {% endfor %}
+    {% endif %}
+    </div>
+  </div>
+
+  <!-- SOLO HACKERS -->
+  <div>
+    <div class="mm-section-header">
+      <h2>Solo Hackers</h2>
+      <span class="mm-count" id="hackersCount">{{ solo_users|length }} hackers</span>
+    </div>
+    <div id="hackersList">
+    {% if not solo_users %}
+    <div class="empty-state">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+      <h3 style="margin: 0 0 6px 0; color: var(--text-primary);">No solo hackers</h3>
+      <p style="margin: 0; font-size: 0.9rem;">Everyone is in a team. Check back later!</p>
+    </div>
+    {% else %}
+    {% for member in solo_users %}
+    <div class="hacker-card" data-search="{{ (member.user.name or '')|lower }} {{ (member.skills_offered or '')|lower }}">
+      <img src="/users/{{ member.user.id }}/avatar.svg" class="hacker-avatar" alt="{{ member.user.name }}">
+      <div class="hacker-info">
+        <h4>{{ member.user.name }}</h4>
+        <div style="display: flex; align-items: center; gap: 4px; margin-bottom: 4px;">
+          <span class="active-dot"></span>
+          <span class="event-tag">{{ event.name }}</span>
+          <span style="color: var(--text-muted); font-size: 0.75rem;">• Actively looking</span>
+        </div>
+        {% if member.skills_offered %}
+        <div class="hacker-skills">
+          {% for sk in member.skills_offered.split(',')[:4] %}
+          {% if sk.strip() %}
+          <span class="skill-tag-sm">{{ sk.strip() }}</span>
+          {% endif %}
+          {% endfor %}
+          {% if member.skills_offered.split(',')|length > 4 %}
+          <span class="skill-tag-sm">+{{ member.skills_offered.split(',')|length - 4 }}</span>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+      {% if team %}
+      <form method="post" action="/participant/{{ event.id }}/invite_user" style="margin: 0; flex-shrink: 0;">
+        <input type="hidden" name="target_user_id" value="{{ member.user.id }}">
+        <button type="submit" class="btn btn-secondary" style="font-size: 0.82rem; padding: 7px 14px; white-space: nowrap;">Invite to Team</button>
+      </form>
+      {% endif %}
+    </div>
+    {% endfor %}
+    {% endif %}
+    </div>
+  </div>
+
+</div><!-- end mm-grid -->
+</div><!-- end main column -->
+
+<!-- Right sidebar: Invitations -->
+<div>
+  {% if pending_invitations %}
+  <div class="inv-panel" style="margin-bottom: 20px;">
+    <div class="inv-panel-header">
+      <h3>My Invitations</h3>
+      <span class="badge" style="background: var(--accent); color: #fff;">{{ pending_invitations|length }}</span>
+    </div>
+    {% for inv in pending_invitations %}
+    <div class="inv-item">
+      <img src="/users/{{ inv.team.members[0].user_id if inv.team and inv.team.members else 'x' }}/avatar.svg" alt="">
+      <div class="inv-item-info">
+        <strong>{{ inv.team.name if inv.team else "A Team" }}</strong>
+        <span>Invited you to join their team</span>
+      </div>
+      <div class="inv-actions">
+        <form method="post" action="/participant/{{ event.id }}/invitations/{{ inv.id }}/decline" style="margin:0;">
+          <button class="btn btn-secondary" style="padding: 5px 10px; font-size: 0.78rem;">Decline</button>
+        </form>
+        <form method="post" action="/participant/{{ event.id }}/invitations/{{ inv.id }}/accept" style="margin:0;">
+          <button class="btn btn-primary" style="padding: 5px 10px; font-size: 0.78rem;">Accept</button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- My Team (if in one) -->
+  {% if team %}
+  <div class="inv-panel">
+    <div class="inv-panel-header">
+      <h3>My Team</h3>
+      <span class="badge">{{ team.members|length }}/4</span>
+    </div>
+    {% for m in team.members %}
+    <div class="inv-item">
+      <img src="/users/{{ m.user_id }}/avatar.svg" class="" alt="">
+      <div class="inv-item-info">
+        <strong>{{ m.user.name if m.user else "Member" }}</strong>
+        <span>{{ team.name }}</span>
+      </div>
+    </div>
+    {% endfor %}
+    {% if team.invite_token %}
+    <div style="padding: 14px 20px; border-top: 1px solid var(--border);">
+      <div style="font-size: 0.78rem; font-weight: 600; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em;">Invite Link</div>
+      <div style="background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; font-size: 0.8rem; font-family: monospace; word-break: break-all;">
+        {{ request.url.scheme }}://{{ request.url.netloc }}/join/{{ team.invite_token }}
+      </div>
+      <button onclick="navigator.clipboard.writeText('{{ request.url.scheme }}://{{ request.url.netloc }}/join/{{ team.invite_token }}')" class="btn btn-secondary" style="margin-top: 8px; width: 100%; font-size: 0.82rem;">📋 Copy Invite Link</button>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+</div><!-- end sidebar -->
+</div><!-- end mm-layout -->
+
+<script>
+// Skills pill input
+const skillsHidden = document.getElementById('skillsHidden');
+const skillsWrap = document.getElementById('skillsWrap');
+const skillInput = document.getElementById('skillInput');
+
+function getSkills() {
+  return skillsHidden.value.split(',').map(s => s.trim()).filter(Boolean);
+}
+function setSkills(arr) {
+  skillsHidden.value = arr.join(', ');
+}
+function renderPills() {
+  // Remove existing pills
+  skillsWrap.querySelectorAll('.skill-pill').forEach(p => p.remove());
+  const skills = getSkills();
+  skills.forEach(sk => {
+    const pill = document.createElement('span');
+    pill.className = 'skill-pill';
+    pill.innerHTML = `${sk} <span class="rm" onclick="this.parentElement.remove(); syncSkills();">&times;</span>`;
+    skillsWrap.insertBefore(pill, skillInput);
+  });
+}
+function syncSkills() {
+  const pills = skillsWrap.querySelectorAll('.skill-pill');
+  const arr = Array.from(pills).map(p => p.textContent.replace('×','').trim());
+  setSkills(arr);
+}
+function handleSkillInput(e) {
+  if (e.key === 'Enter' || e.key === ',') {
+    e.preventDefault();
+    const val = skillInput.value.replace(',','').trim();
+    if (val) {
+      const skills = getSkills();
+      if (!skills.includes(val)) skills.push(val);
+      setSkills(skills);
+      renderPills();
+    }
+    skillInput.value = '';
+  } else if (e.key === 'Backspace' && !skillInput.value) {
+    const pills = skillsWrap.querySelectorAll('.skill-pill');
+    if (pills.length > 0) {
+      pills[pills.length - 1].remove();
+      syncSkills();
+    }
+  }
+}
+function removePill(el, skill) {
+  el.parentElement.remove();
+  syncSkills();
+}
+
+// Filter
+function filterMM() {
+  const q = document.getElementById('mmSearch').value.toLowerCase();
+  // Filter teams
+  document.querySelectorAll('#teamsList .team-card').forEach(card => {
+    const match = !q || card.dataset.search.includes(q);
+    card.style.display = match ? '' : 'none';
+  });
+  const visTeams = document.querySelectorAll('#teamsList .team-card:not([style*="none"])').length;
+  const teamsCount = document.getElementById('teamsCount');
+  if (teamsCount) teamsCount.textContent = visTeams + ' teams';
+
+  document.querySelectorAll('#hackersList .hacker-card').forEach(card => {
+    const match = !q || card.dataset.search.includes(q);
+    card.style.display = match ? '' : 'none';
+  });
+  const visHackers = document.querySelectorAll('#hackersList .hacker-card:not([style*="none"])').length;
+  const hackersCount = document.getElementById('hackersCount');
+  if (hackersCount) hackersCount.textContent = visHackers + ' hackers';
+}
+</script>
 {% endblock %}

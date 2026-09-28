@@ -42,12 +42,14 @@ class Event(Base):
     judging_close: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     results_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     results_published: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    community_voting_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     banner_image_path: Mapped[str | None] = mapped_column(String, nullable=True)
     description_markdown: Mapped[str | None] = mapped_column(Text, nullable=True)
     rules_markdown: Mapped[str | None] = mapped_column(Text, nullable=True)
     prizes_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     side_quests_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    community_voting_prize_json: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     tracks: Mapped[list[Track]] = relationship(back_populates="event")
     teams: Mapped[list[Team]] = relationship(back_populates="event")
@@ -255,7 +257,8 @@ class PairwiseComparison(Base):
 
 class Vote(Base):
     __tablename__ = "votes"
-    __table_args__ = (UniqueConstraint("user_id", "project_id", name="uq_vote_user_project"),)
+    # One vote per user per event (community voting: pick ONE project)
+    __table_args__ = (UniqueConstraint("user_id", "event_id", name="uq_vote_user_event"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     event_id: Mapped[str] = mapped_column(ForeignKey("events.id"), nullable=False, index=True)

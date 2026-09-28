@@ -6,8 +6,11 @@
 </div>
 
 <div class="card" style="padding: 24px;">
+  <div style="margin-bottom: 20px;">
+    <input type="text" id="teamSearch" class="input" placeholder="Search teams by name..." style="width: 100%; max-width: 400px;" oninput="filterTeams()">
+  </div>
   {% if teams %}
-  <table class="data-table">
+  <table class="data-table" id="teamsTable">
     <thead>
       <tr>
         <th>Team Name</th>
@@ -16,7 +19,7 @@
     </thead>
     <tbody>
       {% for team in teams %}
-      <tr>
+      <tr class="team-row" data-name="{{ team.name|lower }}">
         <td>{{ team.name }}</td>
         <td>{{ team.invite_token or '—' }}</td>
       </tr>
@@ -27,4 +30,14 @@
   <p style="color: var(--text-secondary); text-align: center; margin: 0;">No teams have registered yet.</p>
   {% endif %}
 </div>
+
+<script>
+function filterTeams() {
+  const q = document.getElementById('teamSearch').value.toLowerCase();
+  document.querySelectorAll('.team-row').forEach(row => {
+    const name = row.dataset.name;
+    row.style.display = name.includes(q) ? '' : 'none';
+  });
+}
+</script>
 {% endblock %}

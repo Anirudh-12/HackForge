@@ -1,0 +1,348 @@
+{% extends "base_app.html" %}
+{% block title %}Community Vote — {{ event.name if event else "HackForge" }}{% endblock %}
+{% block content %}
+<style>
+  .vote-hero {
+    background: linear-gradient(135deg, var(--accent) 0%, #7c3aed 100%);
+    border-radius: 16px;
+    padding: 36px 40px;
+    margin-bottom: 32px;
+    color: #fff;
+    position: relative;
+    overflow: hidden;
+  }
+  .vote-hero::before {
+    content: '';
+    position: absolute;
+    right: -40px; top: -40px;
+    width: 220px; height: 220px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.08);
+  }
+  .vote-hero h1 { margin: 0 0 8px 0; font-size: 2rem; font-weight: 800; }
+  .vote-hero p { margin: 0; font-size: 1.05rem; opacity: 0.9; max-width: 560px; }
+  .vote-status-bar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 24px;
+    margin-bottom: 28px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .vote-status-icon { font-size: 1.8rem; }
+  .vote-status-text { flex: 1; }
+  .vote-status-text strong { display: block; font-size: 1rem; font-weight: 700; margin-bottom: 2px; }
+  .vote-status-text span { color: var(--text-muted); font-size: 0.88rem; }
+  .voted-badge {
+    background: linear-gradient(135deg, #16a34a, #15803d);
+    color: #fff;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .vote-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 20px;
+  }
+  .vote-card {
+    background: var(--surface);
+    border: 2px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    transition: all 0.2s ease;
+    position: relative;
+  }
+  .vote-card:hover {
+    border-color: var(--accent);
+    box-shadow: 0 8px 32px rgba(37,99,235,0.12);
+    transform: translateY(-2px);
+  }
+  .vote-card.is-voted {
+    border-color: #16a34a;
+    box-shadow: 0 0 0 3px rgba(22,163,74,0.15);
+  }
+  .vote-card.is-own { opacity: 0.55; }
+  .vote-card-body { padding: 20px; }
+  .vote-card-track {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+  .vote-card h3 { margin: 0 0 8px 0; font-size: 1.05rem; font-weight: 700; line-height: 1.3; }
+  .vote-card p { margin: 0 0 14px 0; color: var(--text-muted); font-size: 0.88rem; line-height: 1.5;
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .vote-card-footer {
+    padding: 14px 20px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .team-tag {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.83rem;
+    color: var(--text-muted);
+  }
+  .team-avatar {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .btn-vote {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 18px;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 0.85rem;
+    cursor: pointer;
+    border: none;
+    transition: all 0.18s ease;
+    text-decoration: none;
+  }
+  .btn-vote-cast {
+    background: var(--accent);
+    color: #fff;
+  }
+  .btn-vote-cast:hover { background: #1d4ed8; transform: scale(1.03); }
+  .btn-vote-move {
+    background: #f97316;
+    color: #fff;
+  }
+  .btn-vote-move:hover { background: #ea580c; }
+  .btn-vote-voted {
+    background: #16a34a;
+    color: #fff;
+  }
+  .btn-vote-voted:hover { background: #15803d; }
+  .btn-vote-disabled {
+    background: var(--border);
+    color: var(--text-muted);
+    cursor: not-allowed;
+  }
+  .voted-ribbon {
+    position: absolute;
+    top: 12px; right: 12px;
+    background: #16a34a;
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 800;
+    padding: 3px 10px;
+    border-radius: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .no-voting-banner {
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    border: 1px solid #d97706;
+    border-radius: 12px;
+    padding: 24px 28px;
+    margin-bottom: 28px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .filter-bar {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .filter-bar input, .filter-bar select {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 0.88rem;
+    color: var(--text-primary);
+    outline: none;
+  }
+  .filter-bar input:focus, .filter-bar select:focus { border-color: var(--accent); }
+  .filter-bar input { flex: 1; min-width: 200px; }
+  .project-count { color: var(--text-muted); font-size: 0.85rem; margin-left: auto; }
+  @media (max-width: 600px) { .vote-grid { grid-template-columns: 1fr; } }
+</style>
+
+<!-- Hero -->
+<div class="vote-hero">
+  <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.8; margin-bottom: 6px;">🗳️ Community Vote</div>
+  <h1>{{ event.name }}</h1>
+  <p>Choose your favourite project. You get <strong>one vote</strong> — make it count. You can change your vote at any time before results are published.</p>
+  {% if event.community_voting_prize_json %}
+    {% set prize_data = event.community_voting_prize_json | fromjson %}
+    <div style="margin-top: 16px; background: rgba(255,255,255,0.15); border-radius: 8px; padding: 10px 16px; display: inline-flex; align-items: center; gap: 8px;">
+      🏆 <strong>Community Prize:</strong> {{ prize_data.description }}
+    </div>
+  {% endif %}
+</div>
+
+<!-- Voting not enabled banner -->
+{% if not event.community_voting_enabled %}
+<div class="no-voting-banner">
+  <div style="font-size: 2rem;">🔒</div>
+  <div>
+    <strong style="font-size: 1rem;">Community voting is not active for this hackathon</strong>
+    <div style="color: #92400e; font-size: 0.9rem; margin-top: 4px;">The organizer has not enabled community voting yet. Check back later.</div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Status bar for logged-in users -->
+{% if user and event.community_voting_enabled %}
+<div class="vote-status-bar">
+  {% if user_voted_project_id %}
+    <div class="vote-status-icon">✅</div>
+    <div class="vote-status-text">
+      <strong>Your vote is in!</strong>
+      <span>You voted for one project in this hackathon. You can change your vote by clicking Vote on another project.</span>
+    </div>
+    <div class="voted-badge">✓ Voted</div>
+  {% elif role == 'participant' %}
+    <div class="vote-status-icon">👆</div>
+    <div class="vote-status-text">
+      <strong>Ready to vote!</strong>
+      <span>Pick the project you think deserves to win the community prize. One vote per person.</span>
+    </div>
+  {% elif role in ('organizer', 'admin') %}
+    <div class="vote-status-icon">👁️</div>
+    <div class="vote-status-text">
+      <strong>Organizer view</strong>
+      <span>You can see vote counts. Participants can cast 1 vote per event.</span>
+    </div>
+  {% else %}
+    <div class="vote-status-icon">ℹ️</div>
+    <div class="vote-status-text">
+      <strong>Not registered as a participant</strong>
+      <span>Only registered participants can vote. Register for this hackathon first.</span>
+    </div>
+  {% endif %}
+</div>
+{% elif not user and event.community_voting_enabled %}
+<div class="vote-status-bar" style="background: rgba(37,99,235,0.05); border-color: rgba(37,99,235,0.2);">
+  <div class="vote-status-icon">🔑</div>
+  <div class="vote-status-text">
+    <strong>Login to vote</strong>
+    <span>You must be a registered participant to cast a community vote.</span>
+  </div>
+  <a href="/login?next=/vote" class="btn btn-primary" style="white-space: nowrap;">Login</a>
+</div>
+{% endif %}
+
+<!-- Filter bar -->
+<div class="filter-bar">
+  <input type="text" id="searchInput" placeholder="🔍 Search projects..." oninput="filterProjects()" />
+  <select id="trackFilter" onchange="filterProjects()">
+    <option value="">All Tracks</option>
+    {% for t in tracks %}
+    <option value="{{ t.id }}">{{ t.name }}</option>
+    {% endfor %}
+  </select>
+  <span class="project-count" id="projectCount">{{ projects|length }} projects</span>
+</div>
+
+<!-- Project grid -->
+<div class="vote-grid" id="voteGrid">
+  {% for p in projects %}
+  {% set is_voted = (user_voted_project_id == p.id) %}
+  {% set is_own = (p.id in user_team_project_ids) %}
+  {% set already_voted_elsewhere = (user_voted_project_id and user_voted_project_id != p.id) %}
+  <div class="vote-card {% if is_voted %}is-voted{% endif %} {% if is_own %}is-own{% endif %}"
+       data-title="{{ p.title|lower }}"
+       data-summary="{{ (p.summary or '')|lower }}"
+       data-track="{{ p.track_id or '' }}">
+    {% if is_voted %}<div class="voted-ribbon">✓ Your Vote</div>{% endif %}
+    <div class="vote-card-body">
+      {% if p.track %}
+      <div class="vote-card-track">{{ p.track.name }}</div>
+      {% endif %}
+      <h3>
+        <a href="/projects/{{ p.id }}" style="color: inherit; text-decoration: none;">
+          {{ p.title }}
+        </a>
+      </h3>
+      <p>{{ p.summary or "No description provided." }}</p>
+      {% if p.tech_stack %}
+      <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px;">
+        {% for tech in (p.tech_stack or '').split(',')[:4] %}
+        <span style="background: rgba(var(--primary-rgb), 0.08); color: var(--primary); padding: 2px 8px; border-radius: 4px; font-size: 0.72rem; font-weight: 600;">{{ tech.strip() }}</span>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+    <div class="vote-card-footer">
+      <div class="team-tag">
+        <img src="/users/{{ p.team.members[0].user_id if p.team and p.team.members else 'unknown' }}/avatar.svg" class="team-avatar" alt="">
+        {{ p.team.name if p.team else "Unknown Team" }}
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px;">
+        {% if vote_counts %}
+        <span style="font-size: 0.82rem; color: var(--text-muted);">{{ vote_counts.get(p.id, 0) }} votes</span>
+        {% endif %}
+        {% if not event.community_voting_enabled %}
+          <!-- voting disabled -->
+        {% elif is_own %}
+          <span class="btn-vote btn-vote-disabled" title="Your own project">🚫 Own Project</span>
+        {% elif not user %}
+          <a href="/login?next=/vote" class="btn-vote btn-vote-cast">Vote</a>
+        {% elif role not in ('participant', 'admin') %}
+          <span class="btn-vote btn-vote-disabled" title="Only participants can vote">Register to Vote</span>
+        {% elif event.results_published %}
+          <span class="btn-vote btn-vote-disabled">Voting Closed</span>
+        {% elif is_voted %}
+          <form method="post" action="/api/projects/{{ p.id }}/vote" style="margin:0;">
+            <button type="submit" class="btn-vote btn-vote-voted" title="Click to remove your vote">✓ Voted — Undo</button>
+          </form>
+        {% elif already_voted_elsewhere %}
+          <form method="post" action="/api/projects/{{ p.id }}/vote" style="margin:0;">
+            <button type="submit" class="btn-vote btn-vote-move" title="Move your vote to this project">Move Vote Here</button>
+          </form>
+        {% else %}
+          <form method="post" action="/api/projects/{{ p.id }}/vote" style="margin:0;">
+            <button type="submit" class="btn-vote btn-vote-cast">Vote</button>
+          </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div style="grid-column: 1/-1; text-align: center; padding: 64px 24px; color: var(--text-muted);">
+    <div style="font-size: 3rem; margin-bottom: 16px;">📭</div>
+    <h3>No submitted projects yet</h3>
+    <p>Projects will appear here once teams submit them.</p>
+  </div>
+  {% endfor %}
+</div>
+
+<script>
+function filterProjects() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  const track = document.getElementById('trackFilter').value;
+  const cards = document.querySelectorAll('#voteGrid .vote-card');
+  let visible = 0;
+  cards.forEach(card => {
+    const matchQ = !q || card.dataset.title.includes(q) || card.dataset.summary.includes(q);
+    const matchT = !track || card.dataset.track === track;
+    const show = matchQ && matchT;
+    card.style.display = show ? '' : 'none';
+    if (show) visible++;
+  });
+  document.getElementById('projectCount').textContent = visible + ' project' + (visible !== 1 ? 's' : '');
+}
+</script>
+{% endblock %}

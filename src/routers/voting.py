@@ -41,7 +41,6 @@ def _check_rate_limit(
     key = f"{user_id}:{action}"
     with _rate_limit_lock:
         timestamps = _user_action_timestamps[key]
-        # Prune older than window
         cutoff = now - window_seconds
         valid_timestamps = [t for t in timestamps if t > cutoff]
         if len(valid_timestamps) >= max_requests:
@@ -62,7 +61,6 @@ def _get_user_role(db: Session, user: User | None, event_id: str) -> str:
         .first()
     )
     if not membership:
-        # Check global admin
         any_admin = (
             db.query(EventMember)
             .filter(EventMember.user_id == user.id, EventMember.role == "admin")
@@ -88,12 +86,24 @@ def get_vote_status(
         raise HTTPException(status_code=404, detail="Project not found")
 
     event = project.event
+
+    # Community voting must be enabled on the event
+    if not getattr(event, "community_voting_enabled", False):
+        return {
+            "voted": False,
+            "can_vote": False,
+            "reason": "Community voting is not enabled for this hackathon",
+            "results_hidden": not event.results_published,
+            "community_voting_enabled": False,
+        }
+
     if not user:
         return {
             "voted": False,
             "can_vote": False,
             "reason": "Login required to vote",
             "results_hidden": not event.results_published,
+            "community_voting_enabled": True,
         }
 
     role = _get_user_role(db, user, event.id)
@@ -103,6 +113,7 @@ def get_vote_status(
             "can_vote": False,
             "reason": "Only participants can cast community votes",
             "results_hidden": not event.results_published,
+            "community_voting_enabled": True,
         }
 
     # Check if own project
@@ -114,6 +125,7 @@ def get_vote_status(
             "is_own_project": True,
             "reason": "Cannot vote for your own project",
             "results_hidden": not event.results_published,
+            "community_voting_enabled": True,
         }
 
     if event.results_published:
@@ -122,19 +134,27 @@ def get_vote_status(
             "can_vote": False,
             "reason": "Voting is closed (results published)",
             "results_hidden": False,
+            "community_voting_enabled": True,
         }
 
+    # Check if this user already voted in this event (for any project)
     existing_vote = (
         db.query(Vote)
-        .filter(Vote.user_id == user.id, Vote.project_id == project.id)
+        .filter(Vote.user_id == user.id, Vote.event_id == event.id)
         .first()
     )
 
+    voted_for_this = existing_vote is not None and existing_vote.project_id == project.id
+    already_voted_elsewhere = existing_vote is not None and existing_vote.project_id != project.id
+
     data = {
-        "voted": existing_vote is not None,
+        "voted": voted_for_this,
+        # You can always move your vote to another project
         "can_vote": True,
-        "reason": None,
+        "already_voted_project_id": existing_vote.project_id if existing_vote else None,
+        "reason": "You already voted for another project — clicking Vote will move your vote here" if already_voted_elsewhere else None,
         "results_hidden": not event.results_published,
+        "community_voting_enabled": True,
     }
 
     # Only reveal vote tally if results are published or user is organizer/admin
@@ -163,12 +183,20 @@ def cast_or_toggle_vote(
         )
 
     event = project.event
+
+    # Community voting must be enabled
+    if not getattr(event, "community_voting_enabled", False):
+        raise HTTPException(
+            status_code=403,
+            detail="Community voting is not enabled for this hackathon",
+        )
+
     if event.results_published:
         raise HTTPException(
             status_code=400, detail="Voting closed: results have already been published"
         )
 
-    # Anti-abuse: Role check - must be participant in this event (or admin)
+    # Anti-abuse: Role check — must be participant in this event (or admin)
     role = _get_user_role(db, user, event.id)
     if role not in ("participant", "admin"):
         raise HTTPException(
@@ -184,46 +212,55 @@ def cast_or_toggle_vote(
             detail="Self-voting is strictly prohibited: you cannot vote for your own team's project",
         )
 
-    # Anti-abuse: Rate limit vote actions (max 15 vote actions per minute)
-    _check_rate_limit(user.id, "vote", max_requests=15, window_seconds=60.0)
+    # Anti-abuse: Rate limit vote actions (max 10 per minute)
+    _check_rate_limit(user.id, "vote", max_requests=10, window_seconds=60.0)
 
-    # Check existing vote
+    # Check if user already voted in this event
     existing_vote = (
         db.query(Vote)
-        .filter(Vote.user_id == user.id, Vote.project_id == project.id)
+        .filter(Vote.user_id == user.id, Vote.event_id == event.id)
         .first()
     )
 
     if existing_vote:
-        # Toggle: unvote
-        db.delete(existing_vote)
-        db.add(
-            AuditLog(
-                event_id=event.id,
-                actor_id=user.id,
-                message=f"User {user.name} ({user.id}) removed community vote from project '{project.title}' ({project.id})",
-                created_at=utcnow(),
+        if existing_vote.project_id == project.id:
+            # Toggle: remove vote (unvote)
+            db.delete(existing_vote)
+            db.add(
+                AuditLog(
+                    event_id=event.id,
+                    actor_id=user.id,
+                    message=f"User {user.name} ({user.id}) removed community vote from project '{project.title}' ({project.id})",
+                    created_at=utcnow(),
+                )
             )
-        )
-        db.commit()
-        return {
-            "success": True,
-            "voted": False,
-            "project_id": project.id,
-            "message": "Vote removed",
-        }
-
-    # Anti-abuse: Cap total votes per participant per event to 50
-    user_event_votes = (
-        db.query(Vote)
-        .filter(Vote.user_id == user.id, Vote.event_id == event.id)
-        .count()
-    )
-    if user_event_votes >= 50:
-        raise HTTPException(
-            status_code=400,
-            detail="Maximum ballot limit reached: you may cast at most 50 votes per event",
-        )
+            db.commit()
+            return {
+                "success": True,
+                "voted": False,
+                "project_id": project.id,
+                "message": "Vote removed",
+            }
+        else:
+            # Move vote from old project to this one
+            old_project_id = existing_vote.project_id
+            existing_vote.project_id = project.id
+            existing_vote.created_at = utcnow()
+            db.add(
+                AuditLog(
+                    event_id=event.id,
+                    actor_id=user.id,
+                    message=f"User {user.name} ({user.id}) moved community vote from '{old_project_id}' to project '{project.title}' ({project.id})",
+                    created_at=utcnow(),
+                )
+            )
+            db.commit()
+            return {
+                "success": True,
+                "voted": True,
+                "project_id": project.id,
+                "message": "Vote moved to this project",
+            }
 
     # Cast new vote
     new_vote = Vote(
@@ -263,15 +300,15 @@ def delete_vote(
 
     existing_vote = (
         db.query(Vote)
-        .filter(Vote.user_id == user.id, Vote.project_id == project.id)
+        .filter(Vote.user_id == user.id, Vote.event_id == project.event_id)
         .first()
     )
-    if not existing_vote:
+    if not existing_vote or existing_vote.project_id != project.id:
         return {
             "success": True,
             "voted": False,
             "project_id": project.id,
-            "message": "No active vote",
+            "message": "No active vote for this project",
         }
 
     db.delete(existing_vote)

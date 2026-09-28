@@ -3,7 +3,12 @@
 {% block content %}
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
   <h1 style="margin: 0;">Judges</h1>
-  <button class="btn btn-primary" onclick="document.getElementById('inviteJudgeModal').showModal()">+ Invite Judge</button>
+  <div style="display: flex; gap: 12px;">
+    <form method="post" action="/organizer/{{ event.id }}/judges/auto-assign" style="margin: 0;" onsubmit="return confirm('This will redistribute projects evenly among all judges. Continue?');">
+      <button type="submit" class="btn btn-secondary">Auto-Assign Projects</button>
+    </form>
+    <button class="btn btn-primary" onclick="document.getElementById('inviteJudgeModal').showModal()">+ Invite Judge</button>
+  </div>
 </div>
 
 <table class="data-table">
