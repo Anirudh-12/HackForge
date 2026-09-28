@@ -13,18 +13,21 @@ from src.templating import templates
 router = APIRouter()
 
 
+import random
+from collections import Counter, defaultdict
+
+from fastapi import Form
+
 from src.models import (
     AuditLog,
-    Project,
+    EventMember,
     JudgeTrack,
-    Score,
-    RubricCriteria,
     PairwiseComparison,
+    Project,
+    RubricCriteria,
+    Score,
     Track,
 )
-from fastapi import Form
-from collections import defaultdict, Counter
-import random
 from src.timeutil import utcnow
 
 
@@ -136,6 +139,63 @@ def sync_pairwise_scores(db: Session, event_id: str, judge_id: str):
     return stats
 
 
+def get_judge_assigned_projects(
+    db: Session, event_id: str, user: User
+) -> list[Project]:
+    """
+    Returns the list of active (non-draft, non-disqualified) projects assigned to the user
+    for the given event. If the user is an organizer/admin without specific track assignments,
+    or the event has no tracks, all active projects in the event are returned.
+    """
+    judge_tracks = (
+        db.query(JudgeTrack).filter_by(event_id=event_id, judge_id=user.id).all()
+    )
+    track_ids = [jt.track_id for jt in judge_tracks]
+    event_has_tracks = db.query(Track).filter_by(event_id=event_id).first() is not None
+
+    membership = (
+        db.query(EventMember).filter_by(event_id=event_id, user_id=user.id).first()
+    )
+    user_role = membership.role if membership else getattr(user, "role", None)
+
+    if user_role in ("organizer", "admin") and not track_ids:
+        return (
+            db.query(Project)
+            .filter(
+                Project.event_id == event_id,
+                Project.is_draft.is_(False),
+                Project.is_disqualified.is_(False),
+            )
+            .order_by(Project.id)
+            .all()
+        )
+    elif not event_has_tracks:
+        return (
+            db.query(Project)
+            .filter(
+                Project.event_id == event_id,
+                Project.is_draft.is_(False),
+                Project.is_disqualified.is_(False),
+            )
+            .order_by(Project.id)
+            .all()
+        )
+    else:
+        return (
+            db.query(Project)
+            .filter(
+                Project.event_id == event_id,
+                Project.track_id.in_(track_ids),
+                Project.is_draft.is_(False),
+                Project.is_disqualified.is_(False),
+            )
+            .order_by(Project.id)
+            .all()
+            if track_ids
+            else []
+        )
+
+
 @router.get("/judge/{event_id}/dashboard")
 def judge_dashboard(
     event_id: str,
@@ -147,23 +207,7 @@ def judge_dashboard(
     if event is None:
         raise HTTPException(status_code=404, detail="event not found")
 
-    judge_tracks = (
-        db.query(JudgeTrack).filter_by(event_id=event_id, judge_id=user.id).all()
-    )
-    track_ids = [jt.track_id for jt in judge_tracks]
-
-    projects = (
-        db.query(Project)
-        .filter(
-            Project.event_id == event_id,
-            Project.track_id.in_(track_ids),
-            Project.is_draft.is_(False),
-            Project.is_disqualified.is_(False),
-        )
-        .all()
-        if track_ids
-        else []
-    )
+    projects = get_judge_assigned_projects(db, event_id, user)
 
     # Synchronize pairwise comparison scores so pairwise judging actively scores projects
     pairwise_stats = sync_pairwise_scores(db, event_id, user.id)
@@ -179,11 +223,17 @@ def judge_dashboard(
     for pid, vals in p_score_lists.items():
         project_scores[pid] = round(sum(vals) / len(vals), 1) if vals else 0
 
-    assigned_count = len(projects)
-    reviewed_count = len(scored_project_ids)
-    remaining_count = assigned_count - reviewed_count
+    assigned_project_ids = {p.id for p in projects}
+    assigned_count = len(assigned_project_ids)
+
+    # Only projects assigned to this judge count towards reviewed workload
+    reviewed_project_ids = scored_project_ids.intersection(assigned_project_ids)
+    reviewed_count = len(reviewed_project_ids)
+    remaining_count = max(0, assigned_count - reviewed_count)
     completion_pct = (
-        round((reviewed_count / assigned_count) * 100) if assigned_count > 0 else 0
+        min(100, round((reviewed_count / assigned_count) * 100))
+        if assigned_count > 0
+        else (100 if reviewed_count > 0 or not projects else 0)
     )
 
     track_counts = Counter(p.track.name for p in projects if p.track)
@@ -219,7 +269,7 @@ def judge_dashboard(
             user=user,
             role="judge",
             projects=projects,
-            scored_project_ids=scored_project_ids,
+            scored_project_ids=reviewed_project_ids,
             project_scores=project_scores,
             project_pairwise_stats=pairwise_stats or {},
             metrics=metrics,
@@ -254,23 +304,7 @@ def judge_project(
     comment = scores[0].comment if scores and scores[0].comment else ""
 
     # Navigation logic
-    judge_tracks = (
-        db.query(JudgeTrack).filter_by(event_id=event_id, judge_id=user.id).all()
-    )
-    track_ids = [jt.track_id for jt in judge_tracks]
-    projects = (
-        db.query(Project)
-        .filter(
-            Project.event_id == event_id,
-            Project.track_id.in_(track_ids),
-            Project.is_draft.is_(False),
-            Project.is_disqualified.is_(False),
-        )
-        .order_by(Project.id)
-        .all()
-        if track_ids
-        else []
-    )
+    projects = get_judge_assigned_projects(db, event_id, user)
 
     project_index = 0
     prev_project_id = None
@@ -378,7 +412,7 @@ async def submit_score(
             AuditLog(
                 event_id=event_id,
                 actor_id=user.id,
-                message=f"Judge {user.name} scored \"{project_title}\"{breakdown_str}",
+                message=f'Judge {user.name} scored "{project_title}"{breakdown_str}',
                 created_at=utcnow(),
             )
         )
@@ -386,6 +420,7 @@ async def submit_score(
 
     try:
         from src.webhooks import dispatch_webhook
+
         dispatch_webhook(
             event_id,
             "score.submitted",
@@ -435,10 +470,6 @@ def get_judge_scores(
     ]
 
 
-import random
-from src.timeutil import utcnow
-
-
 @router.get("/judge/{event_id}/pairwise")
 def pairwise_judging(
     event_id: str,
@@ -450,23 +481,7 @@ def pairwise_judging(
     if event is None:
         raise HTTPException(status_code=404, detail="event not found")
 
-    judge_tracks = (
-        db.query(JudgeTrack).filter_by(event_id=event_id, judge_id=user.id).all()
-    )
-    track_ids = [jt.track_id for jt in judge_tracks]
-
-    projects = (
-        db.query(Project)
-        .filter(
-            Project.event_id == event_id,
-            Project.track_id.in_(track_ids),
-            Project.is_draft.is_(False),
-            Project.is_disqualified.is_(False),
-        )
-        .all()
-        if track_ids
-        else []
-    )
+    projects = get_judge_assigned_projects(db, event_id, user)
 
     if len(projects) < 2:
         return templates.TemplateResponse(
@@ -488,13 +503,89 @@ def pairwise_judging(
         .all()
     )
 
-    p1, p2 = random.sample(projects, 2)
+    # Intelligent pair selection: prioritize pairs that haven't been compared yet,
+    # and projects with the fewest total comparisons.
+    comp_counts = Counter()
+    compared_pairs = set()
+    for c in existing:
+        comp_counts[c.winner_project_id] += 1
+        comp_counts[c.loser_project_id] += 1
+        pair_key = (
+            min(c.winner_project_id, c.loser_project_id),
+            max(c.winner_project_id, c.loser_project_id),
+        )
+        compared_pairs.add(pair_key)
+
+    p_ids = [p.id for p in projects]
+    p_map = {p.id: p for p in projects}
+    uncompared_pairs = []
+    for i in range(len(p_ids)):
+        for j in range(i + 1, len(p_ids)):
+            pair_key = (min(p_ids[i], p_ids[j]), max(p_ids[i], p_ids[j]))
+            if pair_key not in compared_pairs:
+                total_comparisons = comp_counts[p_ids[i]] + comp_counts[p_ids[j]]
+                uncompared_pairs.append(
+                    (total_comparisons, p_map[p_ids[i]], p_map[p_ids[j]])
+                )
+
+    if uncompared_pairs:
+        uncompared_pairs.sort(key=lambda x: x[0])
+        min_load = uncompared_pairs[0][0]
+        candidates = [pair for pair in uncompared_pairs if pair[0] == min_load]
+        _, p1, p2 = random.choice(candidates)
+        if random.random() > 0.5:
+            p1, p2 = p2, p1
+    else:
+        # All pairs compared at least once: pick the pair with the fewest comparisons
+        all_pairs = []
+        for i in range(len(p_ids)):
+            for j in range(i + 1, len(p_ids)):
+                pair_comps = sum(
+                    1
+                    for c in existing
+                    if (
+                        c.winner_project_id == p_ids[i]
+                        and c.loser_project_id == p_ids[j]
+                    )
+                    or (
+                        c.winner_project_id == p_ids[j]
+                        and c.loser_project_id == p_ids[i]
+                    )
+                )
+                all_pairs.append((pair_comps, p_map[p_ids[i]], p_map[p_ids[j]]))
+        all_pairs.sort(key=lambda x: x[0])
+        min_comps = all_pairs[0][0]
+        candidates = [pair for pair in all_pairs if pair[0] == min_comps]
+        _, p1, p2 = random.choice(candidates)
+        if random.random() > 0.5:
+            p1, p2 = p2, p1
+
     p1_stats = pairwise_stats.get(
         p1.id, {"elo": 1500.0, "wins": 0, "losses": 0, "score": 7}
     )
     p2_stats = pairwise_stats.get(
         p2.id, {"elo": 1500.0, "wins": 0, "losses": 0, "score": 7}
     )
+
+    # Progress metrics for pairwise mode
+    assigned_project_ids = {p.id for p in projects}
+    assigned_count = len(assigned_project_ids)
+    scores = db.query(Score).filter_by(event_id=event_id, judge_id=user.id).all()
+    scored_project_ids = set(s.project_id for s in scores)
+    reviewed_project_ids = scored_project_ids.intersection(assigned_project_ids)
+    reviewed_count = len(reviewed_project_ids)
+    remaining_count = max(0, assigned_count - reviewed_count)
+    completion_pct = (
+        min(100, round((reviewed_count / assigned_count) * 100))
+        if assigned_count > 0
+        else (100 if reviewed_count > 0 or not projects else 0)
+    )
+    metrics = {
+        "assigned": assigned_count,
+        "reviewed": reviewed_count,
+        "remaining": remaining_count,
+        "completion_pct": completion_pct,
+    }
 
     return templates.TemplateResponse(
         request=request,
@@ -509,6 +600,7 @@ def pairwise_judging(
             p1_stats=p1_stats,
             p2_stats=p2_stats,
             total_comparisons=len(existing),
+            metrics=metrics,
         ),
     )
 
@@ -525,6 +617,17 @@ async def submit_pairwise(
     if winner_id != loser_id:
         p1 = db.get(Project, winner_id)
         p2 = db.get(Project, loser_id)
+        if not p1 or not p2:
+            raise HTTPException(status_code=400, detail="Invalid project ID")
+        if p1.event_id != event_id or p2.event_id != event_id:
+            raise HTTPException(
+                status_code=400, detail="Projects must belong to this event"
+            )
+        if p1.is_draft or p1.is_disqualified or p2.is_draft or p2.is_disqualified:
+            raise HTTPException(
+                status_code=400, detail="Cannot compare draft or disqualified projects"
+            )
+
         p1_title = p1.title if p1 else winner_id
         p2_title = p2.title if p2 else loser_id
         db.add(

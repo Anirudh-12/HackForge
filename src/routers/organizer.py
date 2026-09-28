@@ -142,6 +142,13 @@ def create_event(
         else None
     )
 
+    existing_evt = db.query(Event).filter(func.lower(Event.name) == name.strip().lower()).first()
+    if existing_evt:
+        raise HTTPException(
+            status_code=400,
+            detail=f"An event named '{name.strip()}' already exists.",
+        )
+
     event = Event(
         id=new_id("evt"),
         name=name.strip(),
@@ -615,11 +622,15 @@ def add_track(
     event = db.get(Event, event_id)
     if event is None:
         raise HTTPException(status_code=404, detail="event not found")
+    tname = name.strip()
+    existing_trk = db.query(Track).filter(Track.event_id == event_id, func.lower(Track.name) == tname.lower()).first()
+    if existing_trk:
+        raise HTTPException(status_code=400, detail=f"Track '{tname}' already exists in this event.")
     db.add(
         Track(
             id=new_id("trk"),
             event_id=event_id,
-            name=name.strip(),
+            name=tname,
             prize=prize.strip() or None,
         )
     )
@@ -1109,11 +1120,16 @@ def add_rubric_criteria(
             detail=f"Total rubric weight cannot exceed 100%. Current total is {current_total}%, so remaining available weight is {remaining}%.",
         )
 
+    rname = name.strip()
+    existing_rub = db.query(RubricCriteria).filter(RubricCriteria.event_id == event_id, func.lower(RubricCriteria.name) == rname.lower()).first()
+    if existing_rub:
+        raise HTTPException(status_code=400, detail=f"Rubric criteria '{rname}' already exists in this event.")
+
     db.add(
         RubricCriteria(
             id=new_id("cr"),
             event_id=event_id,
-            name=name.strip(),
+            name=rname,
             weight=weight,
         )
     )

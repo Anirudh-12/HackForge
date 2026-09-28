@@ -99,12 +99,27 @@
     <h1 style="font-size: 2.2rem; margin: 0 0 8px 0;">Pairwise Judging</h1>
     <p style="color: var(--text-muted); font-size: 1.05rem; margin: 0;">Compare two projects side-by-side. Scores and ELO update automatically on your dashboard.</p>
   </div>
-  {% if total_comparisons is defined %}
-    <div style="background: rgba(var(--primary-rgb), 0.1); color: var(--primary); padding: 8px 18px; border-radius: 20px; font-weight: bold; border: 1px solid rgba(var(--primary-rgb), 0.2);">
-      {{ total_comparisons }} Comparisons Made
-    </div>
-  {% endif %}
+  <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+    {% if total_comparisons is defined %}
+      <div style="background: rgba(var(--primary-rgb), 0.1); color: var(--primary); padding: 8px 18px; border-radius: 20px; font-weight: bold; border: 1px solid rgba(var(--primary-rgb), 0.2);">
+        {{ total_comparisons }} Comparisons Made
+      </div>
+    {% endif %}
+    {% if metrics is defined and metrics.assigned > 0 %}
+      <div style="background: var(--surface-2); color: var(--text-primary); padding: 8px 18px; border-radius: 20px; font-weight: 600; border: 1px solid var(--border); display: flex; align-items: center; gap: 8px;">
+        <span>{{ metrics.reviewed }}/{{ metrics.assigned }} Reviewed</span>
+        <span style="color: var(--primary); font-weight: 700;">({{ metrics.completion_pct }}%)</span>
+      </div>
+    {% endif %}
+  </div>
 </div>
+
+{% if metrics is defined and metrics.completion_pct == 100 %}
+  <div style="margin-top: 16px; padding: 12px 20px; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: var(--radius); color: #10b981; font-weight: 600; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+    <span>🎉 All assigned projects have been evaluated! You can continue comparing to refine rankings, or return to your dashboard.</span>
+    <a href="/judge/{{ event.id }}/dashboard" class="btn btn-primary" style="padding: 6px 14px; font-size: 0.85rem; text-decoration: none;">View Dashboard &rarr;</a>
+  </div>
+{% endif %}
 
 {% if error %}
   <div style="margin-top: 24px; padding: 16px; background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid #ef4444; border-radius: var(--radius);">

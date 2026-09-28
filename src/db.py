@@ -75,3 +75,22 @@ def init_db() -> None:
         except Exception:
             pass
 
+        unique_indexes = [
+            ("uq_event_name", "CREATE UNIQUE INDEX IF NOT EXISTS uq_event_name ON events(name)"),
+            ("uq_track_event_name", "CREATE UNIQUE INDEX IF NOT EXISTS uq_track_event_name ON tracks(event_id, name)"),
+            ("uq_rubric_event_name", "CREATE UNIQUE INDEX IF NOT EXISTS uq_rubric_event_name ON rubric_criteria(event_id, name)"),
+            ("uq_pairwise_comparison", "CREATE UNIQUE INDEX IF NOT EXISTS uq_pairwise_comparison ON pairwise_comparisons(event_id, judge_id, winner_project_id, loser_project_id)"),
+            ("uq_certificate_event_user_type", "CREATE UNIQUE INDEX IF NOT EXISTS uq_certificate_event_user_type ON certificates(event_id, user_id, recipient_type)"),
+            ("uq_judge_record", "CREATE UNIQUE INDEX IF NOT EXISTS uq_judge_record ON judge_records(event_id, judge_id)"),
+        ]
+        for _, idx_sql in unique_indexes:
+            try:
+                conn.execute(text(idx_sql))
+            except Exception:
+                pass
+        try:
+            conn.commit()
+        except Exception:
+            pass
+
+

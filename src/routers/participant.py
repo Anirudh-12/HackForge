@@ -917,10 +917,26 @@ def team_action(
     if action == "create":
         if team:
             return RedirectResponse(f"/participant/{event_id}/team", status_code=303)
+        tname = name.strip() or f"{user.name}'s team"
+        existing_team = db.query(Team).filter(Team.event_id == event_id, func.lower(Team.name) == tname.lower()).first()
+        if existing_team:
+            return templates.TemplateResponse(
+                request=request,
+                name="participant/team.html",
+                context=base_context(
+                    request=request,
+                    event=event,
+                    user=user,
+                    role="participant",
+                    team=team,
+                    error=f"A team named '{tname}' already exists in this hackathon. Please choose a different name.",
+                ),
+                status_code=400,
+            )
         team = Team(
             id=new_id("tm"),
             event_id=event_id,
-            name=name.strip() or f"{user.name}'s team",
+            name=tname,
             leader_id=user.id,
         )
         db.add(team)

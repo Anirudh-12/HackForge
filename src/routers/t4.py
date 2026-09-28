@@ -1012,6 +1012,14 @@ async def bulk_import_projects(
         if existing:
             continue
 
+        existing_by_title = (
+            db.query(Project)
+            .filter(Project.event_id == event_id, func.lower(Project.title) == title.lower())
+            .first()
+        )
+        if existing_by_title:
+            continue
+
         team_name = item.get("team_name") or f"Team {title[:12]}"
         team = Team(
             id=f"tm_{uuid.uuid4().hex[:8]}",

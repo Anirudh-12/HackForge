@@ -36,6 +36,17 @@ def test_pairwise_voting_updates_scores(client, auth_cookies):
         assert "Reviewed" in dash_resp.text
         assert "Score:" in dash_resp.text
         assert "ELO" in dash_resp.text
+
+        # Verify completion percentage never exceeds 100% and remaining projects is never negative
+        assert "117%" not in dash_resp.text
+        assert "Needs Review (-1)" not in dash_resp.text
+        assert ">-1<" not in dash_resp.text
+
+        # Verify pairwise judging page loads with valid metrics badge and no overflow
+        pairwise_resp = client.get("/judge/evt_01/pairwise")
+        assert pairwise_resp.status_code == 200
+        assert "Comparisons Made" in pairwise_resp.text
+        assert "117%" not in pairwise_resp.text
     finally:
         client.cookies.clear()
         db.close()
