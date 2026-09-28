@@ -47,6 +47,8 @@ def init_db() -> None:
                 ("results_date", "DATETIME"),
                 ("prizes_json", "TEXT"),
                 ("side_quests_json", "TEXT"),
+                ("location", "TEXT"),
+                ("format", "TEXT"),
             ]
             for col_name, col_type in new_cols:
                 if col_name not in existing_cols:

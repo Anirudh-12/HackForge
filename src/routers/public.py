@@ -195,11 +195,26 @@ def explore(request: Request, db: Session = Depends(get_db), user: User | None =
         else:
             ongoing.append(e)
             
-    # Also fetch judge invitations if user is logged in
+    # Also fetch judge invitations & registrations if user is logged in
     invitations = []
+    registered_event_ids = set()
     if user:
-        from src.models import JudgeInvitation
+        from src.models import JudgeInvitation, EventMember
         invitations = db.query(JudgeInvitation).filter_by(email=user.email, status="pending").all()
+        user_memberships = db.query(EventMember).filter(EventMember.user_id == user.id, EventMember.role == "participant").all()
+        registered_event_ids = {m.event_id for m in user_memberships}
+
+    tracks_set = set()
+    locations_set = set()
+    for e in events:
+        for t in e.tracks:
+            if t.name and t.name.strip():
+                tracks_set.add(t.name.strip())
+        if e.event_location and e.event_location.strip():
+            locations_set.add(e.event_location.strip())
+
+    all_tracks = sorted(tracks_set)
+    all_locations = sorted(locations_set)
         
     return templates.TemplateResponse(request=request, name="explore.html", context=
         base_context(
@@ -210,7 +225,10 @@ def explore(request: Request, db: Session = Depends(get_db), user: User | None =
             upcoming=upcoming,
             ongoing=ongoing,
             completed=completed,
-            invitations=invitations
+            invitations=invitations,
+            all_tracks=all_tracks,
+            all_locations=all_locations,
+            registered_event_ids=registered_event_ids,
         ),
     )
 

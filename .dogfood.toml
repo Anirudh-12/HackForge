@@ -2,7 +2,7 @@
 base_url = "http://localhost:8080"
 
 [tiers]
-claimed = ["T1", "T2","T3"]
+claimed = ["T1", "T2"]
 pitch = "Run your hackathon without the spreadsheet chaos."
 
 [auth]

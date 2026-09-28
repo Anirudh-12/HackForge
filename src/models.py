@@ -51,6 +51,9 @@ class Event(Base):
     side_quests_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     community_voting_prize_json: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    location: Mapped[str | None] = mapped_column(String, nullable=True)
+    format: Mapped[str | None] = mapped_column(String, nullable=True)
+
     tracks: Mapped[list[Track]] = relationship(back_populates="event")
     teams: Mapped[list[Team]] = relationship(back_populates="event")
     projects: Mapped[list[Project]] = relationship(back_populates="event")
@@ -98,6 +101,69 @@ class Event(Base):
             return json.loads(self.side_quests_json)
         except Exception:
             return []
+
+    @property
+    def event_location(self) -> str:
+        if self.location:
+            return self.location
+        loc_map = {
+            "evt_01": "San Francisco, CA",
+            "evt_02": "Austin, TX",
+            "evt_03": "Boston, MA",
+            "evt_04": "Bangalore, India",
+            "evt_05": "New York, NY",
+            "evt_06": "Seattle, WA",
+            "evt_07": "Singapore",
+            "evt_08": "Berlin, Germany",
+            "evt_09": "London, UK",
+            "evt_10": "Toronto, Canada",
+        }
+        return loc_map.get(self.id, "Online / Global")
+
+    @property
+    def event_format(self) -> str:
+        if self.format:
+            return self.format
+        fmt_map = {
+            "evt_01": "Hybrid",
+            "evt_02": "In-Person",
+            "evt_03": "Online",
+            "evt_04": "In-Person",
+            "evt_05": "Online",
+            "evt_06": "Online",
+            "evt_07": "Hybrid",
+            "evt_08": "In-Person",
+            "evt_09": "Online",
+            "evt_10": "Hybrid",
+        }
+        return fmt_map.get(self.id, "Online")
+
+    @property
+    def prize_pool(self) -> int:
+        import re
+        total = 0
+        for p in self.prizes_list:
+            amt = str(p.get("amount", ""))
+            nums = re.findall(r"[\d,]+", amt)
+            if nums:
+                try:
+                    total += int(nums[0].replace(",", ""))
+                except Exception:
+                    pass
+        for t in self.tracks:
+            if t.prize:
+                nums = re.findall(r"[\d,]+", str(t.prize))
+                if nums:
+                    try:
+                        total += int(nums[0].replace(",", ""))
+                    except Exception:
+                        pass
+        return total
+
+    @property
+    def prize_pool_display(self) -> str:
+        pool = self.prize_pool
+        return f"${pool:,}" if pool > 0 else "TBA"
 
 
 class EventMember(Base):

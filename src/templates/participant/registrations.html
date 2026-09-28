@@ -1,0 +1,777 @@
+{% extends "base_app.html" %}
+{% block title %}My Registrations - HackForge{% endblock %}
+
+{% block content %}
+<style>
+  .reg-page-header {
+    margin-bottom: 28px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  .reg-breadcrumb {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .reg-breadcrumb a {
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+  .reg-breadcrumb a:hover {
+    color: var(--primary);
+  }
+  .reg-page-header h1 {
+    font-size: 2.2rem;
+    margin: 0 0 6px 0;
+    color: var(--text-primary);
+    font-weight: 700;
+  }
+  .reg-page-header p {
+    color: var(--text-muted);
+    margin: 0;
+    font-size: 1.05rem;
+  }
+
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 20px;
+    margin-bottom: 32px;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+  }
+  .stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: rgba(var(--primary-rgb), 0.1);
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .stat-val {
+    font-size: 1.8rem;
+    font-weight: 700;
+    line-height: 1.1;
+    color: var(--text-primary);
+  }
+  .stat-lbl {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  /* Filters & Search */
+  .controls-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 24px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .filter-tabs {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .filter-tab {
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .filter-tab:hover {
+    color: var(--text-primary);
+    border-color: var(--border-hover);
+  }
+  .filter-tab.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+  }
+  .filter-tab .tab-badge {
+    background: rgba(255,255,255,0.2);
+    font-size: 0.75rem;
+    padding: 2px 7px;
+    border-radius: 10px;
+  }
+  .filter-tab:not(.active) .tab-badge {
+    background: var(--bg);
+    color: var(--text-muted);
+  }
+
+  .search-sort-group {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex: 1;
+    max-width: 500px;
+    justify-content: flex-end;
+  }
+  .search-wrapper {
+    position: relative;
+    flex: 1;
+  }
+  .search-wrapper input {
+    width: 100%;
+    padding: 9px 14px 9px 36px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-primary);
+    font-size: 0.9rem;
+  }
+  .search-wrapper svg {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+  }
+  .sort-select {
+    padding: 9px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    cursor: pointer;
+  }
+
+  /* Registration Cards Grid */
+  .registrations-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .reg-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+    transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+    display: grid;
+    grid-template-columns: 280px 1fr;
+  }
+  @media (max-width: 900px) {
+    .reg-card {
+      grid-template-columns: 1fr;
+    }
+  }
+  .reg-card:hover {
+    border-color: rgba(var(--primary-rgb), 0.4);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.07);
+  }
+
+  .reg-card-media {
+    position: relative;
+    min-height: 180px;
+    background-size: cover;
+    background-position: center;
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 16px;
+  }
+  @media (max-width: 900px) {
+    .reg-card-media {
+      border-right: none;
+      border-bottom: 1px solid var(--border);
+      min-height: 160px;
+    }
+  }
+
+  .reg-badge-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-items: flex-start;
+  }
+  .reg-badge {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: white;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+    backdrop-filter: blur(4px);
+  }
+
+  .reg-card-main {
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .reg-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .reg-card-title {
+    font-size: 1.4rem;
+    font-weight: 700;
+    margin: 0 0 6px 0;
+    line-height: 1.25;
+  }
+  .reg-card-title a {
+    color: var(--text-primary);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+  .reg-card-title a:hover {
+    color: var(--primary);
+  }
+  .reg-card-tagline {
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    margin: 0;
+    line-height: 1.4;
+  }
+
+  .reg-meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px 24px;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    align-items: center;
+  }
+  .reg-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* Embedded Team & Submission Box */
+  .reg-team-submission-box {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 18px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    align-items: center;
+  }
+  @media (max-width: 650px) {
+    .reg-team-submission-box {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .team-info-col {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .team-info-header {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .team-name-val {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .team-members-avatars {
+    display: flex;
+    align-items: center;
+    margin-top: 4px;
+  }
+  .member-avatar-chip {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: white;
+    font-size: 10px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--surface);
+    margin-left: -6px;
+  }
+  .member-avatar-chip:first-child {
+    margin-left: 0;
+  }
+
+  .submission-info-col {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    border-left: 1px solid var(--border);
+    padding-left: 16px;
+  }
+  @media (max-width: 650px) {
+    .submission-info-col {
+      border-left: none;
+      padding-left: 0;
+      border-top: 1px solid var(--border);
+      padding-top: 12px;
+    }
+  }
+  .submission-status-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+
+  .reg-card-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-top: 4px;
+  }
+  .reg-card-actions .btn {
+    padding: 8px 16px;
+    font-size: 0.9rem;
+  }
+
+  .tracks-chips {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .track-chip {
+    background: var(--accent-subtle);
+    color: var(--accent);
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+
+  /* Empty state */
+  .empty-registrations {
+    background: var(--surface);
+    border: 1px dashed var(--border);
+    border-radius: 16px;
+    padding: 56px 24px;
+    text-align: center;
+    max-width: 600px;
+    margin: 32px auto;
+  }
+  .empty-icon {
+    font-size: 3.5rem;
+    margin-bottom: 16px;
+  }
+  .empty-registrations h2 {
+    margin: 0 0 8px 0;
+    font-size: 1.5rem;
+  }
+  .empty-registrations p {
+    color: var(--text-muted);
+    margin: 0 0 24px 0;
+    line-height: 1.5;
+  }
+</style>
+
+<div class="registrations-page">
+  
+  <div class="reg-page-header">
+    <div>
+      <div class="reg-breadcrumb">
+        <a href="/participant/home">Dashboard</a>
+        <span>&rsaquo;</span>
+        <span>My Registrations</span>
+      </div>
+      <h1>My Hackathon Registrations</h1>
+      <p>View and manage all hackathons you are participating in, access team workspaces, and track project deadlines.</p>
+    </div>
+    <div>
+      <a href="/explore" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 8px; font-weight: 500;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon></svg>
+        Explore More Hackathons
+      </a>
+    </div>
+  </div>
+
+  <!-- Summary Stats Row -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+      </div>
+      <div>
+        <div class="stat-val">{{ total_registrations }}</div>
+        <div class="stat-lbl">Total Registered</div>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+      </div>
+      <div>
+        <div class="stat-val">{{ active_count }}</div>
+        <div class="stat-lbl">Active & Ongoing</div>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+      </div>
+      <div>
+        <div class="stat-val">{{ submitted_count }}</div>
+        <div class="stat-lbl">Projects Submitted</div>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon" style="background: rgba(168, 85, 247, 0.1); color: #a855f7;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+      </div>
+      <div>
+        <div class="stat-val">{{ teams_count }}</div>
+        <div class="stat-lbl">Teams Joined / Formed</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filter & Search Controls Bar -->
+  <div class="controls-bar">
+    <div class="filter-tabs">
+      <button type="button" class="filter-tab active" data-tab="all" onclick="filterRegistrations('all', this)">
+        All Hackathons <span class="tab-badge">{{ total_registrations }}</span>
+      </button>
+      <button type="button" class="filter-tab" data-tab="ongoing" onclick="filterRegistrations('ongoing', this)">
+        Active <span class="tab-badge">{{ active_count }}</span>
+      </button>
+      <button type="button" class="filter-tab" data-tab="upcoming" onclick="filterRegistrations('upcoming', this)">
+        Upcoming <span class="tab-badge">{{ upcoming_count }}</span>
+      </button>
+      <button type="button" class="filter-tab" data-tab="completed" onclick="filterRegistrations('completed', this)">
+        Completed <span class="tab-badge">{{ completed_count }}</span>
+      </button>
+    </div>
+
+    <div class="search-sort-group">
+      <div class="search-wrapper">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" id="regSearchInput" placeholder="Search registrations..." oninput="handleRegSearch()">
+      </div>
+      
+      <select id="regSortSelect" class="sort-select" onchange="handleRegSort()">
+        <option value="status">Status (Active first)</option>
+        <option value="deadline">Submission Deadline (Soonest)</option>
+        <option value="name">Hackathon Name (A-Z)</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Registrations List Container -->
+  {% if registrations %}
+  <div id="registrationsContainer" class="registrations-grid">
+    {% for reg in registrations %}
+    <div class="reg-card"
+         data-status="{{ reg.time_status }}"
+         data-search="{{ reg.event.name|lower }} {{ (reg.event.tagline or '')|lower }} {{ (reg.team.name|lower if reg.team else '') }} {% for t in reg.event.tracks %}{{ t.name|lower }} {% endfor %}"
+         data-name="{{ reg.event.name|lower }}"
+         data-deadline="{{ reg.event.submissions_close.isoformat() if reg.event.submissions_close else '' }}"
+         data-timestatus-order="{% if reg.time_status == 'ongoing' %}1{% elif reg.time_status == 'upcoming' %}2{% else %}3{% endif %}">
+      
+      <!-- Card Media / Banner Column -->
+      {% if reg.event.banner_image_path and reg.event.banner_image_path != 'None' and reg.event.banner_image_path|trim != '' %}
+      <div class="reg-card-media" style="background-image: linear-gradient(rgba(0,0,0,0.2), rgba(0,0,0,0.6)), url('{{ reg.event.banner_image_path }}');">
+      {% else %}
+      <div class="reg-card-media" style="background: linear-gradient(135deg, var(--primary), #8b5cf6);">
+      {% endif %}
+        <div class="reg-badge-group">
+          <div class="reg-badge" style="background: {{ reg.status_color }};">
+            {{ reg.time_status_label }}
+          </div>
+          {% if reg.submission_status == 'Submitted' %}
+            <div class="reg-badge" style="background: #10b981;">✓ Project Submitted</div>
+          {% elif reg.submission_status == 'Submission in progress' %}
+            <div class="reg-badge" style="background: #f59e0b;">Draft Saved</div>
+          {% else %}
+            <div class="reg-badge" style="background: rgba(107, 114, 128, 0.9);">No Submission</div>
+          {% endif %}
+        </div>
+
+        <div style="color: white; font-size: 0.8rem; font-weight: 500; text-shadow: 0 1px 3px rgba(0,0,0,0.5);">
+          Registered Participant
+        </div>
+      </div>
+
+      <!-- Card Main Body Column -->
+      <div class="reg-card-main">
+        <div class="reg-card-header">
+          <div>
+            <h2 class="reg-card-title">
+              <a href="/participant/{{ reg.event.id }}/dashboard">{{ reg.event.name }}</a>
+            </h2>
+            <p class="reg-card-tagline">
+              {{ reg.event.tagline if reg.event.tagline else ((reg.event.description_markdown|strip_markdown)[:120] ~ '...' if reg.event.description_markdown else 'Explore the event details and collaborate.') }}
+            </p>
+          </div>
+        </div>
+
+        <!-- Meta Grid -->
+        <div class="reg-meta-row">
+          <div class="reg-meta-item" title="Submission Window">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+            <span>{% if reg.event.submissions_open %}{{ reg.event.submissions_open.strftime('%b %d') }} - {{ reg.event.submissions_close.strftime('%b %d, %Y') }}{% else %}Dates TBA{% endif %}</span>
+          </div>
+
+          <div class="reg-meta-item" title="Format & Location">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+            <span>{{ reg.event.event_format }} • {{ reg.event.event_location }}</span>
+          </div>
+
+          <div class="reg-meta-item" title="Prize Pool" style="color: #10b981; font-weight: 600;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path><path d="M4 22h16"></path><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"></path><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"></path><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"></path></svg>
+            <span>{{ reg.event.prize_pool_display }}</span>
+          </div>
+
+          <!-- Tracks -->
+          <div class="tracks-chips">
+            {% for t in reg.event.tracks[:3] %}
+              <span class="track-chip">{{ t.name }}</span>
+            {% else %}
+              <span class="track-chip">Open Innovation</span>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Embedded Team & Submission Box -->
+        <div class="reg-team-submission-box">
+          <!-- Team status -->
+          <div class="team-info-col">
+            <div class="team-info-header">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+              Team Status
+            </div>
+            {% if reg.team %}
+              <div class="team-name-val">
+                <span>{{ reg.team.name }}</span>
+                <span style="font-size: 0.8rem; font-weight: normal; color: var(--text-muted);">({{ reg.team_members|length }} members)</span>
+              </div>
+              <div class="team-members-avatars">
+                {% for m in reg.team_members[:5] %}
+                  <div class="member-avatar-chip" title="{{ m.name }}">
+                    {{ m.name[:1]|upper }}
+                  </div>
+                {% endfor %}
+                <a href="/participant/{{ reg.event.id }}/team" style="margin-left: 8px; font-size: 0.8rem; color: var(--primary); text-decoration: none;">Manage Team &rarr;</a>
+              </div>
+            {% else %}
+              <div class="team-name-val" style="color: var(--text-muted); font-size: 0.9rem;">
+                Solo Participant
+              </div>
+              <div style="font-size: 0.8rem; margin-top: 2px;">
+                <a href="/participant/{{ reg.event.id }}/matchmaking" style="color: var(--primary); text-decoration: none; font-weight: 500;">
+                  Find teammates &rarr;
+                </a>
+              </div>
+            {% endif %}
+          </div>
+
+          <!-- Submission status -->
+          <div class="submission-info-col">
+            <div class="team-info-header">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+              Project Submission
+            </div>
+            {% if reg.project %}
+              <div class="submission-status-chip" style="color: {% if reg.project.is_draft %}#f59e0b{% else %}#10b981{% endif %};">
+                {% if reg.project.is_draft %}
+                  <span>⏳ In Draft: {{ reg.project.title }}</span>
+                {% else %}
+                  <span>✓ Submitted: {{ reg.project.title }}</span>
+                {% endif %}
+              </div>
+              <div style="font-size: 0.8rem; color: var(--text-muted);">
+                Track: {{ reg.project.track.name if reg.project.track else 'General' }}
+                {% if reg.project.is_draft %}
+                  &bull; <a href="/participant/{{ reg.event.id }}/submit" style="color: var(--primary); text-decoration: none;">Resume &rarr;</a>
+                {% endif %}
+              </div>
+            {% else %}
+              <div class="submission-status-chip" style="color: var(--text-muted); font-weight: normal; font-size: 0.85rem;">
+                No project submitted yet
+              </div>
+              <div style="font-size: 0.8rem; margin-top: 2px;">
+                <a href="/participant/{{ reg.event.id }}/submit" style="color: var(--primary); text-decoration: none; font-weight: 500;">
+                  Start your submission &rarr;
+                </a>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Actions Row -->
+        <div class="reg-card-actions">
+          <a href="/participant/{{ reg.event.id }}/dashboard" class="btn btn-primary">
+            Open Workspace &rarr;
+          </a>
+          <a href="/participant/{{ reg.event.id }}/team" class="btn btn-secondary">
+            Team & Teammates
+          </a>
+          <a href="/participant/{{ reg.event.id }}/submit" class="btn btn-secondary">
+            {% if reg.project and not reg.project.is_draft %}View Submission{% else %}Submit Project{% endif %}
+          </a>
+          <a href="/events/{{ reg.event.id }}" class="btn btn-outline" style="margin-left: auto;">
+            Event Details
+          </a>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-registrations">
+    <div class="empty-icon">🚀</div>
+    <h2>No Hackathon Registrations Yet</h2>
+    <p>You haven't joined any hackathons yet. Find a challenge that inspires you, form a team or compete solo, build impactful software, and win prizes!</p>
+    <a href="/explore" class="btn btn-primary" style="padding: 10px 24px; font-size: 1rem;">
+      Explore Open Hackathons &rarr;
+    </a>
+  </div>
+  {% endif %}
+
+  <!-- Hidden state when search filter finds nothing -->
+  <div id="noRegsFoundState" style="display: none;" class="empty-registrations">
+    <div class="empty-icon">🔍</div>
+    <h2>No Registrations Found</h2>
+    <p>No registered hackathons match your current search or tab filter.</p>
+    <button type="button" class="btn btn-secondary" onclick="resetRegFilters()">Clear Filters</button>
+  </div>
+
+</div>
+
+<script>
+  let activeTab = 'all';
+
+  function filterRegistrations(tabKey, btnElem) {
+    activeTab = tabKey;
+    document.querySelectorAll('.filter-tab').forEach(b => b.classList.remove('active'));
+    if (btnElem) btnElem.classList.add('active');
+    applyRegFilters();
+  }
+
+  function handleRegSearch() {
+    applyRegFilters();
+  }
+
+  function handleRegSort() {
+    applyRegFilters();
+  }
+
+  function resetRegFilters() {
+    document.getElementById('regSearchInput').value = '';
+    document.getElementById('regSortSelect').value = 'status';
+    activeTab = 'all';
+    document.querySelectorAll('.filter-tab').forEach(b => b.classList.remove('active'));
+    const allTab = document.querySelector('.filter-tab[data-tab="all"]');
+    if (allTab) allTab.classList.add('active');
+    applyRegFilters();
+  }
+
+  function applyRegFilters() {
+    const query = (document.getElementById('regSearchInput')?.value || '').trim().toLowerCase();
+    const sortVal = document.getElementById('regSortSelect')?.value || 'status';
+    const container = document.getElementById('registrationsContainer');
+    if (!container) return;
+
+    const cards = Array.from(container.querySelectorAll('.reg-card'));
+    let visibleCount = 0;
+
+    cards.forEach(card => {
+      const cardStatus = card.getAttribute('data-status') || '';
+      const cardSearch = card.getAttribute('data-search') || '';
+
+      const matchesTab = (activeTab === 'all') || (cardStatus === activeTab);
+      const matchesQuery = !query || cardSearch.includes(query);
+
+      if (matchesTab && matchesQuery) {
+        card.style.display = 'grid';
+        visibleCount++;
+      } else {
+        card.style.display = 'none';
+      }
+    });
+
+    // Sorting
+    cards.sort((a, b) => {
+      if (sortVal === 'status') {
+        const orderA = parseInt(a.getAttribute('data-timestatus-order') || '99', 10);
+        const orderB = parseInt(b.getAttribute('data-timestatus-order') || '99', 10);
+        if (orderA !== orderB) return orderA - orderB;
+        return (a.getAttribute('data-name') || '').localeCompare(b.getAttribute('data-name') || '');
+      } else if (sortVal === 'deadline') {
+        const deadA = a.getAttribute('data-deadline');
+        const deadB = b.getAttribute('data-deadline');
+        if (!deadA && !deadB) return 0;
+        if (!deadA) return 1;
+        if (!deadB) return -1;
+        return new Date(deadA).getTime() - new Date(deadB).getTime();
+      } else if (sortVal === 'name') {
+        return (a.getAttribute('data-name') || '').localeCompare(b.getAttribute('data-name') || '');
+      }
+      return 0;
+    });
+
+    cards.forEach(card => container.appendChild(card));
+
+    const noFoundElem = document.getElementById('noRegsFoundState');
+    if (noFoundElem) {
+      noFoundElem.style.display = (visibleCount === 0 && cards.length > 0) ? 'block' : 'none';
+    }
+  }
+</script>
+{% endblock %}

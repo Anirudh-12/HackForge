@@ -230,16 +230,65 @@
     </div>
     
     <div class="filters-row">
-      <select class="filter-select"><option>All Tracks</option></select>
-      <select class="filter-select"><option>All Locations</option></select>
-      <select class="filter-select"><option>Online / Offline</option></select>
-      <select class="filter-select"><option>Any Prize Pool</option></select>
-      <select class="filter-select"><option>Any Date</option></select>
-      <select class="filter-select"><option>All Statuses</option></select>
+      <select id="filterTrack" class="filter-select" onchange="applyFilters()">
+        <option value="all">All Tracks</option>
+        {% for track in all_tracks %}
+          <option value="{{ track|lower }}">{{ track }}</option>
+        {% endfor %}
+      </select>
       
+      <select id="filterLocation" class="filter-select" onchange="applyFilters()">
+        <option value="all">All Locations</option>
+        {% for loc in all_locations %}
+          <option value="{{ loc|lower }}">{{ loc }}</option>
+        {% endfor %}
+      </select>
+      
+      <select id="filterFormat" class="filter-select" onchange="applyFilters()">
+        <option value="all">Online / Offline (All)</option>
+        <option value="online">Online / Virtual</option>
+        <option value="in-person">In-Person / Offline</option>
+        <option value="hybrid">Hybrid</option>
+      </select>
+      
+      <select id="filterPrize" class="filter-select" onchange="applyFilters()">
+        <option value="all">Any Prize Pool</option>
+        <option value="5000">$5,000+</option>
+        <option value="10000">$10,000+</option>
+        <option value="15000">$15,000+</option>
+        <option value="20000">$20,000+</option>
+      </select>
+      
+      <select id="filterDate" class="filter-select" onchange="applyFilters()">
+        <option value="all">Any Date</option>
+        <option value="this_week">Happening This Week</option>
+        <option value="this_month">This Month</option>
+        <option value="next_month">Next Month</option>
+        <option value="future">Upcoming / Future</option>
+        <option value="past">Past Events</option>
+      </select>
+      
+      <select id="filterStatus" class="filter-select" onchange="syncStatusFilter(this.value)">
+        <option value="all">All Statuses</option>
+        <option value="upcoming">Upcoming (Registrations Open)</option>
+        <option value="ongoing">Ongoing (Submissions Live)</option>
+        <option value="past">Completed (Past)</option>
+      </select>
+      
+      <button type="button" class="btn btn-secondary" onclick="resetAllFilters()" style="padding: 8px 12px; font-size: 0.85rem; height: 38px; display: inline-flex; align-items: center; gap: 4px;" title="Reset all filters">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
+        Reset
+      </button>
+
       <div style="margin-left: auto; display: flex; align-items: center; gap: 8px;">
         <span style="color: var(--text-muted); font-size: 0.9rem;">Sort by</span>
-        <select class="filter-select" style="font-weight: 500;"><option>Start Date (Soonest)</option></select>
+        <select id="filterSort" class="filter-select" style="font-weight: 500;" onchange="applyFilters()">
+          <option value="start_soonest">Start Date (Soonest)</option>
+          <option value="start_latest">Start Date (Latest)</option>
+          <option value="deadline_soonest">Submission Deadline (Soonest)</option>
+          <option value="prize_highest">Highest Prize Pool</option>
+          <option value="name_asc">Name (A-Z)</option>
+        </select>
       </div>
     </div>
   </div>
@@ -265,36 +314,50 @@
   </div>
 
   {% macro event_card(event, status_label, status_color, status_key) %}
-  <div class="event-card" data-status="{{ status_key }}" data-search="{{ event.name|lower }} {{ (event.description_markdown|strip_markdown)|lower }}">
+  <div class="event-card"
+       data-status="{{ status_key }}"
+       data-search="{{ event.name|lower }} {{ (event.tagline or '')|lower }} {{ (event.description_markdown|strip_markdown)|lower }} {{ event.event_location|lower }} {% for t in event.tracks %}{{ t.name|lower }} {% endfor %}"
+       data-tracks="{% for t in event.tracks %}{{ t.name|lower }}|{% endfor %}"
+       data-location="{{ event.event_location|lower }}"
+       data-format="{{ event.event_format|lower }}"
+       data-prize="{{ event.prize_pool }}"
+       data-start="{{ event.submissions_open.isoformat() if event.submissions_open else (event.event_starts.isoformat() if event.event_starts else '') }}"
+       data-close="{{ event.submissions_close.isoformat() if event.submissions_close else (event.event_ends.isoformat() if event.event_ends else '') }}"
+       data-name="{{ event.name|lower }}">
     {% if event.banner_image_path and event.banner_image_path != 'None' and event.banner_image_path|trim != '' %}
     <div class="card-banner" style="background-image: url('{{ event.banner_image_path }}');">
     {% else %}
     <div class="card-banner" style="background: linear-gradient(135deg, var(--accent), #8b5cf6);">
     {% endif %}
       <div class="card-badge" style="background: {{ status_color }};">{{ status_label }}</div>
+      {% if registered_event_ids and event.id in registered_event_ids %}
+      <div class="card-badge" style="top: 12px; left: 12px; right: auto; background: rgba(16, 185, 129, 0.95); backdrop-filter: blur(4px); box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
+        ✓ Registered
+      </div>
+      {% endif %}
     </div>
     
     <div class="card-content">
       <h3 class="card-title">{{ event.name }}</h3>
-      <div class="card-organizer">by Hackathon Organizer</div>
-      <p class="card-desc">{{ (event.description_markdown|strip_markdown)[:100] ~ '...' if event.description_markdown else 'Explore event details.' }}</p>
+      <div class="card-organizer">{{ event.tagline if event.tagline else 'HackForge Community Hackathon' }}</div>
+      <p class="card-desc">{{ (event.description_markdown|strip_markdown)[:100] ~ '...' if event.description_markdown else 'Explore event details and participate.' }}</p>
       
       <div class="card-meta-grid">
-        <div class="card-meta-item">
+        <div class="card-meta-item" title="Timeline">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
           {% if event.submissions_open %}{{ event.submissions_open.strftime('%b %d') }} - {{ event.submissions_close.strftime('%b %d, %Y') }}{% else %}TBA{% endif %}
         </div>
-        <div class="card-meta-item">
+        <div class="card-meta-item" title="Format & Location">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
-          Online
+          {{ event.event_format }} • {{ event.event_location }}
         </div>
-        <div class="card-meta-item">
+        <div class="card-meta-item" title="Team Size">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
           Teams of 1-4
         </div>
-        <div class="card-meta-item">
+        <div class="card-meta-item" title="Prize Pool" style="font-weight: 600; color: #10b981;">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path><path d="M4 22h16"></path><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"></path><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"></path><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"></path></svg>
-          TBA
+          {{ event.prize_pool_display }}
         </div>
       </div>
       
@@ -308,7 +371,11 @@
       
       <div class="card-actions">
         <a href="/events/{{ event.id }}" class="btn btn-secondary">View Details</a>
+        {% if registered_event_ids and event.id in registered_event_ids %}
+        <a href="/participant/{{ event.id }}/dashboard" class="btn btn-primary" style="flex:1;">Workspace &rarr;</a>
+        {% else %}
         <a href="/events/{{ event.id }}" class="btn btn-primary" style="flex:1;">Register &rarr;</a>
+        {% endif %}
       </div>
     </div>
   </div>
@@ -326,9 +393,11 @@
     {% endfor %}
   </div>
 
-  <div id="noEventsState" style="display: none; text-align: center; padding: 48px 24px; background: var(--surface); border: 1px dashed var(--border); border-radius: var(--radius); margin-top: 16px;">
-    <h3 style="margin: 0 0 8px 0;">No hackathons found</h3>
-    <p style="color: var(--text-muted); margin: 0;">Try adjusting your tab filter or search keyword.</p>
+  <div id="noEventsState" style="display: none; text-align: center; padding: 48px 24px; background: var(--surface); border: 1px dashed var(--border); border-radius: var(--radius); margin-top: 24px;">
+    <div style="font-size: 2.5rem; margin-bottom: 12px;">🔍</div>
+    <h3 style="margin: 0 0 8px 0; font-size: 1.3rem;">No hackathons match your filters</h3>
+    <p style="color: var(--text-muted); margin: 0 0 20px 0;">Try adjusting your track, location, prize pool, or search keyword.</p>
+    <button type="button" class="btn btn-primary" onclick="resetAllFilters()">Reset All Filters</button>
   </div>
 
 </div>
@@ -340,6 +409,20 @@
     currentFilter = status;
     document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
     if (tabElem) tabElem.classList.add('active');
+    const statusSelect = document.getElementById('filterStatus');
+    if (statusSelect) statusSelect.value = status;
+    applyFilters();
+  }
+
+  function syncStatusFilter(statusVal) {
+    currentFilter = statusVal;
+    document.querySelectorAll('.tab-item').forEach(t => {
+      if (t.getAttribute('data-filter') === statusVal) {
+        t.classList.add('active');
+      } else {
+        t.classList.remove('active');
+      }
+    });
     applyFilters();
   }
 
@@ -347,19 +430,105 @@
     applyFilters();
   }
 
+  function resetAllFilters() {
+    document.getElementById('exploreSearchInput').value = '';
+    document.getElementById('filterTrack').value = 'all';
+    document.getElementById('filterLocation').value = 'all';
+    document.getElementById('filterFormat').value = 'all';
+    document.getElementById('filterPrize').value = 'all';
+    document.getElementById('filterDate').value = 'all';
+    document.getElementById('filterStatus').value = 'all';
+    document.getElementById('filterSort').value = 'start_soonest';
+    currentFilter = 'all';
+    document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+    const allTab = document.querySelector('.tab-item[data-filter="all"]');
+    if (allTab) allTab.classList.add('active');
+    applyFilters();
+  }
+
   function applyFilters() {
     const query = (document.getElementById('exploreSearchInput').value || '').trim().toLowerCase();
-    const cards = document.querySelectorAll('#eventsContainer .event-card');
+    const trackVal = (document.getElementById('filterTrack')?.value || 'all').toLowerCase();
+    const locVal = (document.getElementById('filterLocation')?.value || 'all').toLowerCase();
+    const formatVal = (document.getElementById('filterFormat')?.value || 'all').toLowerCase();
+    const prizeVal = document.getElementById('filterPrize')?.value || 'all';
+    const dateVal = document.getElementById('filterDate')?.value || 'all';
+    const sortVal = document.getElementById('filterSort')?.value || 'start_soonest';
+
+    const container = document.getElementById('eventsContainer');
+    const cards = Array.from(container.querySelectorAll('.event-card'));
     let visibleCount = 0;
+    const now = new Date();
 
     cards.forEach(card => {
-      const cardStatus = card.getAttribute('data-status');
+      const cardStatus = card.getAttribute('data-status') || '';
       const cardSearch = card.getAttribute('data-search') || '';
+      const cardTracks = card.getAttribute('data-tracks') || '';
+      const cardLocation = card.getAttribute('data-location') || '';
+      const cardFormat = card.getAttribute('data-format') || '';
+      const cardPrize = parseInt(card.getAttribute('data-prize') || '0', 10);
+      const cardStartStr = card.getAttribute('data-start') || '';
+      const cardCloseStr = card.getAttribute('data-close') || '';
+      const cardStartDate = cardStartStr ? new Date(cardStartStr) : null;
+      const cardCloseDate = cardCloseStr ? new Date(cardCloseStr) : null;
 
+      // 1. Status Filter
       const matchesStatus = (currentFilter === 'all') || (cardStatus === currentFilter);
+
+      // 2. Query Search
       const matchesQuery = !query || cardSearch.includes(query);
 
-      if (matchesStatus && matchesQuery) {
+      // 3. Track Filter
+      const matchesTrack = (trackVal === 'all') || cardTracks.includes(trackVal);
+
+      // 4. Location Filter
+      const matchesLoc = (locVal === 'all') || cardLocation.includes(locVal);
+
+      // 5. Format Filter
+      let matchesFormat = true;
+      if (formatVal !== 'all') {
+        if (formatVal === 'online') {
+          matchesFormat = cardFormat.includes('online') || cardFormat.includes('virtual');
+        } else if (formatVal === 'in-person') {
+          matchesFormat = cardFormat.includes('in-person') || cardFormat.includes('offline');
+        } else if (formatVal === 'hybrid') {
+          matchesFormat = cardFormat.includes('hybrid');
+        }
+      }
+
+      // 6. Prize Pool Filter
+      let matchesPrize = true;
+      if (prizeVal !== 'all') {
+        const minPrize = parseInt(prizeVal, 10);
+        matchesPrize = cardPrize >= minPrize;
+      }
+
+      // 7. Date Filter
+      let matchesDate = true;
+      if (dateVal !== 'all') {
+        if (dateVal === 'this_week') {
+          const oneWeekAhead = new Date(now.getTime() + 7 * 86400000);
+          const oneWeekAgo = new Date(now.getTime() - 7 * 86400000);
+          const s = cardStartDate || cardCloseDate;
+          matchesDate = s && (s >= oneWeekAgo && s <= oneWeekAhead);
+        } else if (dateVal === 'this_month') {
+          const s = cardStartDate || cardCloseDate;
+          matchesDate = s && (s.getMonth() === now.getMonth() && s.getFullYear() === now.getFullYear());
+        } else if (dateVal === 'next_month') {
+          const s = cardStartDate || cardCloseDate;
+          const nextMonth = (now.getMonth() + 1) % 12;
+          const nextYear = now.getMonth() === 11 ? now.getFullYear() + 1 : now.getFullYear();
+          matchesDate = s && (s.getMonth() === nextMonth && s.getFullYear() === nextYear);
+        } else if (dateVal === 'future') {
+          matchesDate = (cardStartDate && cardStartDate > now) || cardStatus === 'upcoming' || cardStatus === 'ongoing';
+        } else if (dateVal === 'past') {
+          matchesDate = (cardCloseDate && cardCloseDate < now) || cardStatus === 'past';
+        }
+      }
+
+      const isVisible = matchesStatus && matchesQuery && matchesTrack && matchesLoc && matchesFormat && matchesPrize && matchesDate;
+
+      if (isVisible) {
         card.classList.remove('hidden');
         card.setAttribute('data-hidden', 'false');
         card.style.removeProperty('display');
@@ -370,6 +539,43 @@
         card.style.setProperty('display', 'none', 'important');
       }
     });
+
+    // Sort cards
+    cards.sort((a, b) => {
+      const aStart = a.getAttribute('data-start') ? new Date(a.getAttribute('data-start')).getTime() : null;
+      const bStart = b.getAttribute('data-start') ? new Date(b.getAttribute('data-start')).getTime() : null;
+      const aClose = a.getAttribute('data-close') ? new Date(a.getAttribute('data-close')).getTime() : null;
+      const bClose = b.getAttribute('data-close') ? new Date(b.getAttribute('data-close')).getTime() : null;
+      const aPrize = parseInt(a.getAttribute('data-prize') || '0', 10);
+      const bPrize = parseInt(b.getAttribute('data-prize') || '0', 10);
+      const aName = a.getAttribute('data-name') || '';
+      const bName = b.getAttribute('data-name') || '';
+
+      if (sortVal === 'start_soonest') {
+        if (!aStart && !bStart) return 0;
+        if (!aStart) return 1;
+        if (!bStart) return -1;
+        return aStart - bStart;
+      } else if (sortVal === 'start_latest') {
+        if (!aStart && !bStart) return 0;
+        if (!aStart) return 1;
+        if (!bStart) return -1;
+        return bStart - aStart;
+      } else if (sortVal === 'deadline_soonest') {
+        if (!aClose && !bClose) return 0;
+        if (!aClose) return 1;
+        if (!bClose) return -1;
+        return aClose - bClose;
+      } else if (sortVal === 'prize_highest') {
+        return bPrize - aPrize;
+      } else if (sortVal === 'name_asc') {
+        return aName.localeCompare(bName);
+      }
+      return 0;
+    });
+
+    // Re-append sorted cards in container
+    cards.forEach(card => container.appendChild(card));
 
     document.getElementById('eventsCountLabel').textContent = visibleCount + (visibleCount === 1 ? ' hackathon' : ' hackathons');
     document.getElementById('noEventsState').style.display = (visibleCount === 0) ? 'block' : 'none';

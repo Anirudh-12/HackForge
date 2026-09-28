@@ -118,6 +118,126 @@ def participant_home(
         )
     )
 
+
+@router.get("/participant/registrations")
+def participant_registrations(
+    request: Request,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    if not user:
+        return RedirectResponse("/login?next=/participant/registrations", status_code=303)
+
+    now = utcnow()
+
+    # Fetch all event memberships for participant
+    memberships = (
+        db.query(EventMember)
+        .options(joinedload(EventMember.event).joinedload(Event.tracks))
+        .filter(EventMember.user_id == user.id, EventMember.role == "participant")
+        .all()
+    )
+
+    registrations = []
+    active_count = 0
+    upcoming_count = 0
+    completed_count = 0
+    submitted_count = 0
+    teams_count = 0
+
+    for m in memberships:
+        event = m.event
+        if not event:
+            continue
+
+        team = user_team(db, user.id, event.id)
+        project = None
+        team_members = []
+        if team:
+            teams_count += 1
+            project = (
+                db.query(Project)
+                .options(joinedload(Project.track))
+                .filter(Project.team_id == team.id)
+                .first()
+            )
+            tm_records = (
+                db.query(TeamMember)
+                .options(joinedload(TeamMember.user))
+                .filter(TeamMember.team_id == team.id)
+                .all()
+            )
+            team_members = [tm.user for tm in tm_records if tm.user]
+
+        # Determine timeline status
+        j_close = as_utc(event.judging_close) if event.judging_close else None
+        s_open = as_utc(event.submissions_open) if event.submissions_open else None
+        s_close = as_utc(event.submissions_close) if event.submissions_close else None
+
+        if event.results_published or (j_close and now > j_close):
+            time_status = "completed"
+            time_status_label = "Completed"
+            status_color = "#6b7280"
+            completed_count += 1
+        elif s_open and now < s_open:
+            time_status = "upcoming"
+            time_status_label = "Upcoming"
+            status_color = "#10b981"
+            upcoming_count += 1
+        else:
+            time_status = "ongoing"
+            time_status_label = "Ongoing"
+            status_color = "var(--primary)"
+            active_count += 1
+
+        submission_status = "Not Started"
+        if project:
+            if project.is_draft:
+                submission_status = "Submission in progress"
+            else:
+                submission_status = "Submitted"
+                submitted_count += 1
+
+        registrations.append({
+            "event": event,
+            "membership": m,
+            "team": team,
+            "team_members": team_members,
+            "project": project,
+            "time_status": time_status,
+            "time_status_label": time_status_label,
+            "status_color": status_color,
+            "submission_status": submission_status,
+        })
+
+    # Sort registrations: ongoing first, upcoming second, completed last
+    status_order = {"ongoing": 0, "upcoming": 1, "completed": 2}
+    registrations.sort(key=lambda r: (status_order.get(r["time_status"], 3), r["event"].name))
+
+    return templates.TemplateResponse(
+        request=request,
+        name="participant/registrations.html",
+        context=base_context(
+            request=request,
+            event=default_event(db),
+            user=user,
+            role="participant",
+            registrations=registrations,
+            total_registrations=len(registrations),
+            active_count=active_count,
+            upcoming_count=upcoming_count,
+            completed_count=completed_count,
+            submitted_count=submitted_count,
+            teams_count=teams_count,
+        ),
+    )
+
+
+@router.get("/registrations")
+def registrations_redirect():
+    return RedirectResponse("/participant/registrations", status_code=303)
+
+
 @router.get("/participant/{event_id}/dashboard")
 def participant_dashboard(
     event_id: str,
