@@ -30,3 +30,22 @@ def test_project_detail_view(client):
     assert response.status_code == 200
     assert "Glass Signal" in response.text
     assert "Discussion & Feedback" in response.text
+
+
+def test_gallery_visitor_sidebar(client):
+    response = client.get("/projects")
+    assert response.status_code == 200
+    # Sidebar exists on the gallery page
+    assert 'id="appSidebar"' in response.text
+    # Shows Guest as the user name
+    assert "Guest" in response.text
+    # Sidebar contains Hackathons and Gallery buttons
+    assert 'href="/explore"' in response.text
+    assert "Hackathons" in response.text
+    assert 'href="/projects"' in response.text
+    assert "Gallery" in response.text
+    # Sidebar collapsible toggle buttons exist
+    assert "topbarSidebarToggle" in response.text
+    assert "sidebarCollapseBtn" in response.text
+    assert "toggleSidebar()" in response.text
+

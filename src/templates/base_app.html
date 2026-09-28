@@ -7,16 +7,32 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/style.css">
+  <script>
+    (function() {
+      try {
+        if (window.innerWidth > 768 && localStorage.getItem('hackforge_sidebar_collapsed') === 'true') {
+          document.documentElement.classList.add('sidebar-init-collapsed');
+        }
+      } catch(e) {}
+    })();
+  </script>
 </head>
 <body>
   <div class="app-shell">
-    <aside class="sidebar">
-      <a class="brand" href="/">◈ Hackforge</a>
+    <aside class="sidebar" id="appSidebar">
+      <div class="sidebar-header">
+        <a class="brand" href="/">◈ Hackforge</a>
+        <button id="sidebarCollapseBtn" class="sidebar-toggle-btn" onclick="toggleSidebar()" title="Collapse sidebar" aria-label="Collapse sidebar">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+        </button>
+      </div>
       <nav class="sidebar-nav">
         {% if role == 'organizer' or role == 'admin' %}
           <div class="nav-section">OVERVIEW</div>
           <a href="/organizer/{{ event.id }}/dashboard" {% if request and 'dashboard' in request.url.path %}class="active"{% endif %}>Progress</a>
-          <a href="/organizer/{{ event.id }}/projects" {% if request and 'projects' in request.url.path %}class="active"{% endif %}>Projects</a>
+          <a href="/organizer/{{ event.id }}/projects" {% if request and '/organizer/' in request.url.path and 'projects' in request.url.path %}class="active"{% endif %}>Projects</a>
           <a href="/organizer/{{ event.id }}/teams" {% if request and 'teams' in request.url.path %}class="active"{% endif %}>Teams</a>
           
           <div class="nav-section">HACKATHON</div>
@@ -31,36 +47,65 @@
         {% elif role == 'judge' %}
           <div class="nav-section">JUDGING</div>
           <a href="/judge/{{ event.id }}/dashboard">My assignments</a>
-        {% else %}
-          {% if user and role == 'participant' %}
-            <div style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; margin-bottom: 8px;">
-              <div style="width: 32px; height: 32px; border-radius: 50%; overflow: hidden; background: var(--surface); border: 2px solid var(--border);">
-                <img src="/users/{{ user.id }}/avatar.svg" style="width:100%; height:100%;">
-              </div>
-              <div>
-                <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">{{ (user_role or role or 'Participant')|capitalize }}</div>
-                <div style="font-weight: 500; font-size: 0.95rem;">{{ user.name.split(' ')[0] }}</div>
-              </div>
+        {% elif not user %}
+          <!-- Visitor (Guest) Sidebar -->
+          <div class="sidebar-user">
+            <div class="sidebar-user-avatar">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
             </div>
-            <a href="/participant/home" {% if request and 'participant/home' in request.url.path and '#registered' not in request.url.fragment|default('') %}class="active"{% endif %}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="margin-right: 8px; vertical-align: -3px;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg> Home
-            </a>
-            <a href="/explore" {% if request and 'explore' in request.url.path %}class="active"{% endif %}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="margin-right: 8px; vertical-align: -3px;"><circle cx="12" cy="12" r="10"></circle><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon></svg> Explore Hackathons
-            </a>
-            <a href="/participant/home#registered">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="margin-right: 8px; vertical-align: -3px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg> My Registrations
-            </a>
-            <a href="/profile" {% if request and request.url.path == '/profile' %}class="active"{% endif %}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="margin-right: 8px; vertical-align: -3px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> Profile
-            </a>
-          {% endif %}
-          {% if not user or role != 'participant' %}
+            <div class="sidebar-user-info">
+              <div class="sidebar-user-role">Visitor</div>
+              <div class="sidebar-user-name">Guest</div>
+            </div>
+          </div>
+          
           <div class="nav-section">DISCOVER</div>
-          <a href="/explore" {% if request and 'explore' in request.url.path %}class="active"{% endif %}>Explore Hackathons</a>
-          {% endif %}
-          <a href="/projects" {% if request and 'projects' in request.url.path %}class="active"{% endif %}>Project Gallery</a>
-          {% if event and request and 'participant/home' not in request.url.path %}
+          <a href="/explore" {% if request and 'explore' in request.url.path %}class="active"{% endif %} title="Hackathons">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="margin-right: 10px;"><circle cx="12" cy="12" r="10"></circle><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon></svg>
+            <span>Hackathons</span>
+          </a>
+          <a href="/projects" {% if request and '/projects' in request.url.path and '/organizer/' not in request.url.path %}class="active"{% endif %} title="Gallery">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 10px;"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+            <span>Gallery</span>
+          </a>
+        {% else %}
+          <!-- Participant (Logged In) -->
+          <div class="sidebar-user">
+            <div class="sidebar-user-avatar">
+              <img src="/users/{{ user.id }}/avatar.svg" alt="Avatar">
+            </div>
+            <div class="sidebar-user-info">
+              <div class="sidebar-user-role">{{ (user_role or role or 'Participant')|capitalize }}</div>
+              <div class="sidebar-user-name">{{ user.name.split(' ')[0] }}</div>
+            </div>
+          </div>
+          <a href="/participant/home" {% if request and 'participant/home' in request.url.path and '#registered' not in request.url.fragment|default('') %}class="active"{% endif %}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="margin-right: 10px;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+            <span>Home</span>
+          </a>
+          <a href="/explore" {% if request and 'explore' in request.url.path %}class="active"{% endif %}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="margin-right: 10px;"><circle cx="12" cy="12" r="10"></circle><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon></svg>
+            <span>Explore Hackathons</span>
+          </a>
+          <a href="/participant/home#registered">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="margin-right: 10px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+            <span>My Registrations</span>
+          </a>
+          <a href="/profile" {% if request and request.url.path == '/profile' %}class="active"{% endif %}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="margin-right: 10px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+            <span>Profile</span>
+          </a>
+          
+          <div class="nav-section">DISCOVER</div>
+          <a href="/projects" {% if request and '/projects' in request.url.path and '/organizer/' not in request.url.path %}class="active"{% endif %}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 10px;"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+            <span>Project Gallery</span>
+          </a>
+          
+          {% if event and request and 'participant/home' not in request.url.path and 'explore' not in request.url.path and 'projects' not in request.url.path and 'profile' not in request.url.path %}
           <div class="nav-section">CURRENT HACKATHON</div>
           <a href="/participant/{{ event.id }}/dashboard" {% if request and 'dashboard' in request.url.path %}class="active"{% endif %}>Overview</a>
           <a href="/participant/{{ event.id }}/team" {% if request and 'team' in request.url.path %}class="active"{% endif %}>Team</a>
@@ -70,17 +115,25 @@
         {% endif %}
       </nav>
     </aside>
+    <div id="sidebarBackdrop" class="sidebar-backdrop" onclick="toggleSidebar()"></div>
     <div class="app-main">
       <div class="topbar">
-        <div style="position: relative;">
-          {% if request and ('/participant/home' in request.url.path or '/explore' in request.url.path or '/profile' in request.url.path) %}
-          <div style="font-weight: 500;">Hackforge</div>
+        <div style="display: flex; align-items: center; gap: 12px; position: relative;">
+          <button id="topbarSidebarToggle" class="sidebar-toggle-btn" onclick="toggleSidebar()" title="Toggle sidebar" aria-label="Toggle sidebar">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="9" y1="3" x2="9" y2="21"></line>
+            </svg>
+          </button>
+          
+          {% if not user or (request and ('/participant/home' in request.url.path or '/explore' in request.url.path or '/projects' in request.url.path or '/profile' in request.url.path)) %}
+          <div style="font-weight: 600; font-size: 1rem; color: var(--text-primary);">Hackforge</div>
           {% elif all_events %}
           <div style="cursor: pointer; display: flex; align-items: center; gap: 4px; font-weight: 500;" onclick="const d = document.getElementById('eventDropdown'); d.style.display = d.style.display === 'none' ? 'block' : 'none'; event.stopPropagation();">
             {{ event.name if event else 'Hackforge' }}
             <span style="font-size: 10px;">🔻</span>
           </div>
-          <div id="eventDropdown" style="display: none; position: absolute; top: 100%; left: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); margin-top: 8px; min-width: 220px; z-index: 50; padding: 8px 0;">
+          <div id="eventDropdown" style="display: none; position: absolute; top: 100%; left: 44px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); margin-top: 8px; min-width: 220px; z-index: 50; padding: 8px 0;">
             <div style="padding: 4px 16px 8px; font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--border); margin-bottom: 4px;">Switch Event</div>
             {% for e in all_events %}
             <a href="/organizer/{{ e.id }}/dashboard" style="display: block; padding: 8px 16px; color: {% if event and e.id == event.id %}var(--accent){% else %}var(--text-primary){% endif %}; text-decoration: none; font-weight: {% if event and e.id == event.id %}500{% else %}400{% endif %};">
@@ -282,6 +335,65 @@
         showToast(urlParams.get('msg'), urlParams.get('msg_type') || 'success');
         // Clean up URL
         window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    });
+
+    // Sidebar Toggle Functionality
+    function toggleSidebar() {
+      const shell = document.querySelector('.app-shell');
+      if (!shell) return;
+      const isMobile = window.innerWidth <= 768;
+      
+      if (isMobile) {
+        shell.classList.toggle('sidebar-open-mobile');
+      } else {
+        shell.classList.toggle('sidebar-collapsed');
+        const isCollapsed = shell.classList.contains('sidebar-collapsed');
+        try {
+          localStorage.setItem('hackforge_sidebar_collapsed', isCollapsed ? 'true' : 'false');
+        } catch(e) {}
+        updateSidebarAria(isCollapsed);
+      }
+    }
+
+    function updateSidebarAria(isCollapsed) {
+      const topbarBtn = document.getElementById('topbarSidebarToggle');
+      const collapseBtn = document.getElementById('sidebarCollapseBtn');
+      if (topbarBtn) {
+        topbarBtn.title = isCollapsed ? 'Expand sidebar (Ctrl+B)' : 'Collapse sidebar (Ctrl+B)';
+        topbarBtn.setAttribute('aria-expanded', !isCollapsed);
+      }
+      if (collapseBtn) {
+        collapseBtn.setAttribute('aria-expanded', !isCollapsed);
+      }
+    }
+
+    // Initialize sidebar state on page load
+    document.addEventListener('DOMContentLoaded', () => {
+      const shell = document.querySelector('.app-shell');
+      if (window.innerWidth > 768) {
+        try {
+          if (localStorage.getItem('hackforge_sidebar_collapsed') === 'true') {
+            shell?.classList.add('sidebar-collapsed');
+            updateSidebarAria(true);
+          } else {
+            updateSidebarAria(false);
+          }
+        } catch(e) {}
+      }
+      if (document.documentElement.classList.contains('sidebar-init-collapsed')) {
+        shell?.classList.add('sidebar-collapsed');
+        document.documentElement.classList.remove('sidebar-init-collapsed');
+        updateSidebarAria(true);
+      }
+    });
+
+    // Keyboard shortcut (Ctrl+B or Cmd+B)
+    document.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+        if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) return;
+        e.preventDefault();
+        toggleSidebar();
       }
     });
   </script>
