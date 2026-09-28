@@ -630,23 +630,55 @@ async def submit_pairwise(
 
         p1_title = p1.title if p1 else winner_id
         p2_title = p2.title if p2 else loser_id
-        db.add(
-            PairwiseComparison(
-                event_id=event_id,
-                judge_id=user.id,
-                winner_project_id=winner_id,
-                loser_project_id=loser_id,
-                created_at=utcnow(),
+
+        from sqlalchemy import or_, and_
+        existing_comp = (
+            db.query(PairwiseComparison)
+            .filter(
+                PairwiseComparison.event_id == event_id,
+                PairwiseComparison.judge_id == user.id,
+                or_(
+                    and_(PairwiseComparison.winner_project_id == winner_id, PairwiseComparison.loser_project_id == loser_id),
+                    and_(PairwiseComparison.winner_project_id == loser_id, PairwiseComparison.loser_project_id == winner_id),
+                ),
             )
+            .first()
         )
-        db.add(
-            AuditLog(
-                event_id=event_id,
-                actor_id=user.id,
-                message=f"Judge {user.name} preferred '{p1_title}' over '{p2_title}' in pairwise comparison",
-                created_at=utcnow(),
+        if existing_comp:
+            existing_comp.winner_project_id = winner_id
+            existing_comp.loser_project_id = loser_id
+            existing_comp.created_at = utcnow()
+        else:
+            db.add(
+                PairwiseComparison(
+                    event_id=event_id,
+                    judge_id=user.id,
+                    winner_project_id=winner_id,
+                    loser_project_id=loser_id,
+                    created_at=utcnow(),
+                )
             )
+
+        log_msg = f"Judge {user.name} preferred '{p1_title}' over '{p2_title}' in pairwise comparison"
+        recent_log = (
+            db.query(AuditLog)
+            .filter(
+                AuditLog.event_id == event_id,
+                AuditLog.actor_id == user.id,
+                AuditLog.message == log_msg,
+            )
+            .order_by(AuditLog.id.desc())
+            .first()
         )
+        if not recent_log:
+            db.add(
+                AuditLog(
+                    event_id=event_id,
+                    actor_id=user.id,
+                    message=log_msg,
+                    created_at=utcnow(),
+                )
+            )
         db.commit()
         # Immediately sync updated pairwise ELO to Score records
         sync_pairwise_scores(db, event_id, user.id)
