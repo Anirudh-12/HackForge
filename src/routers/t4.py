@@ -860,6 +860,15 @@ def export_event_full_json(
         for c in db.query(Comment).filter_by(event_id=event_id).all()
     ]
     votes_count = db.query(Vote).filter_by(event_id=event_id).count()
+    audit_records = [
+        {
+            "id": l.id,
+            "actor_id": l.actor_id,
+            "message": l.message,
+            "created_at": l.created_at.isoformat() if l.created_at else None,
+        }
+        for l in db.query(AuditLog).filter_by(event_id=event_id).order_by(AuditLog.created_at.asc()).all()
+    ]
 
     payload = {
         "event": {
@@ -880,6 +889,8 @@ def export_event_full_json(
         "comments_count": len(comments),
         "comments": comments,
         "community_votes_total": votes_count,
+        "audit_logs_count": len(audit_records),
+        "audit_logs": audit_records,
         "exported_at": utcnow().isoformat(),
         "exported_by": user.email,
     }

@@ -455,6 +455,60 @@
         </div>
       </div>
     </div>
+
+    <!-- Endpoint 4: Audit Log & Ledger API -->
+    <div class="endpoint-card">
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <div>
+          <span class="http-method method-get">GET</span>
+          <span style="font-family: monospace; font-size: 15px; font-weight: 600; color: #f1f5f9;">/api/events/{event_id}/audit</span>
+        </div>
+        <span style="font-size: 12px; color: #10b981; background: rgba(16,185,129,0.1); padding: 4px 8px; border-radius: 4px;">Governance &amp; Ledger</span>
+      </div>
+      <p style="color: #94a3b8; font-size: 13px; margin: 10px 0 0;">
+        Query sequential append-only audit trail records with actor identity, category filters, and cryptographic SHA-256 block checksums.
+      </p>
+
+      <div class="lang-snippet-container" data-endpoint="audit_ledger">
+        <div class="lang-tabs">
+          <button class="lang-tab active" data-lang="curl" onclick="switchSnippetLang(this, 'curl')">cURL</button>
+          <button class="lang-tab" data-lang="python" onclick="switchSnippetLang(this, 'python')">Python</button>
+          <button class="lang-tab" data-lang="javascript" onclick="switchSnippetLang(this, 'javascript')">JavaScript</button>
+          <button class="lang-tab" data-lang="java" onclick="switchSnippetLang(this, 'java')">Java</button>
+        </div>
+        <div class="code-block snippet-curl">
+          <button class="copy-btn" onclick="copySnippet(this)">Copy</button>
+          curl -X GET "{{ base_url }}/api/events/{{ event.id }}/audit?category=all&page=1&per_page=50" \<br>
+          &nbsp;&nbsp;-H "{{ active_cookie or 'Cookie: session=<organizer_token>' }}"
+        </div>
+        <div class="code-block snippet-python" style="display: none;">
+          <button class="copy-btn" onclick="copySnippet(this)">Copy</button>
+          import requests<br><br>
+          url = "{{ base_url }}/api/events/{{ event.id }}/audit?category=all"<br>
+          headers = {"Cookie": "{{ active_cookie or 'session=<organizer_token>' }}"}<br>
+          ledger = requests.get(url, headers=headers).json()<br>
+          print("Total audit events:", ledger["total"])<br>
+          for record in ledger["records"][:5]:<br>
+          &nbsp;&nbsp;print(f"[{record['timestamp_iso']}] {record['actor_name']}: {record['message']}")
+        </div>
+        <div class="code-block snippet-javascript" style="display: none;">
+          <button class="copy-btn" onclick="copySnippet(this)">Copy</button>
+          const res = await fetch("{{ base_url }}/api/events/{{ event.id }}/audit?category=all", {<br>
+          &nbsp;&nbsp;headers: { "Cookie": "{{ active_cookie or 'session=<organizer_token>' }}" }<br>
+          });<br>
+          const data = await res.json();<br>
+          console.log(data);
+        </div>
+        <div class="code-block snippet-java" style="display: none;">
+          <button class="copy-btn" onclick="copySnippet(this)">Copy</button>
+          HttpRequest req = HttpRequest.newBuilder()<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;.uri(URI.create("{{ base_url }}/api/events/{{ event.id }}/audit"))<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;.header("Cookie", "{{ active_cookie or 'session=<organizer_token>' }}")<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;.GET().build();<br>
+          HttpResponse&lt;String&gt; res = HttpClient.newHttpClient().send(req, HttpResponse.BodyHandlers.ofString());
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- 2. JUDGE TAB -->

@@ -14,6 +14,7 @@ router = APIRouter()
 
 
 from src.models import (
+    AuditLog,
     Project,
     JudgeTrack,
     Score,
@@ -355,6 +356,34 @@ async def submit_score(
 
     db.commit()
 
+    project = db.get(Project, project_id)
+    project_title = project.title if project else project_id
+    if recuse:
+        db.add(
+            AuditLog(
+                event_id=event_id,
+                actor_id=user.id,
+                message=f"Judge {user.name} recused from project '{project_title}'",
+                created_at=utcnow(),
+            )
+        )
+    else:
+        score_breakdown = []
+        for crit in criteria:
+            val = form_data.get(f"criteria_{crit.id}")
+            if val is not None:
+                score_breakdown.append(f"{crit.name}: {val}")
+        breakdown_str = f" — {', '.join(score_breakdown)}" if score_breakdown else ""
+        db.add(
+            AuditLog(
+                event_id=event_id,
+                actor_id=user.id,
+                message=f"Judge {user.name} scored \"{project_title}\"{breakdown_str}",
+                created_at=utcnow(),
+            )
+        )
+    db.commit()
+
     try:
         from src.webhooks import dispatch_webhook
         dispatch_webhook(
@@ -494,12 +523,24 @@ async def submit_pairwise(
     user: User = Depends(require_role("judge", "organizer", "admin")),
 ):
     if winner_id != loser_id:
+        p1 = db.get(Project, winner_id)
+        p2 = db.get(Project, loser_id)
+        p1_title = p1.title if p1 else winner_id
+        p2_title = p2.title if p2 else loser_id
         db.add(
             PairwiseComparison(
                 event_id=event_id,
                 judge_id=user.id,
                 winner_project_id=winner_id,
                 loser_project_id=loser_id,
+                created_at=utcnow(),
+            )
+        )
+        db.add(
+            AuditLog(
+                event_id=event_id,
+                actor_id=user.id,
+                message=f"Judge {user.name} preferred '{p1_title}' over '{p2_title}' in pairwise comparison",
                 created_at=utcnow(),
             )
         )

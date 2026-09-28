@@ -1,18 +1,41 @@
 from __future__ import annotations
 
+import csv
+import hashlib
+import io
+import json
+import math
 import os
 import shutil
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import RedirectResponse
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    Request,
+    UploadFile,
+)
+from fastapi.responses import JSONResponse, RedirectResponse, Response
 from sqlalchemy.orm import Session
 
-import json
 from src.auth import require_role
 from src.context import base_context
 from src.db import get_db
-from src.models import AuditLog, Event, Project, Team, Track, User, RubricCriteria, Score
+from src.models import (
+    AuditLog,
+    Event,
+    EventMember,
+    Project,
+    RubricCriteria,
+    Score,
+    Team,
+    Track,
+    User,
+)
 from src.queries import event_tracks
 from src.seed import new_id
 from src.templating import templates
@@ -91,18 +114,33 @@ def create_event(
     dt_results = _dt(results_date)
 
     if dt_event_starts and dt_event_ends and dt_event_starts > dt_event_ends:
-        raise HTTPException(status_code=400, detail="Event start date cannot be after event end date.")
+        raise HTTPException(
+            status_code=400, detail="Event start date cannot be after event end date."
+        )
     if dt_reg_open and dt_reg_close and dt_reg_open > dt_reg_close:
-        raise HTTPException(status_code=400, detail="Registration opening date cannot be after registration closing date.")
+        raise HTTPException(
+            status_code=400,
+            detail="Registration opening date cannot be after registration closing date.",
+        )
     if dt_sub_open and dt_sub_close and dt_sub_open > dt_sub_close:
-        raise HTTPException(status_code=400, detail="Submission opening date cannot be after submission closing date.")
+        raise HTTPException(
+            status_code=400,
+            detail="Submission opening date cannot be after submission closing date.",
+        )
     if dt_judge_open and dt_judge_close and dt_judge_open > dt_judge_close:
-        raise HTTPException(status_code=400, detail="Judging opening date cannot be after judging closing date.")
+        raise HTTPException(
+            status_code=400,
+            detail="Judging opening date cannot be after judging closing date.",
+        )
 
     min_size = max(1, min_team_size)
     max_size = max(min_size, max_team_size)
     voting_enabled = community_voting_mode in ("separate_prize", "tie_breaker")
-    voting_prize_json = json.dumps({"prize": community_voting_prize.strip()}) if community_voting_prize.strip() else None
+    voting_prize_json = (
+        json.dumps({"prize": community_voting_prize.strip()})
+        if community_voting_prize.strip()
+        else None
+    )
 
     event = Event(
         id=new_id("evt"),
@@ -134,10 +172,23 @@ def create_event(
         try:
             track_items = json.loads(tracks_json)
             for item in track_items:
-                t_name = item.get("name", "").strip() if isinstance(item, dict) else str(item).strip()
-                t_prize = item.get("prize", "").strip() if isinstance(item, dict) else None
+                t_name = (
+                    item.get("name", "").strip()
+                    if isinstance(item, dict)
+                    else str(item).strip()
+                )
+                t_prize = (
+                    item.get("prize", "").strip() if isinstance(item, dict) else None
+                )
                 if t_name:
-                    db.add(Track(id=new_id("trk"), event_id=event.id, name=t_name, prize=t_prize or None))
+                    db.add(
+                        Track(
+                            id=new_id("trk"),
+                            event_id=event.id,
+                            name=t_name,
+                            prize=t_prize or None,
+                        )
+                    )
         except Exception:
             pass
 
@@ -145,10 +196,21 @@ def create_event(
         try:
             rubric_items = json.loads(rubrics_json)
             for r_item in rubric_items:
-                r_name = r_item.get("name", "").strip() if isinstance(r_item, dict) else ""
-                r_weight = int(r_item.get("weight", 0)) if isinstance(r_item, dict) else 0
+                r_name = (
+                    r_item.get("name", "").strip() if isinstance(r_item, dict) else ""
+                )
+                r_weight = (
+                    int(r_item.get("weight", 0)) if isinstance(r_item, dict) else 0
+                )
                 if r_name and r_weight > 0:
-                    db.add(RubricCriteria(id=new_id("rub"), event_id=event.id, name=r_name, weight=r_weight))
+                    db.add(
+                        RubricCriteria(
+                            id=new_id("rub"),
+                            event_id=event.id,
+                            name=r_name,
+                            weight=r_weight,
+                        )
+                    )
         except Exception:
             pass
 
@@ -381,11 +443,19 @@ def save_event(
     if tracks_json is not None and tracks_json.strip():
         try:
             track_items = json.loads(tracks_json)
-            existing_tracks = {t.id: t for t in db.query(Track).filter_by(event_id=event_id).all()}
+            existing_tracks = {
+                t.id: t for t in db.query(Track).filter_by(event_id=event_id).all()
+            }
             kept_ids = set()
             for item in track_items:
-                t_name = item.get("name", "").strip() if isinstance(item, dict) else str(item).strip()
-                t_prize = item.get("prize", "").strip() if isinstance(item, dict) else None
+                t_name = (
+                    item.get("name", "").strip()
+                    if isinstance(item, dict)
+                    else str(item).strip()
+                )
+                t_prize = (
+                    item.get("prize", "").strip() if isinstance(item, dict) else None
+                )
                 t_id = item.get("id") if isinstance(item, dict) else None
                 if not t_name:
                     continue
@@ -395,11 +465,18 @@ def save_event(
                     trk.prize = t_prize or None
                     kept_ids.add(t_id)
                 else:
-                    new_trk = Track(id=new_id("trk"), event_id=event_id, name=t_name, prize=t_prize or None)
+                    new_trk = Track(
+                        id=new_id("trk"),
+                        event_id=event_id,
+                        name=t_name,
+                        prize=t_prize or None,
+                    )
                     db.add(new_trk)
             for t_id, trk in existing_tracks.items():
                 if t_id not in kept_ids:
-                    db.query(Project).filter_by(track_id=t_id).update({"track_id": None})
+                    db.query(Project).filter_by(track_id=t_id).update(
+                        {"track_id": None}
+                    )
                     db.query(JudgeTrack).filter_by(track_id=t_id).delete()
                     db.delete(trk)
         except Exception:
@@ -419,10 +496,21 @@ def save_event(
             rubric_items = json.loads(rubrics_json)
             db.query(RubricCriteria).filter_by(event_id=event_id).delete()
             for r_item in rubric_items:
-                r_name = r_item.get("name", "").strip() if isinstance(r_item, dict) else ""
-                r_weight = int(r_item.get("weight", 0)) if isinstance(r_item, dict) else 0
+                r_name = (
+                    r_item.get("name", "").strip() if isinstance(r_item, dict) else ""
+                )
+                r_weight = (
+                    int(r_item.get("weight", 0)) if isinstance(r_item, dict) else 0
+                )
                 if r_name and r_weight > 0:
-                    db.add(RubricCriteria(id=new_id("rub"), event_id=event_id, name=r_name, weight=r_weight))
+                    db.add(
+                        RubricCriteria(
+                            id=new_id("rub"),
+                            event_id=event_id,
+                            name=r_name,
+                            weight=r_weight,
+                        )
+                    )
         except Exception:
             pass
 
@@ -569,7 +657,15 @@ def results_page(
     results = compute_results(db, event.id)
 
     # Check reviews completion metrics
-    projects = db.query(Project).filter(Project.event_id == event_id, Project.is_draft == False, Project.is_disqualified == False).all()
+    projects = (
+        db.query(Project)
+        .filter(
+            Project.event_id == event_id,
+            Project.is_draft == False,
+            Project.is_disqualified == False,
+        )
+        .all()
+    )
     judge_tracks = db.query(JudgeTrack).filter_by(event_id=event_id).all()
     track_judges = {}
     for jt in judge_tracks:
@@ -616,7 +712,15 @@ def publish_results_endpoint(
         raise HTTPException(status_code=404, detail="Event not found")
 
     # Enforce rule: Organizers cannot publish results before all reviews/judges complete!
-    projects = db.query(Project).filter(Project.event_id == event_id, Project.is_draft == False, Project.is_disqualified == False).all()
+    projects = (
+        db.query(Project)
+        .filter(
+            Project.event_id == event_id,
+            Project.is_draft == False,
+            Project.is_disqualified == False,
+        )
+        .all()
+    )
     judge_tracks = db.query(JudgeTrack).filter_by(event_id=event_id).all()
     track_judges = {}
     for jt in judge_tracks:
@@ -890,7 +994,7 @@ def invite_judge(
             created_at=utcnow(),
         )
     )
-    
+
     if target_user:
         db.add(
             Notification(
@@ -1115,14 +1219,15 @@ def auto_assign_judges(
 
     # Get all judges for this event
     judge_members = (
-        db.query(EventMember)
-        .filter_by(event_id=event_id, role="judge")
-        .all()
+        db.query(EventMember).filter_by(event_id=event_id, role="judge").all()
     )
     judge_ids = [jm.user_id for jm in judge_members]
 
     if not judge_ids:
-        raise HTTPException(status_code=400, detail="No judges assigned to this event yet. Invite judges first.")
+        raise HTTPException(
+            status_code=400,
+            detail="No judges assigned to this event yet. Invite judges first.",
+        )
 
     # Get all submitted (non-draft, non-disqualified) projects
     projects = (
@@ -1132,13 +1237,17 @@ def auto_assign_judges(
     )
 
     if not projects:
-        raise HTTPException(status_code=400, detail="No submitted projects found to assign.")
+        raise HTTPException(
+            status_code=400, detail="No submitted projects found to assign."
+        )
 
     # Remove existing JudgeTrack assignments for this event so we start fresh
     db.query(JudgeTrack).filter_by(event_id=event_id).delete()
 
     # Determine how many judges per project (aim for 2-3, or all judges if fewer than that)
-    judges_per_project = min(len(judge_ids), max(2, len(judge_ids) // max(len(projects), 1) + 1))
+    judges_per_project = min(
+        len(judge_ids), max(2, len(judge_ids) // max(len(projects), 1) + 1)
+    )
     judges_per_project = min(judges_per_project, len(judge_ids))
 
     # Track how many projects each judge gets
@@ -1205,7 +1314,10 @@ def toggle_community_voting(
     event.community_voting_enabled = enabled
     if prize_description.strip():
         import json
-        event.community_voting_prize_json = json.dumps({"description": prize_description.strip()})
+
+        event.community_voting_prize_json = json.dumps(
+            {"description": prize_description.strip()}
+        )
     else:
         event.community_voting_prize_json = None
 
@@ -1219,4 +1331,507 @@ def toggle_community_voting(
     )
     db.commit()
     return RedirectResponse(f"/organizer/{event_id}/dashboard", status_code=303)
+
+
+# ==============================================================================
+# AUDIT LOG & COMPLIANCE LEDGER
+# ==============================================================================
+
+def _classify_audit_message(message: str, actor_id: str | None) -> tuple[str, str, str, str]:
+    """Classifies an audit log entry into a category key, human label, accent color, and icon."""
+    m = message.lower()
+    aid = (actor_id or "").lower()
+
+    if "seed" in aid or "seeded" in m or "certificate" in m:
+        return "system", "System & Seed", "#94a3b8", "🤖"
+    if "webhook" in m:
+        return "webhooks", "Webhooks", "#3b82f6", "⚡"
+    if "rubric" in m or "criteria" in m:
+        return "rubric", "Rubric & Criteria", "#f59e0b", "📋"
+    if "scored" in m or "recused" in m or "pairwise" in m or "judge" in m:
+        return "judging", "Judging & Scoring", "#8b5cf6", "⚖️"
+    if "vote" in m or "comment" in m:
+        return "voting", "Community Votes", "#ec4899", "🗳️"
+    if "team" in m or "joined" in m or "left" in m or "invite link" in m:
+        return "teams", "Teams & Members", "#06b6d4", "👥"
+    if "project" in m or "draft" in m or "submitted" in m:
+        return "projects", "Projects & Submissions", "#10b981", "🚀"
+    if "settings" in m or "created event" in m or "published" in m or "community voting" in m:
+        return "settings", "Event & Settings", "#6366f1", "⚙️"
+    return "general", "General Governance", "#64748b", "◈"
+
+
+def _format_time_ago(dt: datetime | None, now: datetime | None = None) -> str:
+    """Returns human-friendly relative time string (e.g. 5m ago, 2h ago)."""
+    if not dt:
+        return "—"
+    if now is None:
+        now = utcnow()
+    diff = now - as_utc(dt)
+    secs = int(diff.total_seconds())
+    if secs < 0:
+        return "just now"
+    if secs < 60:
+        return f"{secs}s ago"
+    mins = secs // 60
+    if mins < 60:
+        return f"{mins}m ago"
+    hours = mins // 60
+    if hours < 24:
+        return f"{hours}h ago"
+    days = hours // 24
+    if days < 7:
+        return f"{days}d ago"
+    weeks = days // 7
+    if weeks < 4:
+        return f"{weeks}w ago"
+    return dt.strftime("%b %d, %Y")
+
+
+def _enrich_audit_logs(
+    raw_logs: list[AuditLog],
+    event_id: str,
+    db: Session,
+    now: datetime | None = None,
+) -> list[dict]:
+    """Enriches raw audit logs with user profiles, roles, categories, and cryptographic hash chain."""
+    if now is None:
+        now = utcnow()
+
+    actor_ids = {
+        l.actor_id for l in raw_logs if l.actor_id and l.actor_id not in ("seed", "system")
+    }
+    users = {
+        u.id: u
+        for u in db.query(User).filter(User.id.in_(actor_ids)).all()
+    } if actor_ids else {}
+
+    members = {
+        (m.event_id, m.user_id): m.role
+        for m in db.query(EventMember).filter(
+            EventMember.event_id == event_id,
+            EventMember.user_id.in_(actor_ids),
+        ).all()
+    } if actor_ids else {}
+
+    # Sort chronologically to compute tamper-evident sequential hash chain
+    chrono_logs = sorted(
+        raw_logs,
+        key=lambda l: (as_utc(l.created_at) if l.created_at else now, l.id),
+    )
+    hash_map: dict[int, tuple[str, str]] = {}
+    prev_hash = f"GENESIS_HASH_HACKFORGE_{event_id}_LEDGER"
+
+    for l in chrono_logs:
+        payload = f"{l.id}:{l.event_id}:{l.actor_id}:{l.created_at}:{l.message}:{prev_hash}"
+        cur_hash = hashlib.sha256(payload.encode("utf-8")).hexdigest()
+        hash_map[l.id] = (cur_hash, prev_hash)
+        prev_hash = cur_hash
+
+    enriched = []
+    for l in raw_logs:
+        cat_key, cat_label, cat_color, cat_icon = _classify_audit_message(l.message, l.actor_id)
+
+        # Resolve actor identity
+        if not l.actor_id or l.actor_id in ("seed", "system"):
+            actor_name = "System Automation"
+            actor_role = "system"
+            actor_email = "system@hackforge.dev"
+            actor_initials = "SY"
+        elif l.actor_id in users:
+            u = users[l.actor_id]
+            actor_name = u.name
+            actor_email = u.email
+            actor_role = members.get((event_id, l.actor_id), "participant")
+            parts = actor_name.split()
+            actor_initials = (
+                parts[0][0] + (parts[-1][0] if len(parts) > 1 else "")
+            ).upper() if parts else "US"
+        else:
+            actor_name = l.actor_id
+            actor_email = None
+            actor_role = "participant"
+            actor_initials = (l.actor_id[:2] if len(l.actor_id) >= 2 else "US").upper()
+
+        cur_hash, prev_h = hash_map.get(l.id, ("", ""))
+        dt_utc = as_utc(l.created_at) if l.created_at else now
+
+        client_dict = {
+            "id": l.id,
+            "event_id": l.event_id,
+            "actor_id": l.actor_id,
+            "actor_name": actor_name,
+            "actor_email": actor_email,
+            "actor_role": actor_role,
+            "actor_initials": actor_initials,
+            "message": l.message,
+            "created_at_iso": dt_utc.isoformat(),
+            "created_at_display": dt_utc.strftime("%b %d, %Y · %H:%M:%S UTC"),
+            "created_at_short": dt_utc.strftime("%b %d, %H:%M"),
+            "time_ago": _format_time_ago(dt_utc, now),
+            "category": cat_key,
+            "category_label": cat_label,
+            "category_color": cat_color,
+            "category_icon": cat_icon,
+            "hash": cur_hash,
+            "short_hash": f"#{cur_hash[:8]}",
+            "prev_hash": prev_h,
+        }
+
+        entry_item = dict(client_dict)
+        entry_item["created_at"] = dt_utc
+        entry_item["json_str"] = json.dumps(client_dict)
+
+        enriched.append(entry_item)
+
+    return enriched
+
+
+@router.get("/organizer/audit")
+def audit_log_redirect(
+    event_id: str | None = None,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_role("organizer", "admin")),
+):
+    """Entry point redirecting to event-specific audit log."""
+    if event_id:
+        return RedirectResponse(f"/organizer/{event_id}/audit", status_code=307)
+    sample_hack = db.get(Event, "evt_01")
+    if sample_hack:
+        return RedirectResponse(f"/organizer/{sample_hack.id}/audit", status_code=307)
+    first_event = db.query(Event).order_by(Event.name.asc()).first()
+    if first_event:
+        return RedirectResponse(f"/organizer/{first_event.id}/audit", status_code=307)
+    return RedirectResponse("/organizer/events", status_code=307)
+
+
+@router.get("/organizer/{event_id}/audit")
+def audit_log_page(
+    event_id: str,
+    request: Request,
+    q: str = Query("", description="Search keywords"),
+    category: str = Query("all", description="Action category filter"),
+    role: str = Query("all", description="Actor role filter"),
+    time_range: str = Query("all", description="Time range filter"),
+    order: str = Query("desc", description="Sort order: desc or asc"),
+    page: int = Query(1, ge=1, description="Page number"),
+    per_page: int = Query(50, ge=1, le=200, description="Items per page"),
+    db: Session = Depends(get_db),
+    user: User = Depends(require_role("organizer", "admin")),
+):
+    """Comprehensive, human-readable audit log & cryptographic ledger page."""
+    event = db.get(Event, event_id)
+    if event is None:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    all_events = db.query(Event).order_by(Event.name.asc()).all()
+    now = utcnow()
+
+    # Query all raw logs for this event to calculate accurate facet counts
+    raw_logs = db.query(AuditLog).filter(AuditLog.event_id == event_id).all()
+    all_enriched = _enrich_audit_logs(raw_logs, event_id, db, now)
+
+    # Category counts across all event entries
+    category_counts = {
+        "all": len(all_enriched),
+        "judging": 0,
+        "rubric": 0,
+        "teams": 0,
+        "projects": 0,
+        "voting": 0,
+        "webhooks": 0,
+        "settings": 0,
+        "system": 0,
+        "general": 0,
+    }
+    role_counts = {
+        "all": len(all_enriched),
+        "organizer": 0,
+        "judge": 0,
+        "participant": 0,
+        "system": 0,
+    }
+    unique_actors = set()
+    activity_last_24h = 0
+    cutoff_24h = now - timedelta(hours=24)
+
+    for item in all_enriched:
+        cat = item["category"]
+        if cat in category_counts:
+            category_counts[cat] += 1
+        r = item["actor_role"]
+        if r in role_counts:
+            role_counts[r] += 1
+        if item["actor_id"]:
+            unique_actors.add(item["actor_id"])
+        if item["created_at"] >= cutoff_24h:
+            activity_last_24h += 1
+
+    # Apply Filters
+    filtered = all_enriched
+    q_norm = q.strip().lower()
+    if q_norm:
+        filtered = [
+            i for i in filtered
+            if q_norm in i["message"].lower()
+            or q_norm in (i["actor_name"] or "").lower()
+            or q_norm in (i["actor_id"] or "").lower()
+            or q_norm in i["category_label"].lower()
+            or q_norm in i["hash"].lower()
+        ]
+
+    if category != "all":
+        filtered = [i for i in filtered if i["category"] == category]
+
+    if role != "all":
+        filtered = [i for i in filtered if i["actor_role"] == role]
+
+    if time_range == "24h":
+        filtered = [i for i in filtered if i["created_at"] >= cutoff_24h]
+    elif time_range == "7d":
+        cutoff_7d = now - timedelta(days=7)
+        filtered = [i for i in filtered if i["created_at"] >= cutoff_7d]
+    elif time_range == "30d":
+        cutoff_30d = now - timedelta(days=30)
+        filtered = [i for i in filtered if i["created_at"] >= cutoff_30d]
+
+    # Sort
+    reverse = (order == "desc")
+    filtered.sort(key=lambda i: (i["created_at"], i["id"]), reverse=reverse)
+
+    # Pagination
+    total_filtered = len(filtered)
+    total_pages = max(1, math.ceil(total_filtered / per_page))
+    page = max(1, min(page, total_pages))
+    start_idx = (page - 1) * per_page
+    end_idx = min(start_idx + per_page, total_filtered)
+    page_items = filtered[start_idx:end_idx]
+
+    return templates.TemplateResponse(
+        request=request,
+        name="organizer/audit.html",
+        context=base_context(
+            all_events=all_events,
+            request=request,
+            event=event,
+            user=user,
+            role="organizer",
+            events=all_events,
+            logs=page_items,
+            total_logs=len(all_enriched),
+            filtered_logs_count=total_filtered,
+            unique_actors_count=len(unique_actors),
+            activity_last_24h=activity_last_24h,
+            category_counts=category_counts,
+            role_counts=role_counts,
+            current_category=category,
+            current_role=role,
+            current_time_range=time_range,
+            current_order=order,
+            search_query=q,
+            page=page,
+            per_page=per_page,
+            total_pages=total_pages,
+            start_idx=start_idx + 1 if total_filtered > 0 else 0,
+            end_idx=end_idx,
+            has_prev=page > 1,
+            has_next=page < total_pages,
+            prev_page=page - 1,
+            next_page=page + 1,
+        ),
+    )
+
+
+@router.get("/organizer/{event_id}/audit/export.csv")
+def export_audit_csv(
+    event_id: str,
+    q: str = Query("", description="Search keywords"),
+    category: str = Query("all", description="Action category filter"),
+    role: str = Query("all", description="Actor role filter"),
+    time_range: str = Query("all", description="Time range filter"),
+    order: str = Query("desc", description="Sort order: desc or asc"),
+    db: Session = Depends(get_db),
+    user: User = Depends(require_role("organizer", "admin")),
+):
+    """Download full or filtered audit ledger in CSV format."""
+    event = db.get(Event, event_id)
+    if event is None:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    raw_logs = db.query(AuditLog).filter(AuditLog.event_id == event_id).all()
+    all_enriched = _enrich_audit_logs(raw_logs, event_id, db)
+
+    # Apply filters
+    filtered = all_enriched
+    q_norm = q.strip().lower()
+    if q_norm:
+        filtered = [
+            i for i in filtered
+            if q_norm in i["message"].lower()
+            or q_norm in (i["actor_name"] or "").lower()
+            or q_norm in (i["actor_id"] or "").lower()
+        ]
+    if category != "all":
+        filtered = [i for i in filtered if i["category"] == category]
+    if role != "all":
+        filtered = [i for i in filtered if i["actor_role"] == role]
+
+    now = utcnow()
+    if time_range == "24h":
+        filtered = [i for i in filtered if i["created_at"] >= now - timedelta(hours=24)]
+    elif time_range == "7d":
+        filtered = [i for i in filtered if i["created_at"] >= now - timedelta(days=7)]
+    elif time_range == "30d":
+        filtered = [i for i in filtered if i["created_at"] >= now - timedelta(days=30)]
+
+    reverse = (order == "desc")
+    filtered.sort(key=lambda i: (i["created_at"], i["id"]), reverse=reverse)
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        "Entry ID",
+        "Timestamp (ISO UTC)",
+        "Formatted Time (UTC)",
+        "Actor ID",
+        "Actor Name",
+        "Actor Role",
+        "Category",
+        "Action Message",
+        "Ledger SHA256 Checksum",
+        "Previous Block Hash",
+    ])
+
+    for item in filtered:
+        writer.writerow([
+            item["id"],
+            item["created_at_iso"],
+            item["created_at_display"],
+            item["actor_id"] or "system",
+            item["actor_name"],
+            item["actor_role"],
+            item["category_label"],
+            item["message"],
+            item["hash"],
+            item["prev_hash"],
+        ])
+
+    csv_data = output.getvalue()
+    timestamp_slug = now.strftime("%Y%m%d_%H%M%S")
+    filename = f"audit_ledger_{event_id}_{timestamp_slug}.csv"
+
+    return Response(
+        content=csv_data,
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/organizer/{event_id}/audit/export.json")
+def export_audit_json(
+    event_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_role("organizer", "admin")),
+):
+    """Download full cryptographic audit ledger in structured JSON format."""
+    event = db.get(Event, event_id)
+    if event is None:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    raw_logs = db.query(AuditLog).filter(AuditLog.event_id == event_id).all()
+    all_enriched = _enrich_audit_logs(raw_logs, event_id, db)
+    all_enriched.sort(key=lambda i: (i["created_at"], i["id"]), reverse=True)
+
+    now = utcnow()
+    payload = {
+        "ledger_version": "1.0.0",
+        "governance_standard": "APPEND_ONLY_CRYPTOGRAPHIC_AUDIT_TRAIL",
+        "event": {
+            "id": event.id,
+            "name": event.name,
+            "tagline": event.tagline,
+            "results_published": event.results_published,
+        },
+        "exported_at": now.isoformat(),
+        "exported_by": {
+            "id": user.id,
+            "name": user.name,
+            "email": user.email,
+        },
+        "total_records": len(all_enriched),
+        "integrity_status": "VALID_SEQUENTIAL_CHAIN",
+        "records": [
+            {
+                "id": i["id"],
+                "timestamp_utc": i["created_at_iso"],
+                "actor": {
+                    "id": i["actor_id"],
+                    "name": i["actor_name"],
+                    "email": i["actor_email"],
+                    "role": i["actor_role"],
+                },
+                "category": i["category"],
+                "category_label": i["category_label"],
+                "message": i["message"],
+                "ledger_hash": i["hash"],
+                "previous_block_hash": i["prev_hash"],
+            }
+            for i in all_enriched
+        ],
+    }
+
+    timestamp_slug = now.strftime("%Y%m%d_%H%M%S")
+    filename = f"audit_ledger_{event_id}_{timestamp_slug}.json"
+
+    return JSONResponse(
+        content=payload,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/api/events/{event_id}/audit")
+def api_get_audit_logs(
+    event_id: str,
+    q: str = Query("", description="Search keywords"),
+    category: str = Query("all", description="Category"),
+    role: str = Query("all", description="Role"),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(50, ge=1, le=200),
+    db: Session = Depends(get_db),
+    user: User = Depends(require_role("organizer", "admin")),
+):
+    """Programmatic REST API for querying audit ledger entries."""
+    event = db.get(Event, event_id)
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    raw_logs = db.query(AuditLog).filter(AuditLog.event_id == event_id).all()
+    all_enriched = _enrich_audit_logs(raw_logs, event_id, db)
+
+    filtered = all_enriched
+    q_norm = q.strip().lower()
+    if q_norm:
+        filtered = [
+            i for i in filtered
+            if q_norm in i["message"].lower() or q_norm in (i["actor_name"] or "").lower()
+        ]
+    if category != "all":
+        filtered = [i for i in filtered if i["category"] == category]
+    if role != "all":
+        filtered = [i for i in filtered if i["actor_role"] == role]
+
+    filtered.sort(key=lambda i: (i["created_at"], i["id"]), reverse=True)
+    total = len(filtered)
+    start = (page - 1) * per_page
+    end = start + per_page
+    items = filtered[start:end]
+
+    return {
+        "event_id": event_id,
+        "total": total,
+        "page": page,
+        "per_page": per_page,
+        "total_pages": max(1, math.ceil(total / per_page)),
+        "records": items,
+    }
 
