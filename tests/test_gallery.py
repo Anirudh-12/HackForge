@@ -44,8 +44,9 @@ def test_gallery_visitor_sidebar(client):
     assert "Hackathons" in response.text
     assert 'href="/projects"' in response.text
     assert "Gallery" in response.text
-    # Sidebar collapsible toggle buttons exist
-    assert "topbarSidebarToggle" in response.text
+    # Sidebar collapsible toggle button exists inside sidebar
     assert "sidebarCollapseBtn" in response.text
     assert "toggleSidebar()" in response.text
+    # No toggle button outside sidebar
+    assert "topbarSidebarToggle" not in response.text
 
