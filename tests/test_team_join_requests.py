@@ -15,8 +15,8 @@ from src.models import (
 def test_request_to_join_sends_to_leader_and_provides_visual_feedback(client):
     db = SessionLocal()
     try:
-        # Create an event
-        event = db.get(Event, "evt_01")
+        # Use an active ongoing event (evt_06)
+        event = db.get(Event, "evt_06")
         assert event is not None
 
         # User 1: Team Leader
@@ -207,3 +207,69 @@ def test_request_to_join_sends_to_leader_and_provides_visual_feedback(client):
 
     finally:
         db.close()
+
+
+def test_cannot_join_team_for_finished_hackathon(client):
+    db = SessionLocal()
+    try:
+        # evt_01 is finished
+        event = db.get(Event, "evt_01")
+        assert event is not None
+
+        # Create or fetch test users
+        user_finished = db.get(User, "usr_finished_test")
+        if not user_finished:
+            user_finished = User(id="usr_finished_test", name="Finished Tester", email="finished_tester@test.com")
+            db.add(user_finished)
+            db.commit()
+
+        # Ensure user is registered for evt_01
+        m = db.query(EventMember).filter_by(event_id=event.id, user_id=user_finished.id).first()
+        if not m:
+            db.add(EventMember(event_id=event.id, user_id=user_finished.id, role="participant"))
+            db.commit()
+
+        # Ensure user is not on any team
+        db.query(TeamMember).filter_by(user_id=user_finished.id).delete()
+        db.commit()
+
+        # Find any team in evt_01
+        target_team = db.query(Team).filter_by(event_id=event.id).first()
+        assert target_team is not None
+
+        cookie = {"session": make_session_token(user_finished.id)}
+
+        # 1. AJAX request to join should fail with 400
+        res_ajax = client.post(
+            f"/participant/{event.id}/request_join",
+            data={"target_team_id": target_team.id},
+            cookies=cookie,
+            headers={"X-Requested-With": "XMLHttpRequest", "Accept": "application/json"},
+        )
+        assert res_ajax.status_code == 400
+        data = res_ajax.json()
+        assert data["ok"] is False
+        assert "concluded" in data["error"].lower()
+
+        # 2. Non-AJAX request to join should redirect with error
+        res_form = client.post(
+            f"/participant/{event.id}/request_join",
+            data={"target_team_id": target_team.id},
+            cookies=cookie,
+            follow_redirects=False,
+        )
+        assert res_form.status_code == 303
+        assert "msg_type=error" in res_form.headers["location"]
+
+        # 3. Create team action in finished event should return 400
+        res_create = client.post(
+            f"/participant/{event.id}/team",
+            data={"action": "create", "name": "Illegal Post-Finish Team"},
+            cookies=cookie,
+        )
+        assert res_create.status_code == 400
+        assert "concluded" in res_create.text.lower() or "closed" in res_create.text.lower()
+
+    finally:
+        db.close()
+

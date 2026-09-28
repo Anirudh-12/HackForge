@@ -25,7 +25,7 @@ from src.models import (
 from src.queries import default_event, event_tracks, user_team
 from src.seed import new_id
 from src.templating import templates
-from src.timeutil import submissions_open, utcnow
+from src.timeutil import as_utc, is_event_completed, submissions_open, utcnow
 
 router = APIRouter()
 
@@ -46,7 +46,6 @@ async def _payload(request: Request) -> dict:
     return {key: form.get(key) for key in form}
 
 
-from src.timeutil import submissions_open, utcnow, as_utc
 from src.models import EventMember
 
 
@@ -406,6 +405,7 @@ def matchmaking_page(
         )
         requested_team_ids = {r.team_id for r in my_sent_requests}
 
+    event_completed = is_event_completed(event)
     return templates.TemplateResponse(
         request=request,
         name="participant/matchmaking.html",
@@ -422,6 +422,7 @@ def matchmaking_page(
             is_team_leader=is_team_leader,
             my_sent_requests=my_sent_requests,
             requested_team_ids=requested_team_ids,
+            event_completed=event_completed,
         ),
     )
 
@@ -455,6 +456,11 @@ def invite_user_to_team(
     user: User = Depends(require_role("participant", "organizer", "admin")),
 ):
     event = db.get(Event, event_id)
+    if not event or is_event_completed(event):
+        query = urllib.parse.urlencode(
+            {"msg": "Cannot invite users: this hackathon has concluded.", "msg_type": "error"}
+        )
+        return RedirectResponse(f"/participant/{event_id}/matchmaking?{query}", status_code=303)
     team = user_team(db, user.id, event_id)
     if not team:
         return RedirectResponse(f"/participant/{event_id}/matchmaking", status_code=303)
@@ -495,6 +501,15 @@ def request_join_team(
                 status_code=404, content={"ok": False, "error": "Event not found."}
             )
         raise HTTPException(status_code=404, detail="Event not found.")
+
+    if is_event_completed(event):
+        msg = "This hackathon has concluded. Team formation and join requests are closed."
+        if is_ajax:
+            return JSONResponse(status_code=400, content={"ok": False, "error": msg})
+        query = urllib.parse.urlencode({"msg": msg, "msg_type": "error"})
+        return RedirectResponse(
+            f"/participant/{event_id}/matchmaking?{query}", status_code=303
+        )
 
     team = user_team(db, user.id, event_id)
     if team:
@@ -640,6 +655,15 @@ def accept_join_request(
     if not join_req or join_req.status != "pending":
         query = urllib.parse.urlencode(
             {"msg": "Join request not found or already processed.", "msg_type": "error"}
+        )
+        return RedirectResponse(
+            f"/participant/{event_id}/matchmaking?{query}", status_code=303
+        )
+
+    event = db.get(Event, event_id)
+    if is_event_completed(event):
+        query = urllib.parse.urlencode(
+            {"msg": "Cannot accept requests: this hackathon has concluded.", "msg_type": "error"}
         )
         return RedirectResponse(
             f"/participant/{event_id}/matchmaking?{query}", status_code=303
@@ -879,6 +903,7 @@ def team_page(
             incoming_requests=incoming_requests,
             is_team_leader=is_team_leader,
             error=error,
+            event_completed=is_event_completed(event),
         ),
     )
 
@@ -898,9 +923,9 @@ def team_action(
     team = user_team(db, user.id, event_id)
     now = utcnow()
 
-    # Enforce timing rule: Team formation is only allowed before event starts
+    # Enforce timing rule: Team formation is only allowed before event starts and while not completed
     if action in ("create", "invite"):
-        if event.event_starts and now >= as_utc(event.event_starts):
+        if (event.event_starts and now >= as_utc(event.event_starts)) or is_event_completed(event):
             return templates.TemplateResponse(
                 request=request,
                 name="participant/team.html",
@@ -910,7 +935,8 @@ def team_action(
                     user=user,
                     role="participant",
                     team=team,
-                    error="Team formation closed when the hackathon started. You can no longer create teams or generate invite links.",
+                    event_completed=is_event_completed(event),
+                    error="Team formation closed because this hackathon has already started or concluded. You can no longer create teams or generate invite links.",
                 ),
                 status_code=400,
             )
@@ -1019,8 +1045,8 @@ def join_team(
         event = team.event
         now = utcnow()
 
-        # Enforce timing rule: team joining closed after event start
-        if event.event_starts and now >= as_utc(event.event_starts):
+        # Enforce timing rule: team joining closed after event start or once completed
+        if (event.event_starts and now >= as_utc(event.event_starts)) or is_event_completed(event):
             return templates.TemplateResponse(
                 request=request,
                 name="participant/team.html",
@@ -1030,7 +1056,8 @@ def join_team(
                     user=user,
                     role="participant",
                     team=None,
-                    error="Team formation closed when the hackathon started. You can no longer join a team.",
+                    event_completed=is_event_completed(event),
+                    error="Team formation closed because this hackathon has already started or concluded. You can no longer join a team.",
                 ),
                 status_code=400,
             )
