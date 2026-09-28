@@ -6,7 +6,22 @@
   <title>{% block title %}Hackforge{% endblock %}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/style.css?v=2">
+  <style>
+    /* Immediate inline styling to prevent any Hackforge text flash or stale cache */
+    .app-shell.sidebar-collapsed .brand-text,
+    .app-shell.sidebar-collapsed .topbar-brand-title,
+    .app-shell.sidebar-collapsed .sidebar-user-info,
+    .app-shell.sidebar-collapsed .sidebar-nav a span {
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+      width: 0 !important;
+      height: 0 !important;
+      overflow: hidden !important;
+      pointer-events: none !important;
+    }
+  </style>
   <script>
     (function() {
       try {
@@ -21,9 +36,12 @@
   <div class="app-shell">
     <aside class="sidebar" id="appSidebar">
       <div class="sidebar-header">
-        <a class="brand" href="/">◈ Hackforge</a>
+        <a class="brand" href="/">
+          <span class="brand-icon">◈</span>
+          <span class="brand-text">Hackforge</span>
+        </a>
         <button id="sidebarCollapseBtn" class="sidebar-toggle-btn" onclick="toggleSidebar()" title="Collapse sidebar" aria-label="Collapse sidebar">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg class="collapse-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="15 18 9 12 15 6"></polyline>
           </svg>
         </button>
@@ -31,22 +49,52 @@
       <nav class="sidebar-nav">
         {% if role == 'organizer' or role == 'admin' %}
           <div class="nav-section">OVERVIEW</div>
-          <a href="/organizer/{{ event.id }}/dashboard" {% if request and 'dashboard' in request.url.path %}class="active"{% endif %}>Progress</a>
-          <a href="/organizer/{{ event.id }}/projects" {% if request and '/organizer/' in request.url.path and 'projects' in request.url.path %}class="active"{% endif %}>Projects</a>
-          <a href="/organizer/{{ event.id }}/teams" {% if request and 'teams' in request.url.path %}class="active"{% endif %}>Teams</a>
+          <a href="/organizer/{{ event.id }}/dashboard" {% if request and 'dashboard' in request.url.path %}class="active"{% endif %} title="Progress" data-tooltip="Progress">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="margin-right: 10px;"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+            <span>Progress</span>
+          </a>
+          <a href="/organizer/{{ event.id }}/projects" {% if request and '/organizer/' in request.url.path and 'projects' in request.url.path %}class="active"{% endif %} title="Projects" data-tooltip="Projects">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="margin-right: 10px;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+            <span>Projects</span>
+          </a>
+          <a href="/organizer/{{ event.id }}/teams" {% if request and 'teams' in request.url.path %}class="active"{% endif %} title="Teams" data-tooltip="Teams">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="margin-right: 10px;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+            <span>Teams</span>
+          </a>
           
           <div class="nav-section">HACKATHON</div>
-          <a href="/organizer/{{ event.id }}/judges" {% if request and 'judges' in request.url.path %}class="active"{% endif %}>Judges</a>
-          <a href="/organizer/{{ event.id }}/rubric" {% if request and 'rubric' in request.url.path %}class="active"{% endif %}>Rubric</a>
-          <a href="/organizer/{{ event.id }}/results" {% if request and 'results' in request.url.path %}class="active"{% endif %}>Results</a>
+          <a href="/organizer/{{ event.id }}/judges" {% if request and 'judges' in request.url.path %}class="active"{% endif %} title="Judges" data-tooltip="Judges">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="margin-right: 10px;"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
+            <span>Judges</span>
+          </a>
+          <a href="/organizer/{{ event.id }}/rubric" {% if request and 'rubric' in request.url.path %}class="active"{% endif %} title="Rubric" data-tooltip="Rubric">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="margin-right: 10px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+            <span>Rubric</span>
+          </a>
+          <a href="/organizer/{{ event.id }}/results" {% if request and 'results' in request.url.path %}class="active"{% endif %} title="Results" data-tooltip="Results">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="margin-right: 10px;"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>
+            <span>Results</span>
+          </a>
           
           <div class="nav-section">ADMIN</div>
-          <a href="/organizer/{{ event.id }}/audit" {% if request and 'audit' in request.url.path %}class="active"{% endif %}>Audit Log</a>
-          <a href="/organizer/{{ event.id }}/event" {% if request and 'event' in request.url.path %}class="active"{% endif %}>Settings</a>
-          <a href="/organizer/events">Events</a>
+          <a href="/organizer/{{ event.id }}/audit" {% if request and 'audit' in request.url.path %}class="active"{% endif %} title="Audit Log" data-tooltip="Audit Log">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="margin-right: 10px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            <span>Audit Log</span>
+          </a>
+          <a href="/organizer/{{ event.id }}/event" {% if request and 'event' in request.url.path %}class="active"{% endif %} title="Settings" data-tooltip="Settings">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="margin-right: 10px;"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            <span>Settings</span>
+          </a>
+          <a href="/organizer/events" title="Events" data-tooltip="Events">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="margin-right: 10px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+            <span>Events</span>
+          </a>
         {% elif role == 'judge' %}
           <div class="nav-section">JUDGING</div>
-          <a href="/judge/{{ event.id }}/dashboard">My assignments</a>
+          <a href="/judge/{{ event.id }}/dashboard" title="Assignments" data-tooltip="Assignments">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="margin-right: 10px;"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+            <span>My assignments</span>
+          </a>
         {% elif not user %}
           <!-- Visitor (Guest) Sidebar -->
           <div class="sidebar-user">
@@ -127,7 +175,7 @@
           </button>
           
           {% if not user or (request and ('/participant/home' in request.url.path or '/explore' in request.url.path or '/projects' in request.url.path or '/profile' in request.url.path)) %}
-          <div style="font-weight: 600; font-size: 1rem; color: var(--text-primary);">Hackforge</div>
+          <div class="topbar-brand-title" style="font-weight: 600; font-size: 1rem; color: var(--text-primary);">Hackforge</div>
           {% elif all_events %}
           <div style="cursor: pointer; display: flex; align-items: center; gap: 4px; font-weight: 500;" onclick="const d = document.getElementById('eventDropdown'); d.style.display = d.style.display === 'none' ? 'block' : 'none'; event.stopPropagation();">
             {{ event.name if event else 'Hackforge' }}
@@ -150,7 +198,7 @@
             });
           </script>
           {% else %}
-          <div style="font-weight: 500;">{{ event.name if event else 'Hackforge' }}</div>
+          <div class="topbar-brand-title" style="font-weight: 500;">{{ event.name if event else 'Hackforge' }}</div>
           {% endif %}
         </div>
         <div style="display: flex; align-items: center; gap: 12px; position: relative;">
@@ -364,6 +412,7 @@
         topbarBtn.setAttribute('aria-expanded', !isCollapsed);
       }
       if (collapseBtn) {
+        collapseBtn.title = isCollapsed ? 'Expand sidebar' : 'Collapse sidebar';
         collapseBtn.setAttribute('aria-expanded', !isCollapsed);
       }
     }

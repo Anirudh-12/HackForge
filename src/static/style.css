@@ -13,6 +13,7 @@
   --radius: 8px;
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   --sidebar: 240px;
+  --sidebar-collapsed: 68px;
 }
 
 * { box-sizing: border-box; }
@@ -63,10 +64,10 @@ a:hover { color: var(--accent); }
   top: 0;
   height: 100vh;
   overflow-y: auto;
-  transition: margin-left 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-              opacity 0.2s ease,
-              visibility 0.25s;
+  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+              padding 0.25s ease;
   z-index: 95;
+  box-sizing: border-box;
 }
 
 .sidebar-header {
@@ -75,6 +76,7 @@ a:hover { color: var(--accent); }
   justify-content: space-between;
   margin-bottom: 20px;
   padding: 0 4px;
+  transition: all 0.2s ease;
 }
 
 .sidebar .brand {
@@ -87,6 +89,15 @@ a:hover { color: var(--accent); }
   font-size: 16px;
   color: var(--text-primary);
   text-decoration: none;
+  white-space: nowrap;
+}
+
+.brand-icon {
+  font-size: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 .sidebar-user {
@@ -98,6 +109,7 @@ a:hover { color: var(--accent); }
   border-radius: var(--radius);
   background: var(--surface);
   border: 1px solid var(--border);
+  transition: all 0.2s ease;
 }
 
 .sidebar-user-avatar {
@@ -148,6 +160,7 @@ a:hover { color: var(--accent); }
   color: var(--text-muted);
   padding: 14px 8px 6px;
   font-weight: 600;
+  transition: all 0.2s ease;
 }
 
 .sidebar-nav a {
@@ -159,7 +172,7 @@ a:hover { color: var(--accent); }
   text-decoration: none;
   font-size: 13.5px;
   font-weight: 500;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition: background 0.15s ease, color 0.15s ease, width 0.2s ease;
   white-space: nowrap;
 }
 
@@ -195,20 +208,146 @@ a:hover { color: var(--accent); }
   border-color: #cbd5e1;
 }
 
-/* Collapsed Sidebar on Desktop */
+.collapse-icon {
+  transition: transform 0.25s ease;
+}
+
+/* Collapsed Sidebar on Desktop (One-column icon rail) */
 .app-shell.sidebar-collapsed .sidebar {
-  margin-left: calc(-1 * var(--sidebar));
-  opacity: 0;
-  visibility: hidden;
+  width: var(--sidebar-collapsed);
+  padding: 16px 8px;
+  overflow-x: hidden;
+}
+
+.app-shell.sidebar-collapsed .sidebar-header {
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  padding: 0;
+}
+
+.app-shell.sidebar-collapsed .brand-text,
+.app-shell.sidebar-collapsed .topbar-brand-title {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  width: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+}
+
+.app-shell.sidebar-collapsed .brand {
+  justify-content: center;
+  width: 100%;
+}
+
+.app-shell.sidebar-collapsed .brand-icon {
+  font-size: 22px;
+}
+
+.app-shell.sidebar-collapsed #sidebarCollapseBtn .collapse-icon {
+  transform: rotate(180deg);
+}
+
+.app-shell.sidebar-collapsed .sidebar-user {
+  padding: 4px 0;
+  border: none;
+  background: transparent;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+
+.app-shell.sidebar-collapsed .sidebar-user-info {
+  display: none !important;
+}
+
+.app-shell.sidebar-collapsed .sidebar-user-avatar {
+  margin: 0 auto;
+  width: 36px;
+  height: 36px;
+}
+
+.app-shell.sidebar-collapsed .nav-section {
+  height: 1px;
+  padding: 0;
+  margin: 12px 6px;
+  background: var(--border);
+  color: transparent;
+  font-size: 0;
+  overflow: hidden;
+}
+
+.app-shell.sidebar-collapsed .sidebar-nav a {
+  justify-content: center;
+  padding: 10px 0;
+  width: 44px;
+  height: 44px;
+  margin: 4px auto;
+  border-radius: var(--radius);
+  position: relative;
+}
+
+.app-shell.sidebar-collapsed .sidebar-nav a span {
+  display: none !important;
+}
+
+.app-shell.sidebar-collapsed .sidebar-nav a svg {
+  margin-right: 0 !important;
+  width: 20px;
+  height: 20px;
+}
+
+/* Tooltip on hover in collapsed icon mode */
+.app-shell.sidebar-collapsed .sidebar-nav a[data-tooltip]:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: calc(100% + 12px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: #0f172a;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 6px 12px;
+  border-radius: 6px;
+  white-space: nowrap;
+  z-index: 1000;
   pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  animation: tooltipFadeIn 0.15s ease;
+}
+
+.app-shell.sidebar-collapsed .sidebar-nav a[data-tooltip]:hover::before {
+  content: '';
+  position: absolute;
+  left: calc(100% + 6px);
+  top: 50%;
+  transform: translateY(-50%);
+  border: 5px solid transparent;
+  border-right-color: #0f172a;
+  z-index: 1000;
+  pointer-events: none;
+}
+
+@keyframes tooltipFadeIn {
+  from { opacity: 0; transform: translateY(-50%) translateX(-4px); }
+  to { opacity: 1; transform: translateY(-50%) translateX(0); }
 }
 
 /* Preload state to avoid initial flicker */
 html.sidebar-init-collapsed .app-shell .sidebar {
-  margin-left: calc(-1 * var(--sidebar)) !important;
-  opacity: 0 !important;
-  visibility: hidden !important;
+  width: var(--sidebar-collapsed) !important;
+  padding: 16px 8px !important;
   transition: none !important;
+}
+
+html.sidebar-init-collapsed .app-shell .sidebar .brand-text,
+html.sidebar-init-collapsed .app-shell .sidebar .sidebar-user-info,
+html.sidebar-init-collapsed .app-shell .sidebar .sidebar-nav a span {
+  display: none !important;
 }
 
 /* Mobile Sidebar Behavior */
@@ -228,12 +367,29 @@ html.sidebar-init-collapsed .app-shell .sidebar {
     margin-left: calc(-1 * var(--sidebar));
     opacity: 0;
     visibility: hidden;
+    width: var(--sidebar) !important;
+    padding: 20px 16px !important;
+  }
+  
+  .app-shell.sidebar-collapsed .sidebar {
+    margin-left: calc(-1 * var(--sidebar));
+    opacity: 0;
+    visibility: hidden;
+    width: var(--sidebar) !important;
   }
   
   .app-shell.sidebar-open-mobile .sidebar {
-    margin-left: 0;
-    opacity: 1;
-    visibility: visible;
+    margin-left: 0 !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    width: var(--sidebar) !important;
+    padding: 20px 16px !important;
+  }
+  
+  .app-shell.sidebar-open-mobile .brand-text,
+  .app-shell.sidebar-open-mobile .sidebar-user-info,
+  .app-shell.sidebar-open-mobile .sidebar-nav a span {
+    display: inline !important;
   }
   
   .sidebar-backdrop {
