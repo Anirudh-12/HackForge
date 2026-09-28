@@ -264,6 +264,34 @@
         <input type="url" name="linkedin_url" class="input" value="{{ user.linkedin_url or '' }}" placeholder="https://linkedin.com/in/username">
       </div>
 
+      <div class="form-group" style="margin-bottom: 24px; border-top: 1px solid var(--border); padding-top: 18px;">
+        <label style="font-weight: 600; margin-bottom: 6px; display: block;">Interface Theme Appearance</label>
+        <p style="font-size: 13px; color: var(--text-muted); margin-top: 0; margin-bottom: 12px;">Choose whether you want dark mode, light mode, or automatic system sync.</p>
+        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+          <label style="flex: 1; min-width: 140px; border: 1px solid var(--border); padding: 12px 14px; border-radius: var(--radius); cursor: pointer; display: flex; align-items: center; gap: 10px; background: var(--surface);">
+            <input type="radio" name="theme_pref" value="system" onchange="applyProfileTheme('system')">
+            <div>
+              <div style="font-weight: 600; font-size: 13px;">🖥️ System Default</div>
+              <div style="font-size: 11px; color: var(--text-muted);">Matches OS dark/light</div>
+            </div>
+          </label>
+          <label style="flex: 1; min-width: 140px; border: 1px solid var(--border); padding: 12px 14px; border-radius: var(--radius); cursor: pointer; display: flex; align-items: center; gap: 10px; background: var(--surface);">
+            <input type="radio" name="theme_pref" value="dark" onchange="applyProfileTheme('dark')">
+            <div>
+              <div style="font-weight: 600; font-size: 13px;">🌙 Dark Theme</div>
+              <div style="font-size: 11px; color: var(--text-muted);">Deep sleek dark</div>
+            </div>
+          </label>
+          <label style="flex: 1; min-width: 140px; border: 1px solid var(--border); padding: 12px 14px; border-radius: var(--radius); cursor: pointer; display: flex; align-items: center; gap: 10px; background: var(--surface);">
+            <input type="radio" name="theme_pref" value="light" onchange="applyProfileTheme('light')">
+            <div>
+              <div style="font-weight: 600; font-size: 13px;">☀️ Light Theme</div>
+              <div style="font-size: 11px; color: var(--text-muted);">Crisp clean light</div>
+            </div>
+          </label>
+        </div>
+      </div>
+
       <div style="display: flex; gap: 12px; justify-content: flex-end;">
         <button type="button" class="btn btn-secondary" onclick="switchProfileTab('overview')">Cancel</button>
         <button type="submit" class="btn btn-primary" style="padding: 10px 24px;">Save Changes</button>
@@ -271,6 +299,24 @@
     </form>
   </div>
 </div>
+
+<script>
+  function applyProfileTheme(mode) {
+    if (mode === 'system') {
+      localStorage.removeItem('hackforge_theme');
+      document.documentElement.removeAttribute('data-theme');
+    } else {
+      localStorage.setItem('hackforge_theme', mode);
+      document.documentElement.setAttribute('data-theme', mode);
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const saved = localStorage.getItem('hackforge_theme') || 'system';
+    const rad = document.querySelector(`input[name="theme_pref"][value="${saved}"]`);
+    if (rad) rad.checked = true;
+  });
+</script>
 
 <style>
   .profile-tab-btn {

@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="{{ theme }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ event.name }} — Project Showcase</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: {% if theme == 'light' %}#f8fafc{% else %}#090d16{% endif %};
+      --surface: {% if theme == 'light' %}#ffffff{% else %}#131c2e{% endif %};
+      --border: {% if theme == 'light' %}#e2e8f0{% else %}#1e293b{% endif %};
+      --text: {% if theme == 'light' %}#0f172a{% else %}#f8fafc{% endif %};
+      --text-muted: {% if theme == 'light' %}#64748b{% else %}#94a3b8{% endif %};
+      --accent: #38bdf8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 16px;
+    }
+    .widget-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .widget-title {
+      font-size: 18px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 9999px;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+    .search-input {
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 13px;
+      outline: none;
+    }
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 16px;
+    }
+    .project-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: transform 0.15s ease, border-color 0.15s ease;
+      text-decoration: none;
+      color: inherit;
+    }
+    .project-card:hover {
+      transform: translateY(-2px);
+      border-color: var(--accent);
+    }
+    .card-title {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: var(--text);
+    }
+    .card-summary {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin-bottom: 12px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .card-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: auto;
+    }
+    .widget-footer {
+      margin-top: 20px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    .widget-footer a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  <div class="widget-header">
+    <div class="widget-title">
+      <span>{{ event.name }}</span>
+      <span class="badge">{{ projects|length }} Projects</span>
+    </div>
+    <div>
+      <input type="text" id="widgetSearch" class="search-input" placeholder="Filter projects..." oninput="filterCards()">
+    </div>
+  </div>
+
+  <div class="cards-grid" id="cardsGrid">
+    {% for p in projects %}
+      <a href="{{ base_url }}/projects/{{ p.id }}" target="_blank" class="project-card" data-title="{{ p.title|lower }}" data-summary="{{ p.summary|lower }}">
+        <div>
+          <div style="font-size: 11px; color: var(--accent); margin-bottom: 4px; font-weight: 500;">
+            {{ p.track.name if p.track else 'General' }}
+          </div>
+          <div class="card-title">{{ p.title }}</div>
+          <div class="card-summary">{{ p.summary or 'No summary provided.' }}</div>
+        </div>
+        <div class="card-footer">
+          <span>{{ p.team.name if p.team else 'Solo' }}</span>
+          <span>View ↗</span>
+        </div>
+      </a>
+    {% endfor %}
+  </div>
+
+  <div class="widget-footer">
+    <span>Live showcase</span>
+    <a href="{{ base_url }}/projects" target="_blank">Powered by HackForge ◈</a>
+  </div>
+
+  <script>
+    function filterCards() {
+      const q = document.getElementById('widgetSearch').value.toLowerCase();
+      const cards = document.querySelectorAll('.project-card');
+      cards.forEach(card => {
+        const title = card.getAttribute('data-title') || '';
+        const summary = card.getAttribute('data-summary') || '';
+        if (title.includes(q) || summary.includes(q)) {
+          card.style.display = 'flex';
+        } else {
+          card.style.display = 'none';
+        }
+      });
+    }
+  </script>
+</body>
+</html>

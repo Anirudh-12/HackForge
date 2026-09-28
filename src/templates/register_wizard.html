@@ -106,8 +106,13 @@
       <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 24px;">Tell us a bit about yourself so teams can find you (optional).</p>
       
       <div style="margin-bottom: 24px;">
-        <label style="display: block; margin-bottom: 8px; font-weight: 500;">Skills & Technologies</label>
-        <input type="text" name="skills_offered" class="input" placeholder="e.g. React, Python, UI Design, APIs">
+        <label style="display: block; margin-bottom: 8px; font-weight: 500;">Skills &amp; Technologies</label>
+        <div id="skills-tag-box" style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); min-height: 48px; cursor: text;" onclick="document.getElementById('skills-pill-input').focus()">
+          <div id="skills-pill-list" style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center;"></div>
+          <input type="text" id="skills-pill-input" placeholder="Type a skill and press comma or Enter (e.g. React, Python)..." style="border: none; outline: none; background: transparent; flex: 1; min-width: 180px; padding: 4px 0; font-size: 14px; color: var(--text-primary);">
+        </div>
+        <input type="hidden" name="skills_offered" id="skills_offered_hidden" value="">
+        <span style="font-size: 12px; color: var(--text-muted); margin-top: 6px; display: block;">Separate skills by typing a comma (,) or pressing Enter.</span>
       </div>
       
       <div style="margin-bottom: 24px;">
@@ -211,6 +216,73 @@
     
     if (action === 'create') document.querySelector('input[name="team_name"]').focus();
     if (action === 'join') document.querySelector('input[name="invite_token"]').focus();
+  }
+
+  // Comma-segmented skills tagging logic
+  const skillsList = [];
+  const skillsInput = document.getElementById('skills-pill-input');
+  const skillsContainer = document.getElementById('skills-pill-list');
+  const skillsHidden = document.getElementById('skills_offered_hidden');
+
+  function renderSkills() {
+    skillsContainer.innerHTML = '';
+    skillsList.forEach((skill, idx) => {
+      const tag = document.createElement('span');
+      tag.style.cssText = 'background: rgba(var(--primary-rgb), 0.12); color: var(--primary); border: 1px solid rgba(var(--primary-rgb), 0.25); border-radius: 999px; padding: 4px 10px; font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px;';
+      tag.innerHTML = `<span>${escapeHtml(skill)}</span><span style="cursor: pointer; opacity: 0.7; font-weight: bold; font-size: 14px;" onclick="removeSkill(${idx})">&times;</span>`;
+      skillsContainer.appendChild(tag);
+    });
+    skillsHidden.value = skillsList.join(', ');
+  }
+
+  function addSkill(val) {
+    const trimmed = val.replace(/,/g, '').trim();
+    if (trimmed && !skillsList.includes(trimmed)) {
+      skillsList.push(trimmed);
+      renderSkills();
+    }
+    skillsInput.value = '';
+  }
+
+  function removeSkill(idx) {
+    skillsList.splice(idx, 1);
+    renderSkills();
+  }
+
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.innerText = text;
+    return div.innerHTML;
+  }
+
+  if (skillsInput) {
+    skillsInput.addEventListener('keydown', (e) => {
+      if (e.key === ',' || e.key === 'Enter') {
+        e.preventDefault();
+        addSkill(skillsInput.value);
+      } else if (e.key === 'Backspace' && !skillsInput.value && skillsList.length > 0) {
+        removeSkill(skillsList.length - 1);
+      }
+    });
+
+    skillsInput.addEventListener('input', (e) => {
+      if (skillsInput.value.includes(',')) {
+        addSkill(skillsInput.value);
+      }
+    });
+
+    skillsInput.addEventListener('paste', (e) => {
+      e.preventDefault();
+      const paste = (e.clipboardData || window.clipboardData).getData('text');
+      const parts = paste.split(',');
+      parts.forEach(p => addSkill(p));
+    });
+
+    skillsInput.addEventListener('blur', () => {
+      if (skillsInput.value.trim()) {
+        addSkill(skillsInput.value);
+      }
+    });
   }
 </script>
 

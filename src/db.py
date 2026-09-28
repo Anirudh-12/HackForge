@@ -56,3 +56,22 @@ def init_db() -> None:
             conn.commit()
         except Exception:
             pass
+
+        try:
+            res = conn.execute(text("PRAGMA table_info(teams)")).fetchall()
+            existing_team_cols = {row[1] for row in res}
+            if "leader_id" not in existing_team_cols:
+                conn.execute(text("ALTER TABLE teams ADD COLUMN leader_id TEXT"))
+            conn.execute(text("""
+                UPDATE teams
+                SET leader_id = (
+                    SELECT user_id FROM team_members
+                    WHERE team_members.team_id = teams.id
+                    ORDER BY id ASC LIMIT 1
+                )
+                WHERE leader_id IS NULL
+            """))
+            conn.commit()
+        except Exception:
+            pass
+

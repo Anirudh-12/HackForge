@@ -26,6 +26,7 @@ from src.models import (
 )
 from src.queries import user_team
 from src.timeutil import utcnow
+from src.webhooks import dispatch_webhook
 
 router = APIRouter(prefix="/api/projects", tags=["voting"])
 
@@ -280,6 +281,12 @@ def cast_or_toggle_vote(
     )
     db.commit()
 
+    dispatch_webhook(
+        event.id,
+        "vote.cast",
+        {"project_id": project.id, "project_title": project.title, "user_id": user.id},
+    )
+
     return {
         "success": True,
         "voted": True,
@@ -424,6 +431,17 @@ async def add_comment(
     )
     db.commit()
     db.refresh(comment)
+
+    dispatch_webhook(
+        project.event_id,
+        "comment.created",
+        {
+            "comment_id": comment.id,
+            "project_id": project.id,
+            "author_id": user.id,
+            "author_name": user.name,
+        },
+    )
 
     # If submitted via traditional HTML form, redirect back
     accept = request.headers.get("accept", "")

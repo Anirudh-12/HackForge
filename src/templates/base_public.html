@@ -7,12 +7,49 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/style.css">
+  <script>
+    (function() {
+      try {
+        const saved = localStorage.getItem('hackforge_theme');
+        if (saved === 'dark' || saved === 'light') {
+          document.documentElement.setAttribute('data-theme', saved);
+        }
+      } catch(e) {}
+    })();
+  </script>
 </head>
 <body>
   <header class="topnav">
     <a class="brand" href="/">Hackforge</a>
-    <nav class="topnav-links" style="display: flex; align-items: center; gap: 12px;">
-      <a href="/projects">Explore</a>
+    <nav class="topnav-links" style="display: flex; align-items: center; gap: 14px;">
+      <a href="/projects">Explore Projects</a>
+      <a href="/api/docs" style="display: flex; align-items: center; gap: 4px;">
+        <span style="font-size: 11px; padding: 2px 6px; border-radius: 4px; background: rgba(56,189,248,0.15); color: #38bdf8; font-weight: 600;">API</span>
+        Docs
+      </a>
+      <a href="/docs" target="_blank" style="display: flex; align-items: center; gap: 4px; color: var(--text-muted); font-size: 13px;" title="Interactive FastAPI Swagger UI">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+        Swagger (/docs)
+      </a>
+
+      <!-- Dark / Light Theme Toggle -->
+      <button id="publicThemeToggleBtn" class="theme-toggle-btn" title="Toggle theme" aria-label="Toggle theme" style="margin-left: 4px;">
+        <svg id="publicThemeIconSun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+          <circle cx="12" cy="12" r="5"></circle>
+          <line x1="12" y1="1" x2="12" y2="3"></line>
+          <line x1="12" y1="21" x2="12" y2="23"></line>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+          <line x1="1" y1="12" x2="3" y2="12"></line>
+          <line x1="21" y1="12" x2="23" y2="12"></line>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+        </svg>
+        <svg id="publicThemeIconMoon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+      </button>
+
       {% if user %}
         <a href="/login" class="btn btn-ghost" style="text-decoration: none;">Workspace</a>
         <div style="position: relative;">
@@ -62,5 +99,48 @@
   <main class="page">
     {% block content %}{% endblock %}
   </main>
+  <script>
+    (function initPublicThemeToggle() {
+      const btn = document.getElementById('publicThemeToggleBtn');
+      if (!btn) return;
+      const sun = document.getElementById('publicThemeIconSun');
+      const moon = document.getElementById('publicThemeIconMoon');
+
+      function updateIcon() {
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark' || 
+                      (!document.documentElement.hasAttribute('data-theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        if (isDark) {
+          sun.style.display = 'block';
+          moon.style.display = 'none';
+        } else {
+          sun.style.display = 'none';
+          moon.style.display = 'block';
+        }
+      }
+      updateIcon();
+
+      btn.addEventListener('click', () => {
+        const current = document.documentElement.getAttribute('data-theme');
+        const isSystemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        let nextTheme = 'light';
+        if (current === 'dark') {
+          nextTheme = 'light';
+        } else if (current === 'light') {
+          nextTheme = 'dark';
+        } else {
+          nextTheme = isSystemDark ? 'light' : 'dark';
+        }
+        document.documentElement.setAttribute('data-theme', nextTheme);
+        localStorage.setItem('hackforge_theme', nextTheme);
+        updateIcon();
+      });
+
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+        if (!document.documentElement.hasAttribute('data-theme')) {
+          updateIcon();
+        }
+      });
+    })();
+  </script>
 </body>
 </html>

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import urllib.parse
 import uuid
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
@@ -9,10 +10,20 @@ from sqlalchemy.orm import Session, joinedload
 from src.auth import get_current_user, membership_for, require_role, set_session_cookie
 from src.context import base_context, role_for
 from src.db import get_db
-from src.templating import templates
-from src.models import AuditLog, Event, Project, Team, TeamMember, User
+from src.models import (
+    AuditLog,
+    Event,
+    EventMember,
+    Notification,
+    Project,
+    Team,
+    TeamJoinRequest,
+    TeamMember,
+    User,
+)
 from src.queries import default_event, event_tracks, user_team
 from src.seed import new_id
+from src.templating import templates
 from src.timeutil import submissions_open, utcnow
 
 router = APIRouter()
@@ -37,34 +48,43 @@ async def _payload(request: Request) -> dict:
 from src.timeutil import submissions_open, utcnow, as_utc
 from src.models import EventMember
 
+
 @router.get("/participant/home")
 def participant_home(
     request: Request,
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_user)
+    user: User = Depends(get_current_user),
 ):
     if not user:
         return RedirectResponse("/login", status_code=303)
-        
+
     now = utcnow()
-    
+
     # 1. Registered Events
-    memberships = db.query(EventMember).filter(EventMember.user_id == user.id, EventMember.role == "participant").all()
+    memberships = (
+        db.query(EventMember)
+        .filter(EventMember.user_id == user.id, EventMember.role == "participant")
+        .all()
+    )
     registered_event_ids = [m.event_id for m in memberships]
-    
-    registered_events = db.query(Event).filter(Event.id.in_(registered_event_ids)).all() if registered_event_ids else []
-    
+
+    registered_events = (
+        db.query(Event).filter(Event.id.in_(registered_event_ids)).all()
+        if registered_event_ids
+        else []
+    )
+
     # Associate team/project status for each registered event
     event_statuses = []
     total_submissions = 0
     upcoming_deadlines = []
-    
+
     for event in registered_events:
         team = user_team(db, user.id, event.id)
         project = None
         if team:
             project = db.query(Project).filter(Project.team_id == team.id).first()
-            
+
         status = "Registered"
         if project:
             total_submissions += 1
@@ -72,39 +92,51 @@ def participant_home(
                 status = "Submission in progress"
             else:
                 status = "Submitted"
-                
-        event_statuses.append({
-            "event": event,
-            "status": status,
-            "project_id": project.id if project else None
-        })
-        
+
+        event_statuses.append(
+            {
+                "event": event,
+                "status": status,
+                "project_id": project.id if project else None,
+            }
+        )
+
         # Deadlines
         s_close = as_utc(event.submissions_close) if event.submissions_close else None
         if s_close and s_close > now:
             upcoming_deadlines.append(event)
-            
+
     upcoming_deadlines.sort(key=lambda e: as_utc(e.submissions_close))
-    
+
     # 2. Recommendations (Events not registered in, that haven't closed yet)
     recommended_events = []
     if registered_event_ids:
-        recommended_events = db.query(Event).filter(Event.id.not_in(registered_event_ids)).all()
+        recommended_events = (
+            db.query(Event).filter(Event.id.not_in(registered_event_ids)).all()
+        )
     else:
         recommended_events = db.query(Event).all()
-        
+
     valid_recs = []
     for e in recommended_events:
         c = as_utc(e.submissions_close) if e.submissions_close else None
         if not c or c > now:
             valid_recs.append(e)
-            
+
     # 3. Recent Activity (Audit logs involving user or their teams)
     # Simple approach: fetch audit logs where actor_id == user.id
-    activities = db.query(AuditLog).filter(AuditLog.actor_id == user.id).order_by(AuditLog.created_at.desc()).limit(5).all()
+    activities = (
+        db.query(AuditLog)
+        .filter(AuditLog.actor_id == user.id)
+        .order_by(AuditLog.created_at.desc())
+        .limit(5)
+        .all()
+    )
 
-    return templates.TemplateResponse(request=request, name="participant/dashboard_new.html", context=
-        base_context(
+    return templates.TemplateResponse(
+        request=request,
+        name="participant/dashboard_new.html",
+        context=base_context(
             request=request,
             event=default_event(db),
             user=user,
@@ -114,8 +146,8 @@ def participant_home(
             total_registrations=len(registered_events),
             upcoming_deadlines=upcoming_deadlines,
             recommendations=valid_recs[:3],
-            activities=activities
-        )
+            activities=activities,
+        ),
     )
 
 
@@ -126,7 +158,9 @@ def participant_registrations(
     user: User = Depends(get_current_user),
 ):
     if not user:
-        return RedirectResponse("/login?next=/participant/registrations", status_code=303)
+        return RedirectResponse(
+            "/login?next=/participant/registrations", status_code=303
+        )
 
     now = utcnow()
 
@@ -198,21 +232,25 @@ def participant_registrations(
                 submission_status = "Submitted"
                 submitted_count += 1
 
-        registrations.append({
-            "event": event,
-            "membership": m,
-            "team": team,
-            "team_members": team_members,
-            "project": project,
-            "time_status": time_status,
-            "time_status_label": time_status_label,
-            "status_color": status_color,
-            "submission_status": submission_status,
-        })
+        registrations.append(
+            {
+                "event": event,
+                "membership": m,
+                "team": team,
+                "team_members": team_members,
+                "project": project,
+                "time_status": time_status,
+                "time_status_label": time_status_label,
+                "status_color": status_color,
+                "submission_status": submission_status,
+            }
+        )
 
     # Sort registrations: ongoing first, upcoming second, completed last
     status_order = {"ongoing": 0, "upcoming": 1, "completed": 2}
-    registrations.sort(key=lambda r: (status_order.get(r["time_status"], 3), r["event"].name))
+    registrations.sort(
+        key=lambda r: (status_order.get(r["time_status"], 3), r["event"].name)
+    )
 
     return templates.TemplateResponse(
         request=request,
@@ -257,9 +295,16 @@ def participant_dashboard(
             .filter(Project.team_id == team.id, Project.event_id == event_id)
             .first()
         )
-        team = db.query(Team).options(joinedload(Team.members).joinedload(TeamMember.user)).filter(Team.id == team.id).first()
-    return templates.TemplateResponse(request=request, name="participant/dashboard.html", context=
-        base_context(
+        team = (
+            db.query(Team)
+            .options(joinedload(Team.members).joinedload(TeamMember.user))
+            .filter(Team.id == team.id)
+            .first()
+        )
+    return templates.TemplateResponse(
+        request=request,
+        name="participant/dashboard.html",
+        context=base_context(
             request=request,
             event=event,
             user=user,
@@ -280,25 +325,105 @@ def matchmaking_page(
     event = db.get(Event, event_id)
     if event is None:
         raise HTTPException(status_code=404, detail="event not found")
-        
-    team = user_team(db, user.id, event_id)
-    membership = db.query(EventMember).filter(EventMember.user_id == user.id, EventMember.event_id == event_id).first()
-    
-    # Solo users looking for team
-    solo_users = db.query(EventMember).options(joinedload(EventMember.user)).filter(
-        EventMember.event_id == event_id,
-        EventMember.looking_for_team == True,
-        EventMember.user_id != user.id
-    ).all()
-    
-    # Teams looking for members (Teams with < 4 members)
-    all_teams = db.query(Team).options(joinedload(Team.members)).filter(Team.event_id == event_id).all()
-    open_teams = [t for t in all_teams if len(t.members) < 4 and (not team or t.id != team.id)]
 
-    return templates.TemplateResponse(request=request, name="participant/matchmaking.html", context=
-        base_context(request=request, event=event, user=user, role="participant", team=team, 
-                     membership=membership, solo_users=solo_users, open_teams=open_teams),
+    team = user_team(db, user.id, event_id)
+    if team:
+        team = (
+            db.query(Team)
+            .options(
+                joinedload(Team.members).joinedload(TeamMember.user),
+                joinedload(Team.leader),
+            )
+            .filter(Team.id == team.id)
+            .first()
+        )
+
+    membership = (
+        db.query(EventMember)
+        .filter(EventMember.user_id == user.id, EventMember.event_id == event_id)
+        .first()
     )
+
+    # Solo users looking for team
+    solo_users = (
+        db.query(EventMember)
+        .options(joinedload(EventMember.user))
+        .filter(
+            EventMember.event_id == event_id,
+            EventMember.looking_for_team == True,
+            EventMember.user_id != user.id,
+        )
+        .all()
+    )
+
+    # Teams looking for members (Teams with < 4 members)
+    all_teams = (
+        db.query(Team)
+        .options(
+            joinedload(Team.members).joinedload(TeamMember.user),
+            joinedload(Team.leader),
+        )
+        .filter(Team.event_id == event_id)
+        .all()
+    )
+    open_teams = [
+        t for t in all_teams if len(t.members) < 4 and (not team or t.id != team.id)
+    ]
+
+    # Incoming join requests for team leader
+    incoming_join_requests = []
+    is_team_leader = False
+    if team:
+        leader = team.get_leader(db)
+        if leader and leader.id == user.id:
+            is_team_leader = True
+            incoming_join_requests = (
+                db.query(TeamJoinRequest)
+                .options(joinedload(TeamJoinRequest.user))
+                .filter(
+                    TeamJoinRequest.team_id == team.id,
+                    TeamJoinRequest.status == "pending",
+                )
+                .order_by(TeamJoinRequest.created_at.desc())
+                .all()
+            )
+
+    # My sent requests for applicant
+    my_sent_requests = []
+    requested_team_ids = set()
+    if not team:
+        my_sent_requests = (
+            db.query(TeamJoinRequest)
+            .options(joinedload(TeamJoinRequest.team).joinedload(Team.leader))
+            .filter(
+                TeamJoinRequest.user_id == user.id,
+                TeamJoinRequest.event_id == event_id,
+                TeamJoinRequest.status == "pending",
+            )
+            .order_by(TeamJoinRequest.created_at.desc())
+            .all()
+        )
+        requested_team_ids = {r.team_id for r in my_sent_requests}
+
+    return templates.TemplateResponse(
+        request=request,
+        name="participant/matchmaking.html",
+        context=base_context(
+            request=request,
+            event=event,
+            user=user,
+            role="participant",
+            team=team,
+            membership=membership,
+            solo_users=solo_users,
+            open_teams=open_teams,
+            incoming_join_requests=incoming_join_requests,
+            is_team_leader=is_team_leader,
+            my_sent_requests=my_sent_requests,
+            requested_team_ids=requested_team_ids,
+        ),
+    )
+
 
 @router.post("/participant/{event_id}/matchmaking")
 def update_matchmaking(
@@ -309,12 +434,17 @@ def update_matchmaking(
     db: Session = Depends(get_db),
     user: User = Depends(require_role("participant", "organizer", "admin")),
 ):
-    membership = db.query(EventMember).filter(EventMember.user_id == user.id, EventMember.event_id == event_id).first()
+    membership = (
+        db.query(EventMember)
+        .filter(EventMember.user_id == user.id, EventMember.event_id == event_id)
+        .first()
+    )
     if membership:
         membership.looking_for_team = looking_for_team
         membership.skills_offered = skills_offered
         db.commit()
     return RedirectResponse(f"/participant/{event_id}/matchmaking", status_code=303)
+
 
 @router.post("/participant/{event_id}/invite_user")
 def invite_user_to_team(
@@ -327,55 +457,377 @@ def invite_user_to_team(
     team = user_team(db, user.id, event_id)
     if not team:
         return RedirectResponse(f"/participant/{event_id}/matchmaking", status_code=303)
-        
-    from src.seed import new_id
-    from src.models import Notification
-    import uuid
-    
+
     # Ensure team has an invite token
     if not team.invite_token:
         team.invite_token = uuid.uuid4().hex
-        
-    db.add(Notification(
-        id=new_id("notif"),
-        user_id=target_user_id,
-        message=f"{user.name} has invited you to join their team '{team.name}'.",
-        action_link=f"/join/{team.invite_token}"
-    ))
+
+    db.add(
+        Notification(
+            id=new_id("notif"),
+            user_id=target_user_id,
+            message=f"{user.name} has invited you to join their team '{team.name}'.",
+            action_link=f"/join/{team.invite_token}",
+        )
+    )
     db.commit()
-    
+
     return RedirectResponse(f"/participant/{event_id}/matchmaking", status_code=303)
 
 
 @router.post("/participant/{event_id}/request_join")
 def request_join_team(
     event_id: str,
+    request: Request,
     target_team_id: str = Form(...),
     db: Session = Depends(get_db),
     user: User = Depends(require_role("participant", "organizer", "admin")),
 ):
+    is_ajax = request.headers.get(
+        "x-requested-with"
+    ) == "XMLHttpRequest" or "application/json" in request.headers.get("accept", "")
+
+    event = db.get(Event, event_id)
+    if event is None:
+        if is_ajax:
+            return JSONResponse(
+                status_code=404, content={"ok": False, "error": "Event not found."}
+            )
+        raise HTTPException(status_code=404, detail="Event not found.")
+
     team = user_team(db, user.id, event_id)
     if team:
-        return RedirectResponse(f"/participant/{event_id}/matchmaking", status_code=303)
-        
-    target_team = db.query(Team).filter_by(id=target_team_id).first()
+        msg = "You are already a member of a team for this hackathon."
+        if is_ajax:
+            return JSONResponse(status_code=400, content={"ok": False, "error": msg})
+        query = urllib.parse.urlencode({"msg": msg, "msg_type": "error"})
+        return RedirectResponse(
+            f"/participant/{event_id}/matchmaking?{query}", status_code=303
+        )
+
+    target_team = (
+        db.query(Team)
+        .options(joinedload(Team.members), joinedload(Team.leader))
+        .filter_by(id=target_team_id, event_id=event_id)
+        .first()
+    )
     if not target_team:
-        return RedirectResponse(f"/participant/{event_id}/matchmaking", status_code=303)
-        
-    from src.seed import new_id
-    from src.models import Notification, TeamMember
-    
-    first_member = db.query(TeamMember).filter_by(team_id=target_team.id).first()
-    if first_member:
-        db.add(Notification(
+        msg = "The requested team could not be found."
+        if is_ajax:
+            return JSONResponse(status_code=404, content={"ok": False, "error": msg})
+        query = urllib.parse.urlencode({"msg": msg, "msg_type": "error"})
+        return RedirectResponse(
+            f"/participant/{event_id}/matchmaking?{query}", status_code=303
+        )
+
+    if len(target_team.members) >= 4:
+        msg = f"Team '{target_team.name}' is already full (4/4 members)."
+        if is_ajax:
+            return JSONResponse(status_code=400, content={"ok": False, "error": msg})
+        query = urllib.parse.urlencode({"msg": msg, "msg_type": "error"})
+        return RedirectResponse(
+            f"/participant/{event_id}/matchmaking?{query}", status_code=303
+        )
+
+    leader = target_team.get_leader(db)
+    leader_name = leader.name if leader else "the team leader"
+
+    # Upsert or check existing TeamJoinRequest
+    existing_req = (
+        db.query(TeamJoinRequest)
+        .filter_by(team_id=target_team.id, user_id=user.id)
+        .first()
+    )
+    if existing_req and existing_req.status == "pending":
+        msg = f"You have already requested to join '{target_team.name}'. The team leader has been notified."
+        if is_ajax:
+            return JSONResponse(
+                content={
+                    "ok": True,
+                    "message": msg,
+                    "status": "pending",
+                    "team_id": target_team.id,
+                    "team_name": target_team.name,
+                    "leader_name": leader_name,
+                }
+            )
+        query = urllib.parse.urlencode({"msg": msg, "msg_type": "info"})
+        return RedirectResponse(
+            f"/participant/{event_id}/matchmaking?{query}", status_code=303
+        )
+    elif existing_req:
+        existing_req.status = "pending"
+        existing_req.created_at = utcnow()
+        req_id = existing_req.id
+    else:
+        req_id = new_id("treq")
+        db.add(
+            TeamJoinRequest(
+                id=req_id,
+                team_id=target_team.id,
+                user_id=user.id,
+                event_id=event_id,
+                status="pending",
+                created_at=utcnow(),
+            )
+        )
+
+    # Send in-app notification to the team leader
+    if leader:
+        db.add(
+            Notification(
+                id=new_id("notif"),
+                user_id=leader.id,
+                message=f"{user.name} ({user.email}) has requested to join your team '{target_team.name}'.",
+                action_link=f"/participant/{event_id}/matchmaking",
+            )
+        )
+
+    # Send confirmation notification to the applicant
+    db.add(
+        Notification(
             id=new_id("notif"),
-            user_id=first_member.user_id,
-            message=f"{user.name} ({user.email}) has requested to join your team '{target_team.name}'. You can invite them from the Matchmaking board.",
-            action_link=f"/participant/{event_id}/matchmaking"
-        ))
+            user_id=user.id,
+            message=f"You requested to join '{target_team.name}'. Request delivered to {leader_name}.",
+            action_link=f"/participant/{event_id}/matchmaking",
+        )
+    )
+
+    db.add(
+        AuditLog(
+            event_id=event_id,
+            actor_id=user.id,
+            message=f"{user.name} requested to join team {target_team.name}",
+            created_at=utcnow(),
+        )
+    )
+    db.commit()
+
+    success_msg = f"Join request sent to {leader_name}! You will be notified when they review your request."
+    if is_ajax:
+        return JSONResponse(
+            content={
+                "ok": True,
+                "message": success_msg,
+                "status": "pending",
+                "team_id": target_team.id,
+                "team_name": target_team.name,
+                "leader_name": leader_name,
+                "request_id": req_id,
+            }
+        )
+    query = urllib.parse.urlencode({"msg": success_msg, "msg_type": "success"})
+    return RedirectResponse(
+        f"/participant/{event_id}/matchmaking?{query}", status_code=303
+    )
+
+
+@router.post("/participant/{event_id}/requests/{request_id}/accept")
+def accept_join_request(
+    event_id: str,
+    request_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_role("participant", "organizer", "admin")),
+):
+    join_req = (
+        db.query(TeamJoinRequest)
+        .options(joinedload(TeamJoinRequest.team), joinedload(TeamJoinRequest.user))
+        .filter_by(id=request_id, event_id=event_id)
+        .first()
+    )
+    if not join_req or join_req.status != "pending":
+        query = urllib.parse.urlencode(
+            {"msg": "Join request not found or already processed.", "msg_type": "error"}
+        )
+        return RedirectResponse(
+            f"/participant/{event_id}/matchmaking?{query}", status_code=303
+        )
+
+    target_team = join_req.team
+    leader = target_team.get_leader(db)
+    if leader and leader.id != user.id:
+        member_check = (
+            db.query(TeamMember)
+            .filter_by(team_id=target_team.id, user_id=user.id)
+            .first()
+        )
+        if not member_check:
+            raise HTTPException(
+                status_code=403,
+                detail="Only team leaders or members can accept requests.",
+            )
+
+    current_count = db.query(TeamMember).filter_by(team_id=target_team.id).count()
+    if current_count >= 4:
+        query = urllib.parse.urlencode(
+            {
+                "msg": "Cannot accept request: your team is already full (4/4).",
+                "msg_type": "error",
+            }
+        )
+        return RedirectResponse(
+            f"/participant/{event_id}/matchmaking?{query}", status_code=303
+        )
+
+    applicant_team = user_team(db, join_req.user_id, event_id)
+    if applicant_team:
+        join_req.status = "cancelled"
         db.commit()
-    
-    return RedirectResponse(f"/participant/{event_id}/matchmaking", status_code=303)
+        query = urllib.parse.urlencode(
+            {
+                "msg": f"{join_req.user.name} has already joined another team.",
+                "msg_type": "warning",
+            }
+        )
+        return RedirectResponse(
+            f"/participant/{event_id}/matchmaking?{query}", status_code=303
+        )
+
+    db.add(TeamMember(team_id=target_team.id, user_id=join_req.user_id))
+    join_req.status = "accepted"
+
+    # Cancel other pending join requests from this applicant in this event
+    db.query(TeamJoinRequest).filter(
+        TeamJoinRequest.user_id == join_req.user_id,
+        TeamJoinRequest.event_id == event_id,
+        TeamJoinRequest.status == "pending",
+    ).update({"status": "cancelled"})
+
+    # Send notification to applicant
+    db.add(
+        Notification(
+            id=new_id("notif"),
+            user_id=join_req.user_id,
+            message=f"🎉 You have been accepted into team '{target_team.name}'!",
+            action_link=f"/participant/{event_id}/team",
+        )
+    )
+
+    db.add(
+        AuditLog(
+            event_id=event_id,
+            actor_id=user.id,
+            message=f"{user.name} accepted {join_req.user.name} into team {target_team.name}",
+            created_at=utcnow(),
+        )
+    )
+    db.commit()
+
+    query = urllib.parse.urlencode(
+        {
+            "msg": f"Welcome {join_req.user.name} to {target_team.name}!",
+            "msg_type": "success",
+        }
+    )
+    return RedirectResponse(
+        f"/participant/{event_id}/matchmaking?{query}", status_code=303
+    )
+
+
+@router.post("/participant/{event_id}/requests/{request_id}/decline")
+def decline_join_request(
+    event_id: str,
+    request_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_role("participant", "organizer", "admin")),
+):
+    join_req = (
+        db.query(TeamJoinRequest)
+        .options(joinedload(TeamJoinRequest.team), joinedload(TeamJoinRequest.user))
+        .filter_by(id=request_id, event_id=event_id)
+        .first()
+    )
+    if not join_req or join_req.status != "pending":
+        query = urllib.parse.urlencode(
+            {"msg": "Join request not found or already processed.", "msg_type": "error"}
+        )
+        return RedirectResponse(
+            f"/participant/{event_id}/matchmaking?{query}", status_code=303
+        )
+
+    target_team = join_req.team
+    leader = target_team.get_leader(db)
+    if leader and leader.id != user.id:
+        member_check = (
+            db.query(TeamMember)
+            .filter_by(team_id=target_team.id, user_id=user.id)
+            .first()
+        )
+        if not member_check:
+            raise HTTPException(
+                status_code=403,
+                detail="Only team leaders or members can decline requests.",
+            )
+
+    join_req.status = "declined"
+
+    db.add(
+        Notification(
+            id=new_id("notif"),
+            user_id=join_req.user_id,
+            message=f"Your request to join team '{target_team.name}' was declined.",
+            action_link=f"/participant/{event_id}/matchmaking",
+        )
+    )
+
+    db.add(
+        AuditLog(
+            event_id=event_id,
+            actor_id=user.id,
+            message=f"{user.name} declined join request from {join_req.user.name} for team {target_team.name}",
+            created_at=utcnow(),
+        )
+    )
+    db.commit()
+
+    query = urllib.parse.urlencode(
+        {"msg": f"Declined request from {join_req.user.name}.", "msg_type": "info"}
+    )
+    return RedirectResponse(
+        f"/participant/{event_id}/matchmaking?{query}", status_code=303
+    )
+
+
+@router.post("/participant/{event_id}/requests/{request_id}/cancel")
+@router.post("/participant/{event_id}/cancel_request")
+def cancel_join_request(
+    event_id: str,
+    request: Request,
+    request_id: str | None = None,
+    target_team_id: str = Form(None),
+    db: Session = Depends(get_db),
+    user: User = Depends(require_role("participant", "organizer", "admin")),
+):
+    query_filter = [
+        TeamJoinRequest.user_id == user.id,
+        TeamJoinRequest.status == "pending",
+    ]
+    if request_id:
+        query_filter.append(TeamJoinRequest.id == request_id)
+    elif target_team_id:
+        query_filter.append(TeamJoinRequest.team_id == target_team_id)
+
+    join_req = db.query(TeamJoinRequest).filter(*query_filter).first()
+    if join_req:
+        join_req.status = "cancelled"
+        db.commit()
+        msg = "Join request cancelled."
+    else:
+        msg = "Request not found."
+
+    if request.headers.get(
+        "x-requested-with"
+    ) == "XMLHttpRequest" or "application/json" in request.headers.get("accept", ""):
+        return JSONResponse(content={"ok": True, "message": msg})
+
+    query = urllib.parse.urlencode({"msg": msg, "msg_type": "info"})
+    return RedirectResponse(
+        f"/participant/{event_id}/matchmaking?{query}", status_code=303
+    )
+
+
 @router.get("/participant/{event_id}/team")
 def team_page(
     event_id: str,
@@ -388,10 +840,45 @@ def team_page(
     if event is None:
         raise HTTPException(status_code=404, detail="event not found")
     team = user_team(db, user.id, event_id)
+    incoming_requests = []
+    is_team_leader = False
     if team:
-        team = db.query(Team).options(joinedload(Team.members).joinedload(TeamMember.user)).filter(Team.id == team.id).first()
-    return templates.TemplateResponse(request=request, name="participant/team.html", context=
-        base_context(request=request, event=event, user=user, role="participant", team=team, error=error),
+        team = (
+            db.query(Team)
+            .options(
+                joinedload(Team.members).joinedload(TeamMember.user),
+                joinedload(Team.leader),
+            )
+            .filter(Team.id == team.id)
+            .first()
+        )
+        leader = team.get_leader(db)
+        if leader and leader.id == user.id:
+            is_team_leader = True
+            incoming_requests = (
+                db.query(TeamJoinRequest)
+                .options(joinedload(TeamJoinRequest.user))
+                .filter(
+                    TeamJoinRequest.team_id == team.id,
+                    TeamJoinRequest.status == "pending",
+                )
+                .order_by(TeamJoinRequest.created_at.desc())
+                .all()
+            )
+
+    return templates.TemplateResponse(
+        request=request,
+        name="participant/team.html",
+        context=base_context(
+            request=request,
+            event=event,
+            user=user,
+            role="participant",
+            team=team,
+            incoming_requests=incoming_requests,
+            is_team_leader=is_team_leader,
+            error=error,
+        ),
     )
 
 
@@ -408,23 +895,78 @@ def team_action(
     if event is None:
         raise HTTPException(status_code=404, detail="event not found")
     team = user_team(db, user.id, event_id)
+    now = utcnow()
+
+    # Enforce timing rule: Team formation is only allowed before event starts
+    if action in ("create", "invite"):
+        if event.event_starts and now >= as_utc(event.event_starts):
+            return templates.TemplateResponse(
+                request=request,
+                name="participant/team.html",
+                context=base_context(
+                    request=request,
+                    event=event,
+                    user=user,
+                    role="participant",
+                    team=team,
+                    error="Team formation closed when the hackathon started. You can no longer create teams or generate invite links.",
+                ),
+                status_code=400,
+            )
+
     if action == "create":
         if team:
             return RedirectResponse(f"/participant/{event_id}/team", status_code=303)
-        team = Team(id=new_id("tm"), event_id=event_id, name=name.strip() or f"{user.name}'s team")
+        team = Team(
+            id=new_id("tm"),
+            event_id=event_id,
+            name=name.strip() or f"{user.name}'s team",
+            leader_id=user.id,
+        )
         db.add(team)
         db.flush()
         db.add(TeamMember(team_id=team.id, user_id=user.id))
-        db.add(AuditLog(event_id=event_id, actor_id=user.id, message=f"{user.name} created team {team.name}", created_at=utcnow()))
+        db.add(
+            AuditLog(
+                event_id=event_id,
+                actor_id=user.id,
+                message=f"{user.name} created team {team.name}",
+                created_at=utcnow(),
+            )
+        )
         db.commit()
     elif action == "invite" and team:
         if not team.invite_token:
             team.invite_token = uuid.uuid4().hex
-            db.add(AuditLog(event_id=event_id, actor_id=user.id, message=f"{user.name} generated an invite link for {team.name}", created_at=utcnow()))
+            db.add(
+                AuditLog(
+                    event_id=event_id,
+                    actor_id=user.id,
+                    message=f"{user.name} generated an invite link for {team.name}",
+                    created_at=utcnow(),
+                )
+            )
             db.commit()
     elif action == "leave" and team:
-        db.query(TeamMember).filter(TeamMember.team_id == team.id, TeamMember.user_id == user.id).delete()
-        db.add(AuditLog(event_id=event_id, actor_id=user.id, message=f"{user.name} left team {team.name}", created_at=utcnow()))
+        db.query(TeamMember).filter(
+            TeamMember.team_id == team.id, TeamMember.user_id == user.id
+        ).delete()
+        db.add(
+            AuditLog(
+                event_id=event_id,
+                actor_id=user.id,
+                message=f"{user.name} left team {team.name}",
+                created_at=utcnow(),
+            )
+        )
+        if team.leader_id == user.id:
+            next_member = (
+                db.query(TeamMember)
+                .filter_by(team_id=team.id)
+                .order_by(TeamMember.id.asc())
+                .first()
+            )
+            team.leader_id = next_member.user_id if next_member else None
         db.commit()
     return RedirectResponse(f"/participant/{event_id}/team", status_code=303)
 
@@ -443,8 +985,10 @@ def join_team(
         return RedirectResponse(f"/login?next=/join/{token}", status_code=303)
     existing = user_team(db, user.id, team.event_id)
     if existing and existing.id != team.id:
-        return templates.TemplateResponse(request=request, name="participant/team.html", context=
-            base_context(
+        return templates.TemplateResponse(
+            request=request,
+            name="participant/team.html",
+            context=base_context(
                 request=request,
                 event=team.event,
                 user=user,
@@ -455,11 +999,55 @@ def join_team(
             status_code=400,
         )
     if existing is None:
+        event = team.event
+        now = utcnow()
+
+        # Enforce timing rule: team joining closed after event start
+        if event.event_starts and now >= as_utc(event.event_starts):
+            return templates.TemplateResponse(
+                request=request,
+                name="participant/team.html",
+                context=base_context(
+                    request=request,
+                    event=event,
+                    user=user,
+                    role="participant",
+                    team=None,
+                    error="Team formation closed when the hackathon started. You can no longer join a team.",
+                ),
+                status_code=400,
+            )
+
+        # Enforce team capacity limit
+        max_capacity = getattr(event, "max_team_size", 4) or 4
+        current_members = db.query(TeamMember).filter_by(team_id=team.id).count()
+        if current_members >= max_capacity:
+            return templates.TemplateResponse(
+                request=request,
+                name="participant/team.html",
+                context=base_context(
+                    request=request,
+                    event=event,
+                    user=user,
+                    role="participant",
+                    team=None,
+                    error=f"Cannot join team: '{team.name}' has already reached its maximum capacity of {max_capacity} members.",
+                ),
+                status_code=400,
+            )
+
         from src.queries import upsert_membership
 
         upsert_membership(db, team.event_id, user.id, "participant")
         db.add(TeamMember(team_id=team.id, user_id=user.id))
-        db.add(AuditLog(event_id=team.event_id, actor_id=user.id, message=f"{user.name} joined team {team.name}", created_at=utcnow()))
+        db.add(
+            AuditLog(
+                event_id=team.event_id,
+                actor_id=user.id,
+                message=f"{user.name} joined team {team.name}",
+                created_at=utcnow(),
+            )
+        )
         db.commit()
     return RedirectResponse(f"/participant/{team.event_id}/team", status_code=303)
 
@@ -480,9 +1068,15 @@ def submit_form(
     team = user_team(db, user.id, event.id)
     project = None
     if team:
-        project = db.query(Project).filter(Project.event_id == event.id, Project.team_id == team.id).first()
-    return templates.TemplateResponse(request=request, name="participant/submit.html", context=
-        base_context(
+        project = (
+            db.query(Project)
+            .filter(Project.event_id == event.id, Project.team_id == team.id)
+            .first()
+        )
+    return templates.TemplateResponse(
+        request=request,
+        name="participant/submit.html",
+        context=base_context(
             request=request,
             event=event,
             user=user,
@@ -519,21 +1113,43 @@ async def submit_project(
     if team is None:
         return JSONResponse({"detail": "join or create a team first"}, status_code=400)
 
-    title = (payload.get("title") or "").strip() if isinstance(payload.get("title"), str) else ""
-    summary = (payload.get("summary") or "").strip() if isinstance(payload.get("summary"), str) else ""
-    repo_url = (payload.get("repo_url") or "").strip() or None if isinstance(payload.get("repo_url"), str) else None
-    demo_url = (payload.get("demo_url") or "").strip() or None if isinstance(payload.get("demo_url"), str) else None
-    tech_stack = (payload.get("tech_stack") or "").strip() if isinstance(payload.get("tech_stack"), str) else ""
+    title = (
+        (payload.get("title") or "").strip()
+        if isinstance(payload.get("title"), str)
+        else ""
+    )
+    summary = (
+        (payload.get("summary") or "").strip()
+        if isinstance(payload.get("summary"), str)
+        else ""
+    )
+    repo_url = (
+        (payload.get("repo_url") or "").strip() or None
+        if isinstance(payload.get("repo_url"), str)
+        else None
+    )
+    demo_url = (
+        (payload.get("demo_url") or "").strip() or None
+        if isinstance(payload.get("demo_url"), str)
+        else None
+    )
+    tech_stack = (
+        (payload.get("tech_stack") or "").strip()
+        if isinstance(payload.get("tech_stack"), str)
+        else ""
+    )
     track_id = payload.get("track_id") or payload.get("track")
-    is_draft = str(payload.get("action") or "").lower() == "draft" or payload.get("is_draft") in (True, "true", "1", "on")
+    is_draft = str(payload.get("action") or "").lower() == "draft" or payload.get(
+        "is_draft"
+    ) in (True, "true", "1", "on")
 
     import os
     import shutil
     from fastapi import UploadFile
-    
+
     upload_dir = os.path.join("src", "static", "uploads")
     os.makedirs(upload_dir, exist_ok=True)
-    
+
     cover_image_path = None
     cover_file = payload.get("cover_image")
     if isinstance(cover_file, UploadFile) and cover_file.filename:
@@ -543,7 +1159,11 @@ async def submit_project(
             shutil.copyfileobj(cover_file.file, f)
         cover_image_path = f"/static/uploads/{filename}"
 
-    project = db.query(Project).filter(Project.event_id == event.id, Project.team_id == team.id).first()
+    project = (
+        db.query(Project)
+        .filter(Project.event_id == event.id, Project.team_id == team.id)
+        .first()
+    )
     if project is None:
         project = Project(
             id=new_id("prj"),
@@ -567,7 +1187,7 @@ async def submit_project(
         project.tech_stack = tech_stack
     if cover_image_path:
         project.cover_image_path = cover_image_path
-        
+
     project.is_draft = bool(is_draft)
     if not project.is_draft:
         project.submitted_at = utcnow()
@@ -580,6 +1200,23 @@ async def submit_project(
         )
     )
     db.commit()
+
+    if not project.is_draft:
+        try:
+            from src.webhooks import dispatch_webhook
+            dispatch_webhook(
+                event.id,
+                "project.submitted",
+                {
+                    "project_id": project.id,
+                    "title": project.title,
+                    "team_id": team.id,
+                    "team_name": team.name,
+                },
+            )
+        except Exception:
+            pass
+
     if wants_json:
         return JSONResponse({"id": project.id, "title": project.title}, status_code=200)
     return RedirectResponse(f"/participant/{event.id}/dashboard", status_code=303)

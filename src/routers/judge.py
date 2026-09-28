@@ -354,7 +354,22 @@ async def submit_score(
                 )
 
     db.commit()
-    db.commit()
+
+    try:
+        from src.webhooks import dispatch_webhook
+        dispatch_webhook(
+            event_id,
+            "score.submitted",
+            {
+                "project_id": project_id,
+                "judge_id": user.id,
+                "judge_name": user.name,
+                "recused": recuse,
+            },
+        )
+    except Exception:
+        pass
+
     import urllib.parse
 
     msg = "Recused from project." if recuse else "Scores saved successfully!"

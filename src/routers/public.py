@@ -149,7 +149,7 @@ def submit_registration_wizard(
     if team_action == "create" and team_name:
         from src.seed import new_id
         from src.models import Team, TeamMember
-        team = Team(id=new_id("team"), event_id=event_id, name=team_name)
+        team = Team(id=new_id("team"), event_id=event_id, name=team_name, leader_id=user.id)
         db.add(team)
         db.add(TeamMember(team_id=team.id, user_id=user.id))
         db.commit()

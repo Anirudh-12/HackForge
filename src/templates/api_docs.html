@@ -1,0 +1,829 @@
+{% extends "base_public.html" %}
+
+{% block title %}HackForge API Documentation — Developer Hub{% endblock %}
+
+{% block content %}
+<style>
+  .docs-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 32px 20px 80px;
+  }
+  .docs-hero {
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98));
+    border: 1px solid var(--border, #334155);
+    border-radius: 16px;
+    padding: 36px 32px;
+    margin-bottom: 28px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+  }
+  .docs-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 9999px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    background: rgba(56, 189, 248, 0.15);
+    color: #38bdf8;
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    margin-bottom: 16px;
+  }
+  .fastapi-banner {
+    margin-top: 24px;
+    padding: 20px 24px;
+    background: rgba(0, 150, 136, 0.1);
+    border: 1px solid rgba(0, 150, 136, 0.35);
+    border-radius: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  .fastapi-btn {
+    background: #009688;
+    color: white;
+    font-weight: 600;
+    padding: 10px 20px;
+    border-radius: 8px;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: background 0.2s;
+  }
+  .fastapi-btn:hover {
+    background: #00796b;
+  }
+  .docs-tabs {
+    display: flex;
+    gap: 8px;
+    border-bottom: 1px solid var(--border, #334155);
+    margin-bottom: 24px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+  .docs-tab-btn {
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text-muted, #94a3b8);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+  }
+  .docs-tab-btn:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.05);
+  }
+  .docs-tab-btn.active {
+    color: #ffffff;
+    background: var(--surface, #1e293b);
+    border-color: var(--border, #475569);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  }
+  .global-lang-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(15, 23, 42, 0.7);
+    border: 1px solid var(--border, #334155);
+    border-radius: 10px;
+    padding: 10px 18px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .endpoint-card {
+    background: var(--surface, #1e293b);
+    border: 1px solid var(--border, #334155);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+    transition: border-color 0.2s;
+  }
+  .endpoint-card:hover {
+    border-color: #64748b;
+  }
+  .http-method {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    font-family: monospace;
+    margin-right: 12px;
+  }
+  .method-get { background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.4); }
+  .method-post { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.4); }
+  .method-delete { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); }
+  
+  .lang-tabs {
+    display: flex;
+    gap: 4px;
+    margin-top: 14px;
+    border-bottom: 1px solid #1e293b;
+    padding-bottom: 6px;
+  }
+  .lang-tab {
+    padding: 4px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: #94a3b8;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .lang-tab:hover {
+    color: #f1f5f9;
+    background: rgba(255, 255, 255, 0.05);
+  }
+  .lang-tab.active {
+    color: #38bdf8;
+    background: rgba(56, 189, 248, 0.12);
+    border-color: rgba(56, 189, 248, 0.3);
+  }
+  .code-block {
+    background: #090d16;
+    border: 1px solid #1e293b;
+    border-radius: 8px;
+    padding: 14px 18px;
+    font-family: monospace;
+    font-size: 13px;
+    color: #cbd5e1;
+    overflow-x: auto;
+    position: relative;
+    margin-top: 8px;
+    line-height: 1.5;
+  }
+  .copy-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    padding: 4px 10px;
+    font-size: 11px;
+    border-radius: 4px;
+    background: #1e293b;
+    border: 1px solid #334155;
+    color: #94a3b8;
+    cursor: pointer;
+    font-weight: 500;
+  }
+  .copy-btn:hover {
+    color: #ffffff;
+    background: #334155;
+  }
+</style>
+
+<div class="docs-container">
+  <!-- Hero Section -->
+  <div class="docs-hero">
+    <div class="docs-badge">REST API &middot; T4 STRETCH READY</div>
+    <h1 style="font-size: 32px; font-weight: 800; color: #ffffff; margin-bottom: 12px; letter-spacing: -0.02em;">
+      HackForge Developer &amp; API Hub
+    </h1>
+    <p style="font-size: 16px; color: #cbd5e1; max-width: 800px; line-height: 1.6; margin-bottom: 24px;">
+      Comprehensive REST API documentation tailored for every role: <strong>Organizers</strong>, <strong>Judges</strong>, and <strong>Participants</strong>. Built with strict role isolation, cryptographic audit trails, webhooks, and OpenAPI 3.1 compliance.
+    </p>
+
+    <!-- Quick Links to Swagger & ReDoc -->
+    <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+      <a href="/docs" target="_blank" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 8px; text-decoration: none;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+        Interactive Swagger UI (/docs)
+      </a>
+      <a href="/redoc" target="_blank" class="btn btn-ghost" style="display: inline-flex; align-items: center; gap: 8px; text-decoration: none; border: 1px solid var(--border, #334155);">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+        ReDoc Specification (/redoc)
+      </a>
+      <a href="/openapi.json" target="_blank" class="btn btn-ghost" style="display: inline-flex; align-items: center; gap: 8px; text-decoration: none; border: 1px solid var(--border, #334155);">
+        Raw OpenAPI Schema (JSON)
+      </a>
+    </div>
+
+    <!-- Official FastAPI Docs Callout Hub -->
+    <div class="fastapi-banner">
+      <div style="display: flex; align-items: center; gap: 14px;">
+        <div style="width: 44px; height: 44px; border-radius: 10px; background: #009688; color: white; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 24px; flex-shrink: 0;">
+          ⚡
+        </div>
+        <div>
+          <div style="font-weight: 700; font-size: 16px; color: #4db6ac;">Official FastAPI Interactive Documentation</div>
+          <div style="font-size: 13px; color: #cbd5e1; margin-top: 2px;">
+            Test all 28+ platform REST endpoints live using FastAPI's built-in Swagger UI and ReDoc portals.
+          </div>
+        </div>
+      </div>
+      <div style="display: flex; gap: 10px;">
+        <a href="/docs" target="_blank" class="fastapi-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+          Open FastAPI Docs (/docs) &rarr;
+        </a>
+      </div>
+    </div>
+
+    <!-- Active Authentication Status Box -->
+    {% if active_cookie %}
+      <div style="margin-top: 24px; padding: 16px; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+          <div style="font-weight: 600; color: #34d399; font-size: 13px;">
+            ✓ Logged In as {{ user.name }} (Role: {{ role|capitalize }})
+          </div>
+          <button class="copy-btn" style="position: static;" onclick="navigator.clipboard.writeText('{{ active_cookie }}'); this.textContent = 'Copied!'; setTimeout(() => this.textContent = 'Copy Header', 2000)">Copy Header</button>
+        </div>
+        <div style="font-family: monospace; font-size: 12px; color: #a7f3d0; word-break: break-all;">
+          {{ active_cookie }}
+        </div>
+      </div>
+    {% else %}
+      <div style="margin-top: 24px; padding: 14px 18px; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: 8px; font-size: 13px; color: #93c5fd;">
+        💡 <strong>Tip:</strong> Sign in with an Organizer, Judge, or Participant account to unlock pre-filled, personalized examples below.
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Role Selector Tabs -->
+  <div class="docs-tabs" id="roleTabs">
+    <button class="docs-tab-btn {% if selected_tab == 'organizer' %}active{% endif %}" onclick="switchTab('organizer')">
+      🛡️ Organizer API
+    </button>
+    <button class="docs-tab-btn {% if selected_tab == 'judge' %}active{% endif %}" onclick="switchTab('judge')">
+      ⚖️ Judge API
+    </button>
+    <button class="docs-tab-btn {% if selected_tab == 'participant' %}active{% endif %}" onclick="switchTab('participant')">
+      🚀 Participant API
+    </button>
+    <button class="docs-tab-btn {% if selected_tab == 'webhooks' %}active{% endif %}" onclick="switchTab('webhooks')">
+      ⚡ Webhooks &amp; Events
+    </button>
+    <button class="docs-tab-btn {% if selected_tab == 'public' %}active{% endif %}" onclick="switchTab('public')">
+      🌐 Public &amp; Embed Widget
+    </button>
+  </div>
+
+  <!-- Global Language Switcher Bar -->
+  <div class="global-lang-bar">
+    <div style="font-size: 13px; font-weight: 600; color: #e2e8f0; display: flex; align-items: center; gap: 8px;">
+      <span>💻 Code Examples Language:</span>
+    </div>
+    <div style="display: flex; gap: 6px;" id="globalLangSelector">
+      <button class="lang-tab active" data-lang="curl" onclick="switchGlobalLang('curl')">cURL</button>
+      <button class="lang-tab" data-lang="python" onclick="switchGlobalLang('python')">Python (requests)</button>
+      <button class="lang-tab" data-lang="javascript" onclick="switchGlobalLang('javascript')">JavaScript (Fetch)</button>
+      <button class="lang-tab" data-lang="java" onclick="switchGlobalLang('java')">Java (HttpClient)</button>
+    </div>
+  </div>
+
+  <!-- 1. ORGANIZER TAB -->
+  <div id="tab-organizer" style="display: {% if selected_tab == 'organizer' %}block{% else %}none{% endif %};">
+    <h2 style="font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 8px;">Organizer Operations</h2>
+    <p style="color: #94a3b8; font-size: 14px; margin-bottom: 20px;">
+      Requires an authenticated session belonging to the event organizer or global admin.
+    </p>
+
+    <!-- Endpoint 1: CSV Export -->
+    <div class="endpoint-card">
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <div>
+          <span class="http-method method-get">GET</span>
+          <span style="font-family: monospace; font-size: 15px; font-weight: 600; color: #f1f5f9;">/api/export.csv</span>
+        </div>
+        <span style="font-size: 12px; color: #38bdf8; background: rgba(56,189,248,0.1); padding: 4px 8px; border-radius: 4px;">T2 Acceptance Route</span>
+      </div>
+      <p style="color: #94a3b8; font-size: 13px; margin: 10px 0 0;">
+        Exports judging results, normalized scores, criteria breakdowns, and winner placements as a CSV file.
+      </p>
+
+      <div class="lang-snippet-container" data-endpoint="export_csv">
+        <div class="lang-tabs">
+          <button class="lang-tab active" data-lang="curl" onclick="switchSnippetLang(this, 'curl')">cURL</button>
+          <button class="lang-tab" data-lang="python" onclick="switchSnippetLang(this, 'python')">Python</button>
+          <button class="lang-tab" data-lang="javascript" onclick="switchSnippetLang(this, 'javascript')">JavaScript</button>
+          <button class="lang-tab" data-lang="java" onclick="switchSnippetLang(this, 'java')">Java</button>
+        </div>
+        <div class="code-block snippet-curl">
+          <button class="copy-btn" onclick="copySnippet(this)">Copy</button>
+          curl -X GET "{{ base_url }}/api/export.csv" \<br>
+          &nbsp;&nbsp;-H "{{ active_cookie or 'Cookie: session=<organizer_token>' }}"
+        </div>
+        <div class="code-block snippet-python" style="display: none;">
+          <button class="copy-btn" onclick="copySnippet(this)">Copy</button>
+          import requests<br><br>
+          url = "{{ base_url }}/api/export.csv"<br>
+          headers = {"Cookie": "{{ active_cookie or 'session=<organizer_token>' }}"}<br>
+          response = requests.get(url, headers=headers)<br>
+          print("Status:", response.status_code)<br>
+          print("CSV Preview:\n", response.text[:300])
+        </div>
+        <div class="code-block snippet-javascript" style="display: none;">
+          <button class="copy-btn" onclick="copySnippet(this)">Copy</button>
+          const res = await fetch("{{ base_url }}/api/export.csv", {<br>
+          &nbsp;&nbsp;headers: { "Cookie": "{{ active_cookie or 'session=<organizer_token>' }}" }<br>
+          });<br>
+          const csvText = await res.text();<br>
+          console.log(csvText);
+        </div>
+        <div class="code-block snippet-java" style="display: none;">
+          <button class="copy-btn" onclick="copySnippet(this)">Copy</button>
+          import java.net.http.*;<br>
+          import java.net.URI;<br><br>
+          HttpClient client = HttpClient.newHttpClient();<br>
+          HttpRequest request = HttpRequest.newBuilder()<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;.uri(URI.create("{{ base_url }}/api/export.csv"))<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;.header("Cookie", "{{ active_cookie or 'session=<organizer_token>' }}")<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;.GET()<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;.build();<br>
+          HttpResponse&lt;String&gt; response = client.send(request, HttpResponse.BodyHandlers.ofString());<br>
+          System.out.println(response.body());
+        </div>
+      </div>
+    </div>
+
+    <!-- Endpoint 2: Full Event JSON Export -->
+    <div class="endpoint-card">
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <div>
+          <span class="http-method method-get">GET</span>
+          <span style="font-family: monospace; font-size: 15px; font-weight: 600; color: #f1f5f9;">/api/events/{event_id}/export/full.json</span>
+        </div>
+        <span style="font-size: 12px; color: #a855f7; background: rgba(168,85,247,0.1); padding: 4px 8px; border-radius: 4px;">T4 Bulk Export</span>
+      </div>
+      <p style="color: #94a3b8; font-size: 13px; margin: 10px 0 0;">
+        Complete archival dump of the event: tracks, rubric criteria, projects, judge scores, comments, community votes, and audit ledger.
+      </p>
+
+      <div class="lang-snippet-container" data-endpoint="export_json">
+        <div class="lang-tabs">
+          <button class="lang-tab active" data-lang="curl" onclick="switchSnippetLang(this, 'curl')">cURL</button>
+          <button class="lang-tab" data-lang="python" onclick="switchSnippetLang(this, 'python')">Python</button>
+          <button class="lang-tab" data-lang="javascript" onclick="switchSnippetLang(this, 'javascript')">JavaScript</button>
+          <button class="lang-tab" data-lang="java" onclick="switchSnippetLang(this, 'java')">Java</button>
+        </div>
+        <div class="code-block snippet-curl">
+          <button class="copy-btn" onclick="copySnippet(this)">Copy</button>
+          curl -X GET "{{ base_url }}/api/events/{{ event.id }}/export/full.json" \<br>
+          &nbsp;&nbsp;-H "{{ active_cookie or 'Cookie: session=<organizer_token>' }}"
+        </div>
+        <div class="code-block snippet-python" style="display: none;">
+          <button class="copy-btn" onclick="copySnippet(this)">Copy</button>
+          import requests<br><br>
+          url = "{{ base_url }}/api/events/{{ event.id }}/export/full.json"<br>
+          headers = {"Cookie": "{{ active_cookie or 'session=<organizer_token>' }}"}<br>
+          archive = requests.get(url, headers=headers).json()<br>
+          print("Event Name:", archive["name"], "Total Projects:", len(archive["projects"]))
+        </div>
+        <div class="code-block snippet-javascript" style="display: none;">
+          <button class="copy-btn" onclick="copySnippet(this)">Copy</button>
+          const res = await fetch("{{ base_url }}/api/events/{{ event.id }}/export/full.json", {<br>
+          &nbsp;&nbsp;headers: { "Cookie": "{{ active_cookie or 'session=<organizer_token>' }}" }<br>
+          });<br>
+          const data = await res.json();<br>
+          console.log(data);
+        </div>
+        <div class="code-block snippet-java" style="display: none;">
+          <button class="copy-btn" onclick="copySnippet(this)">Copy</button>
+          import java.net.http.*;<br>
+          import java.net.URI;<br><br>
+          HttpClient client = HttpClient.newHttpClient();<br>
+          HttpRequest req = HttpRequest.newBuilder()<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;.uri(URI.create("{{ base_url }}/api/events/{{ event.id }}/export/full.json"))<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;.header("Cookie", "{{ active_cookie or 'session=<organizer_token>' }}")<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;.GET().build();<br>
+          HttpResponse&lt;String&gt; res = client.send(req, HttpResponse.BodyHandlers.ofString());<br>
+          System.out.println(res.body());
+        </div>
+      </div>
+    </div>
+
+    <!-- Endpoint 3: Generate Certificates -->
+    <div class="endpoint-card">
+      <div>
+        <span class="http-method method-post">POST</span>
+        <span style="font-family: monospace; font-size: 15px; font-weight: 600; color: #f1f5f9;">/api/events/{event_id}/certificates/generate</span>
+      </div>
+      <p style="color: #94a3b8; font-size: 13px; margin: 10px 0 0;">
+        Bulk generates cryptographically verifiable participation and judging certificates for all attendees and judges.
+      </p>
+
+      <div class="lang-snippet-container" data-endpoint="gen_certs">
+        <div class="lang-tabs">
+          <button class="lang-tab active" data-lang="curl" onclick="switchSnippetLang(this, 'curl')">cURL</button>
+          <button class="lang-tab" data-lang="python" onclick="switchSnippetLang(this, 'python')">Python</button>
+          <button class="lang-tab" data-lang="javascript" onclick="switchSnippetLang(this, 'javascript')">JavaScript</button>
+          <button class="lang-tab" data-lang="java" onclick="switchSnippetLang(this, 'java')">Java</button>
+        </div>
+        <div class="code-block snippet-curl">
+          <button class="copy-btn" onclick="copySnippet(this)">Copy</button>
+          curl -X POST "{{ base_url }}/api/events/{{ event.id }}/certificates/generate" \<br>
+          &nbsp;&nbsp;-H "{{ active_cookie or 'Cookie: session=<organizer_token>' }}"
+        </div>
+        <div class="code-block snippet-python" style="display: none;">
+          <button class="copy-btn" onclick="copySnippet(this)">Copy</button>
+          import requests<br><br>
+          url = "{{ base_url }}/api/events/{{ event.id }}/certificates/generate"<br>
+          headers = {"Cookie": "{{ active_cookie or 'session=<organizer_token>' }}"}<br>
+          res = requests.post(url, headers=headers)<br>
+          print("Certificates Generated:", res.json())
+        </div>
+        <div class="code-block snippet-javascript" style="display: none;">
+          <button class="copy-btn" onclick="copySnippet(this)">Copy</button>
+          const res = await fetch("{{ base_url }}/api/events/{{ event.id }}/certificates/generate", {<br>
+          &nbsp;&nbsp;method: "POST",<br>
+          &nbsp;&nbsp;headers: { "Cookie": "{{ active_cookie or 'session=<organizer_token>' }}" }<br>
+          });<br>
+          console.log(await res.json());
+        </div>
+        <div class="code-block snippet-java" style="display: none;">
+          <button class="copy-btn" onclick="copySnippet(this)">Copy</button>
+          HttpRequest req = HttpRequest.newBuilder()<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;.uri(URI.create("{{ base_url }}/api/events/{{ event.id }}/certificates/generate"))<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;.header("Cookie", "{{ active_cookie or 'session=<organizer_token>' }}")<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;.POST(HttpRequest.BodyPublishers.noBody()).build();<br>
+          HttpResponse&lt;String&gt; res = HttpClient.newHttpClient().send(req, HttpResponse.BodyHandlers.ofString());
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. JUDGE TAB -->
+  <div id="tab-judge" style="display: {% if selected_tab == 'judge' %}block{% else %}none{% endif %};">
+    <h2 style="font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 8px;">Judge Operations &amp; Isolation</h2>
+    <p style="color: #94a3b8; font-size: 14px; margin-bottom: 20px;">
+      Judges can only inspect their own evaluations. Backend enforces strict <strong>Role Isolation</strong>: accessing another judge's scores triggers HTTP 403 Forbidden.
+    </p>
+
+    <!-- Endpoint 1: Read Own Scores -->
+    <div class="endpoint-card">
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <div>
+          <span class="http-method method-get">GET</span>
+          <span style="font-family: monospace; font-size: 15px; font-weight: 600; color: #f1f5f9;">/api/judge/scores</span>
+        </div>
+        <span style="font-size: 12px; color: #38bdf8; background: rgba(56,189,248,0.1); padding: 4px 8px; border-radius: 4px;">T2 Acceptance Route</span>
+      </div>
+      <p style="color: #94a3b8; font-size: 13px; margin: 10px 0 0;">
+        Retrieves the authenticated judge's active scoring rubric and assigned project evaluations.
+      </p>
+
+      <div class="lang-snippet-container" data-endpoint="judge_scores">
+        <div class="lang-tabs">
+          <button class="lang-tab active" data-lang="curl" onclick="switchSnippetLang(this, 'curl')">cURL</button>
+          <button class="lang-tab" data-lang="python" onclick="switchSnippetLang(this, 'python')">Python</button>
+          <button class="lang-tab" data-lang="javascript" onclick="switchSnippetLang(this, 'javascript')">JavaScript</button>
+          <button class="lang-tab" data-lang="java" onclick="switchSnippetLang(this, 'java')">Java</button>
+        </div>
+        <div class="code-block snippet-curl">
+          <button class="copy-btn" onclick="copySnippet(this)">Copy</button>
+          curl -X GET "{{ base_url }}/api/judge/scores" \<br>
+          &nbsp;&nbsp;-H "{{ active_cookie or 'Cookie: session=<judge_token>' }}"
+        </div>
+        <div class="code-block snippet-python" style="display: none;">
+          <button class="copy-btn" onclick="copySnippet(this)">Copy</button>
+          import requests<br><br>
+          url = "{{ base_url }}/api/judge/scores"<br>
+          headers = {"Cookie": "{{ active_cookie or 'session=<judge_token>' }}"}<br>
+          res = requests.get(url, headers=headers)<br>
+          print("My Evaluated Projects:", len(res.json()))
+        </div>
+        <div class="code-block snippet-javascript" style="display: none;">
+          <button class="copy-btn" onclick="copySnippet(this)">Copy</button>
+          const res = await fetch("{{ base_url }}/api/judge/scores", {<br>
+          &nbsp;&nbsp;headers: { "Cookie": "{{ active_cookie or 'session=<judge_token>' }}" }<br>
+          });<br>
+          console.log(await res.json());
+        </div>
+        <div class="code-block snippet-java" style="display: none;">
+          <button class="copy-btn" onclick="copySnippet(this)">Copy</button>
+          HttpRequest req = HttpRequest.newBuilder()<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;.uri(URI.create("{{ base_url }}/api/judge/scores"))<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;.header("Cookie", "{{ active_cookie or 'session=<judge_token>' }}")<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;.GET().build();<br>
+          HttpResponse&lt;String&gt; res = HttpClient.newHttpClient().send(req, HttpResponse.BodyHandlers.ofString());
+        </div>
+      </div>
+    </div>
+
+    <!-- Endpoint 2: Signed Participation Record -->
+    <div class="endpoint-card">
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <div>
+          <span class="http-method method-get">GET</span>
+          <span style="font-family: monospace; font-size: 15px; font-weight: 600; color: #f1f5f9;">/api/judge/{event_id}/record</span>
+        </div>
+        <span style="font-size: 12px; color: #a855f7; background: rgba(168,85,247,0.1); padding: 4px 8px; border-radius: 4px;">T4 Signed Records</span>
+      </div>
+      <p style="color: #94a3b8; font-size: 13px; margin: 10px 0 0;">
+        Generates an HMAC-SHA256 cryptographically signed participation record with a tamper-evident verification link.
+      </p>
+
+      <div class="lang-snippet-container" data-endpoint="judge_record">
+        <div class="lang-tabs">
+          <button class="lang-tab active" data-lang="curl" onclick="switchSnippetLang(this, 'curl')">cURL</button>
+          <button class="lang-tab" data-lang="python" onclick="switchSnippetLang(this, 'python')">Python</button>
+          <button class="lang-tab" data-lang="javascript" onclick="switchSnippetLang(this, 'javascript')">JavaScript</button>
+          <button class="lang-tab" data-lang="java" onclick="switchSnippetLang(this, 'java')">Java</button>
+        </div>
+        <div class="code-block snippet-curl">
+          <button class="copy-btn" onclick="copySnippet(this)">Copy</button>
+          curl -X GET "{{ base_url }}/api/judge/{{ event.id }}/record" \<br>
+          &nbsp;&nbsp;-H "{{ active_cookie or 'Cookie: session=<judge_token>' }}"
+        </div>
+        <div class="code-block snippet-python" style="display: none;">
+          <button class="copy-btn" onclick="copySnippet(this)">Copy</button>
+          import requests<br><br>
+          record = requests.get("{{ base_url }}/api/judge/{{ event.id }}/record", headers={"Cookie": "{{ active_cookie or 'session=<token>' }}"}).json()<br>
+          print("Signed Hash:", record["signature_hash"])<br>
+          print("Verify URL:", record["verify_url"])
+        </div>
+        <div class="code-block snippet-javascript" style="display: none;">
+          <button class="copy-btn" onclick="copySnippet(this)">Copy</button>
+          const res = await fetch("{{ base_url }}/api/judge/{{ event.id }}/record", {<br>
+          &nbsp;&nbsp;headers: { "Cookie": "{{ active_cookie or 'session=<token>' }}" }<br>
+          });<br>
+          console.log(await res.json());
+        </div>
+        <div class="code-block snippet-java" style="display: none;">
+          <button class="copy-btn" onclick="copySnippet(this)">Copy</button>
+          HttpRequest req = HttpRequest.newBuilder()<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;.uri(URI.create("{{ base_url }}/api/judge/{{ event.id }}/record"))<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;.header("Cookie", "{{ active_cookie or 'session=<token>' }}")<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;.GET().build();<br>
+          HttpResponse&lt;String&gt; res = HttpClient.newHttpClient().send(req, HttpResponse.BodyHandlers.ofString());
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. PARTICIPANT TAB -->
+  <div id="tab-participant" style="display: {% if selected_tab == 'participant' %}block{% else %}none{% endif %};">
+    <h2 style="font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 8px;">Participant Operations &amp; Community Voting</h2>
+    <p style="color: #94a3b8; font-size: 14px; margin-bottom: 20px;">
+      Participants can submit projects, participate in peer community voting, and engage in threaded project comments.
+    </p>
+
+    <!-- Endpoint 1: Project Submission -->
+    <div class="endpoint-card">
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <div>
+          <span class="http-method method-post">POST</span>
+          <span style="font-family: monospace; font-size: 15px; font-weight: 600; color: #f1f5f9;">/projects/new</span>
+        </div>
+        <span style="font-size: 12px; color: #38bdf8; background: rgba(56,189,248,0.1); padding: 4px 8px; border-radius: 4px;">T1 Acceptance Route</span>
+      </div>
+      <p style="color: #94a3b8; font-size: 13px; margin: 10px 0 0;">
+        Submits or drafts a project. Note: If <code>submissions_close</code> has passed, returns <strong>HTTP 4xx</strong>.
+      </p>
+
+      <div class="lang-snippet-container" data-endpoint="project_new">
+        <div class="lang-tabs">
+          <button class="lang-tab active" data-lang="curl" onclick="switchSnippetLang(this, 'curl')">cURL</button>
+          <button class="lang-tab" data-lang="python" onclick="switchSnippetLang(this, 'python')">Python</button>
+          <button class="lang-tab" data-lang="javascript" onclick="switchSnippetLang(this, 'javascript')">JavaScript</button>
+          <button class="lang-tab" data-lang="java" onclick="switchSnippetLang(this, 'java')">Java</button>
+        </div>
+        <div class="code-block snippet-curl">
+          <button class="copy-btn" onclick="copySnippet(this)">Copy</button>
+          curl -X POST "{{ base_url }}/projects/new" \<br>
+          &nbsp;&nbsp;-H "Content-Type: application/json" \<br>
+          &nbsp;&nbsp;-H "{{ active_cookie or 'Cookie: session=<participant_token>' }}" \<br>
+          &nbsp;&nbsp;-d '{"title": "My Hackathon Project", "summary": "Fast lightweight platform", "repo_url": "https://github.com/..."}'
+        </div>
+        <div class="code-block snippet-python" style="display: none;">
+          <button class="copy-btn" onclick="copySnippet(this)">Copy</button>
+          import requests<br><br>
+          payload = {"title": "AI Assistant", "summary": "Next-gen copilot", "repo_url": "https://github.com/example/ai"}<br>
+          res = requests.post("{{ base_url }}/projects/new", json=payload, headers={"Cookie": "{{ active_cookie or 'session=<token>' }}"})<br>
+          print("Status:", res.status_code)
+        </div>
+        <div class="code-block snippet-javascript" style="display: none;">
+          <button class="copy-btn" onclick="copySnippet(this)">Copy</button>
+          const res = await fetch("{{ base_url }}/projects/new", {<br>
+          &nbsp;&nbsp;method: "POST",<br>
+          &nbsp;&nbsp;headers: { "Content-Type": "application/json", "Cookie": "{{ active_cookie or 'session=<token>' }}" },<br>
+          &nbsp;&nbsp;body: JSON.stringify({ title: "My Hackathon Project", summary: "Demo" })<br>
+          });
+        </div>
+        <div class="code-block snippet-java" style="display: none;">
+          <button class="copy-btn" onclick="copySnippet(this)">Copy</button>
+          String body = "{\"title\":\"My Project\",\"summary\":\"Demo Writeup\"}";<br>
+          HttpRequest req = HttpRequest.newBuilder()<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;.uri(URI.create("{{ base_url }}/projects/new"))<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;.header("Content-Type", "application/json")<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;.header("Cookie", "{{ active_cookie or 'session=<token>' }}")<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;.POST(HttpRequest.BodyPublishers.ofString(body)).build();<br>
+          HttpResponse&lt;String&gt; res = HttpClient.newHttpClient().send(req, HttpResponse.BodyHandlers.ofString());
+        </div>
+      </div>
+    </div>
+
+    <!-- Endpoint 2: Community Peer Vote -->
+    <div class="endpoint-card">
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <div>
+          <span class="http-method method-post">POST</span>
+          <span style="font-family: monospace; font-size: 15px; font-weight: 600; color: #f1f5f9;">/api/projects/{project_id}/vote</span>
+        </div>
+        <span style="font-size: 12px; color: #22c55e; background: rgba(34,197,94,0.1); padding: 4px 8px; border-radius: 4px;">T3 Community Voting</span>
+      </div>
+      <p style="color: #94a3b8; font-size: 13px; margin: 10px 0 0;">
+        Casts or toggles a community vote. Self-voting returns HTTP 403 Forbidden. Max 10 vote actions per minute.
+      </p>
+
+      <div class="lang-snippet-container" data-endpoint="project_vote">
+        <div class="lang-tabs">
+          <button class="lang-tab active" data-lang="curl" onclick="switchSnippetLang(this, 'curl')">cURL</button>
+          <button class="lang-tab" data-lang="python" onclick="switchSnippetLang(this, 'python')">Python</button>
+          <button class="lang-tab" data-lang="javascript" onclick="switchSnippetLang(this, 'javascript')">JavaScript</button>
+          <button class="lang-tab" data-lang="java" onclick="switchSnippetLang(this, 'java')">Java</button>
+        </div>
+        <div class="code-block snippet-curl">
+          <button class="copy-btn" onclick="copySnippet(this)">Copy</button>
+          curl -X POST "{{ base_url }}/api/projects/prj_01/vote" \<br>
+          &nbsp;&nbsp;-H "{{ active_cookie or 'Cookie: session=<participant_token>' }}"
+        </div>
+        <div class="code-block snippet-python" style="display: none;">
+          <button class="copy-btn" onclick="copySnippet(this)">Copy</button>
+          import requests<br><br>
+          res = requests.post("{{ base_url }}/api/projects/prj_01/vote", headers={"Cookie": "{{ active_cookie or 'session=<token>' }}"})<br>
+          print("Vote Action Result:", res.json())
+        </div>
+        <div class="code-block snippet-javascript" style="display: none;">
+          <button class="copy-btn" onclick="copySnippet(this)">Copy</button>
+          const res = await fetch("{{ base_url }}/api/projects/prj_01/vote", {<br>
+          &nbsp;&nbsp;method: "POST",<br>
+          &nbsp;&nbsp;headers: { "Cookie": "{{ active_cookie or 'session=<token>' }}" }<br>
+          });<br>
+          console.log(await res.json());
+        </div>
+        <div class="code-block snippet-java" style="display: none;">
+          <button class="copy-btn" onclick="copySnippet(this)">Copy</button>
+          HttpRequest req = HttpRequest.newBuilder()<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;.uri(URI.create("{{ base_url }}/api/projects/prj_01/vote"))<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;.header("Cookie", "{{ active_cookie or 'session=<token>' }}")<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;.POST(HttpRequest.BodyPublishers.noBody()).build();<br>
+          HttpResponse&lt;String&gt; res = HttpClient.newHttpClient().send(req, HttpResponse.BodyHandlers.ofString());
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. WEBHOOKS TAB -->
+  <div id="tab-webhooks" style="display: {% if selected_tab == 'webhooks' %}block{% else %}none{% endif %};">
+    <h2 style="font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 8px;">Webhooks &amp; Event Subscriptions</h2>
+    <p style="color: #94a3b8; font-size: 14px; margin-bottom: 20px;">
+      HackForge dispatches real-time HTTP POST notifications with <strong>HMAC-SHA256</strong> cryptographic signature verification.
+    </p>
+
+    <!-- Webhook Registration Endpoint -->
+    <div class="endpoint-card">
+      <div>
+        <span class="http-method method-post">POST</span>
+        <span style="font-family: monospace; font-size: 15px; font-weight: 600; color: #f1f5f9;">/api/events/{event_id}/webhooks</span>
+      </div>
+      <p style="color: #94a3b8; font-size: 13px; margin: 10px 0 0;">
+        Registers a target URL and receives a unique <code>whsec_...</code> secret for signature verification.
+      </p>
+
+      <div class="lang-snippet-container" data-endpoint="webhooks">
+        <div class="lang-tabs">
+          <button class="lang-tab active" data-lang="curl" onclick="switchSnippetLang(this, 'curl')">cURL</button>
+          <button class="lang-tab" data-lang="python" onclick="switchSnippetLang(this, 'python')">Python</button>
+          <button class="lang-tab" data-lang="javascript" onclick="switchSnippetLang(this, 'javascript')">JavaScript</button>
+          <button class="lang-tab" data-lang="java" onclick="switchSnippetLang(this, 'java')">Java</button>
+        </div>
+        <div class="code-block snippet-curl">
+          <button class="copy-btn" onclick="copySnippet(this)">Copy</button>
+          curl -X POST "{{ base_url }}/api/events/{{ event.id }}/webhooks" \<br>
+          &nbsp;&nbsp;-H "Content-Type: application/json" \<br>
+          &nbsp;&nbsp;-H "{{ active_cookie or 'Cookie: session=<organizer_token>' }}" \<br>
+          &nbsp;&nbsp;-d '{"target_url": "https://api.yourdomain.com/webhook", "events": "project.submitted,results.published"}'
+        </div>
+        <div class="code-block snippet-python" style="display: none;">
+          <button class="copy-btn" onclick="copySnippet(this)">Copy</button>
+          import requests<br><br>
+          payload = {"target_url": "https://my-app.com/webhook", "events": "project.submitted,results.published"}<br>
+          sub = requests.post("{{ base_url }}/api/events/{{ event.id }}/webhooks", json=payload, headers={"Cookie": "{{ active_cookie or 'session=<token>' }}"}).json()<br>
+          print("Secret:", sub["secret"])
+        </div>
+        <div class="code-block snippet-javascript" style="display: none;">
+          <button class="copy-btn" onclick="copySnippet(this)">Copy</button>
+          const res = await fetch("{{ base_url }}/api/events/{{ event.id }}/webhooks", {<br>
+          &nbsp;&nbsp;method: "POST",<br>
+          &nbsp;&nbsp;headers: { "Content-Type": "application/json", "Cookie": "{{ active_cookie or 'session=<token>' }}" },<br>
+          &nbsp;&nbsp;body: JSON.stringify({ target_url: "https://my-app.com/webhook", events: "project.submitted" })<br>
+          });
+        </div>
+        <div class="code-block snippet-java" style="display: none;">
+          <button class="copy-btn" onclick="copySnippet(this)">Copy</button>
+          String body = "{\"target_url\":\"https://my-app.com/webhook\",\"events\":\"project.submitted\"}";<br>
+          HttpRequest req = HttpRequest.newBuilder()<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;.uri(URI.create("{{ base_url }}/api/events/{{ event.id }}/webhooks"))<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;.header("Content-Type", "application/json")<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;.header("Cookie", "{{ active_cookie or 'session=<token>' }}")<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;.POST(HttpRequest.BodyPublishers.ofString(body)).build();<br>
+          HttpResponse&lt;String&gt; res = HttpClient.newHttpClient().send(req, HttpResponse.BodyHandlers.ofString());
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. PUBLIC & EMBED WIDGET TAB -->
+  <div id="tab-public" style="display: {% if selected_tab == 'public' %}block{% else %}none{% endif %};">
+    <h2 style="font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 8px;">Public Discovery &amp; Embed Widget</h2>
+    <p style="color: #94a3b8; font-size: 14px; margin-bottom: 20px;">
+      Unauthenticated endpoints for exploring hackathons, viewing projects, embedding galleries, and verifying cryptographic records.
+    </p>
+
+    <!-- Embed Code Snippet -->
+    <div class="endpoint-card">
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <div>
+          <span class="http-method method-get">GET</span>
+          <span style="font-family: monospace; font-size: 15px; font-weight: 600; color: #f1f5f9;">/embed/gallery/{event_id}</span>
+        </div>
+        <span style="font-size: 12px; color: #a855f7; background: rgba(168,85,247,0.1); padding: 4px 8px; border-radius: 4px;">T4 Embeddable Widget</span>
+      </div>
+      <p style="color: #94a3b8; font-size: 13px; margin: 10px 0 0;">
+        Ready-to-use responsive widget. Embed this in any external landing page, portfolio, or sponsor site:
+      </p>
+      <div class="code-block">
+        <button class="copy-btn" onclick="copySnippet(this)">Copy HTML</button>
+        &lt;iframe src="{{ base_url }}/embed/gallery/{{ event.id }}?theme=dark" width="100%" height="700" frameborder="0" style="border-radius: 12px; border: 1px solid #334155;"&gt;&lt;/iframe&gt;
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let currentLang = 'curl';
+
+  function switchTab(role) {
+    const tabs = ['organizer', 'judge', 'participant', 'webhooks', 'public'];
+    tabs.forEach(t => {
+      const el = document.getElementById('tab-' + t);
+      if (el) el.style.display = (t === role) ? 'block' : 'none';
+    });
+
+    const btns = document.querySelectorAll('.docs-tab-btn');
+    btns.forEach(b => {
+      if (b.getAttribute('onclick').includes(role)) {
+        b.classList.add('active');
+      } else {
+        b.classList.remove('active');
+      }
+    });
+
+    const url = new URL(window.location);
+    url.searchParams.set('role', role);
+    window.history.replaceState({}, '', url);
+  }
+
+  function switchGlobalLang(lang) {
+    currentLang = lang;
+    document.querySelectorAll('#globalLangSelector .lang-tab').forEach(b => {
+      b.classList.toggle('active', b.dataset.lang === lang);
+    });
+
+    document.querySelectorAll('.lang-snippet-container').forEach(c => {
+      c.querySelectorAll('.lang-tab').forEach(tb => {
+        tb.classList.toggle('active', tb.dataset.lang === lang);
+      });
+      c.querySelectorAll('.code-block').forEach(cb => {
+        cb.style.display = cb.classList.contains('snippet-' + lang) ? 'block' : 'none';
+      });
+    });
+  }
+
+  function switchSnippetLang(btn, lang) {
+    const container = btn.closest('.lang-snippet-container');
+    if (!container) return;
+    container.querySelectorAll('.lang-tab').forEach(b => b.classList.toggle('active', b.dataset.lang === lang));
+    container.querySelectorAll('.code-block').forEach(cb => {
+      cb.style.display = cb.classList.contains('snippet-' + lang) ? 'block' : 'none';
+    });
+  }
+
+  function copySnippet(btn) {
+    const block = btn.parentElement;
+    const clone = block.cloneNode(true);
+    const b = clone.querySelector('.copy-btn');
+    if (b) b.remove();
+    const text = clone.innerText.trim();
+    navigator.clipboard.writeText(text);
+    btn.textContent = 'Copied!';
+    setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+  }
+</script>
+{% endblock %}

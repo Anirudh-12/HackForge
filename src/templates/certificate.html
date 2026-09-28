@@ -1,0 +1,171 @@
+{% extends "base_app.html" if user else "base_public.html" %}
+
+{% block title %}Certificate of {{ 'Judging' if recipient_type == 'judge' else 'Participation' }} — HackForge{% endblock %}
+
+{% block content %}
+<style>
+  .cert-wrapper {
+    max-width: 900px;
+    margin: 40px auto;
+    padding: 0 20px;
+  }
+  .cert-paper {
+    background: #0f172a;
+    border: 3px solid #fbbf24;
+    border-radius: 16px;
+    padding: 60px 48px;
+    text-align: center;
+    position: relative;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    color: #f8fafc;
+  }
+  .cert-inner-border {
+    border: 1px dashed rgba(251, 191, 36, 0.4);
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    right: 14px;
+    bottom: 14px;
+    border-radius: 10px;
+    pointer-events: none;
+  }
+  .cert-brand {
+    font-size: 26px;
+    font-weight: 900;
+    letter-spacing: 4px;
+    color: #fbbf24;
+    margin-bottom: 4px;
+  }
+  .cert-subbrand {
+    font-size: 12px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #94a3b8;
+    margin-bottom: 32px;
+  }
+  .cert-title {
+    font-family: Georgia, serif;
+    font-size: 36px;
+    font-weight: bold;
+    color: #ffffff;
+    margin-bottom: 12px;
+  }
+  .cert-recipient {
+    font-size: 40px;
+    font-weight: 800;
+    color: #fbbf24;
+    margin: 24px 0;
+    border-bottom: 2px solid rgba(251, 191, 36, 0.3);
+    display: inline-block;
+    padding: 0 40px 10px;
+  }
+  .cert-body {
+    font-size: 16px;
+    color: #cbd5e1;
+    line-height: 1.6;
+    max-width: 640px;
+    margin: 0 auto 36px;
+  }
+  .cert-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-top: 48px;
+    padding-top: 24px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  .seal-badge {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    border: 2px solid #fbbf24;
+    background: rgba(251, 191, 36, 0.08);
+    color: #fbbf24;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  @media print {
+    body { background: white !important; color: black !important; }
+    .topnav, .sidebar, .cert-actions { display: none !important; }
+    .cert-paper { border: 2px solid black !important; background: white !important; color: black !important; box-shadow: none !important; }
+    .cert-recipient { color: black !important; border-color: black !important; }
+    .cert-title { color: black !important; }
+  }
+</style>
+
+<div class="cert-wrapper">
+  <!-- Action Buttons -->
+  <div class="cert-actions" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+    <a href="javascript:history.back()" class="btn btn-ghost" style="text-decoration: none;">&larr; Back</a>
+    <div style="display: flex; gap: 12px;">
+      {% if certificate %}
+        <a href="/api/certificates/{{ certificate.id }}/download" class="btn btn-ghost" style="text-decoration: none; border: 1px solid var(--border);">
+          Download Vector SVG
+        </a>
+      {% endif %}
+      <button class="btn btn-primary" onclick="window.print()">
+        Print Certificate
+      </button>
+    </div>
+  </div>
+
+  {% if certificate %}
+    <div class="cert-paper">
+      <div class="cert-inner-border"></div>
+      
+      <div class="cert-brand">◈ HACKFORGE</div>
+      <div class="cert-subbrand">Official Hackathon Record of Achievement</div>
+
+      <div class="cert-title">{{ certificate.title }}</div>
+      <div style="font-size: 15px; color: #94a3b8;">This official credential is awarded to</div>
+
+      <div class="cert-recipient">{{ certificate.recipient_name }}</div>
+
+      <div class="cert-body">
+        For outstanding contributions and verified participation in <strong style="color: #38bdf8;">{{ certificate.event.name }}</strong>.
+        {% if certificate.track_name %}
+          <br>Specialization Track: <strong>{{ certificate.track_name }}</strong>
+        {% endif %}
+        {% if certificate.placement %}
+          &middot; Distinction: <strong>{{ certificate.placement }}</strong>
+        {% endif %}
+      </div>
+
+      <div class="cert-footer">
+        <div style="text-align: left;">
+          <div class="seal-badge">
+            <span>OFFICIAL</span>
+            <span>VERIFIED</span>
+          </div>
+        </div>
+
+        <div style="text-align: center;">
+          <div style="font-size: 13px; font-family: monospace; color: #94a3b8;">
+            Verification ID: <span style="color: #fbbf24;">{{ certificate.verification_code }}</span>
+          </div>
+          <div style="font-size: 11px; color: #64748b; margin-top: 4px;">
+            Issued on {{ certificate.issued_at.strftime('%B %d, %Y') }} &middot; Tamper-Proof Cryptographic Hash
+          </div>
+        </div>
+
+        <div style="text-align: right;">
+          <div style="font-family: Georgia, cursive; font-size: 20px; color: #38bdf8; margin-bottom: 4px;">HackForge Council</div>
+          <div style="font-size: 12px; color: #94a3b8; border-top: 1px solid #475569; padding-top: 4px;">Organizing Committee</div>
+        </div>
+      </div>
+    </div>
+  {% else %}
+    <div style="text-align: center; padding: 60px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px;">
+      <h2 style="font-size: 22px; color: #fff; margin-bottom: 8px;">No Certificate Issued Yet</h2>
+      <p style="color: #94a3b8; max-width: 500px; margin: 0 auto 24px;">
+        Certificates for this hackathon have not been generated yet by the event organizer. Once generated, your official verified credential will appear here.
+      </p>
+      <a href="/projects" class="btn btn-primary" style="text-decoration: none;">Browse Projects</a>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

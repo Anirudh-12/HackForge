@@ -38,15 +38,60 @@
 
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
   <h1 style="margin: 0;">Results</h1>
-  <div style="display: flex; gap: 16px; align-items: center;">
+  <div style="display: flex; gap: 12px; align-items: center;">
     <div class="toggle-container" id="scoreToggle">
       <button class="toggle-btn" data-mode="raw">Raw Scores</button>
       <button class="toggle-btn active" data-mode="norm">Normalized Scores</button>
       <button class="toggle-btn" data-mode="elo">Pairwise ELO</button>
     </div>
     <a href="/api/export.csv" class="btn btn-secondary">Download CSV</a>
+    {% if not event.results_published %}
+      {% if judging_complete %}
+        <form method="post" action="/organizer/{{ event.id }}/results/publish" style="margin: 0;" onsubmit="return confirm('Are you sure you want to publish official results? This will make rankings public, unseal community votes, and close voting.');">
+          <button type="submit" class="btn btn-primary" style="background: #10b981; border-color: #10b981; font-weight: 600;">
+            🚀 Publish Results
+          </button>
+        </form>
+      {% else %}
+        <button class="btn btn-secondary" disabled style="opacity: 0.6; cursor: not-allowed;" title="All judges must complete assigned reviews before publishing. ({{ reviews_awaiting }} reviews remaining)">
+          🔒 Publish Results (Judging Incomplete)
+        </button>
+      {% endif %}
+    {% else %}
+      <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); padding: 8px 14px; font-weight: 600;">
+        ✓ Results Published
+      </span>
+    {% endif %}
   </div>
 </div>
+
+{% if not event.results_published and not judging_complete %}
+<div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px; padding: 14px 18px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+  <div style="display: flex; align-items: center; gap: 10px;">
+    <span style="font-size: 20px;">⏳</span>
+    <div>
+      <div style="font-weight: 600; color: #f59e0b;">Judging is in progress ({{ total_completed }} / {{ total_assigned }} reviews completed)</div>
+      <div style="font-size: 13px; color: var(--text-muted); margin-top: 2px;">{{ reviews_awaiting }} reviews remain pending. Official results cannot be published until all assigned reviews are finished.</div>
+    </div>
+  </div>
+  <a href="/organizer/{{ event.id }}/dashboard" class="btn btn-secondary" style="font-size: 12px; padding: 6px 12px;">View Review Bottlenecks &rarr;</a>
+</div>
+{% elif not event.results_published and judging_complete %}
+<div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; padding: 14px 18px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+  <div style="display: flex; align-items: center; gap: 10px;">
+    <span style="font-size: 20px;">🎉</span>
+    <div>
+      <div style="font-weight: 600; color: #10b981;">All judge evaluations are complete (100%)</div>
+      <div style="font-size: 13px; color: var(--text-muted); margin-top: 2px;">You can now review the final normalized rankings and publish official results to participants and the public gallery.</div>
+    </div>
+  </div>
+  <form method="post" action="/organizer/{{ event.id }}/results/publish" style="margin: 0;" onsubmit="return confirm('Publish official results now?');">
+    <button type="submit" class="btn btn-primary" style="background: #10b981; border-color: #10b981; font-weight: 600; font-size: 13px;">
+      Publish Official Results &rarr;
+    </button>
+  </form>
+</div>
+{% endif %}
 
 <div style="background: rgba(var(--primary-rgb), 0.05); border: 1px solid rgba(var(--primary-rgb), 0.2); padding: 16px; border-radius: 8px; margin-bottom: 24px;">
   <strong><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px; margin-right:4px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg> How this works:</strong>

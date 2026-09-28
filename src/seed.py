@@ -808,11 +808,10 @@ def seed(db: Session) -> None:
 
     first_participant_id = None
     for team in data.get("teams") or []:
-        db.add(
-            Team(
-                id=team["id"], event_id=evt_01.id, name=team["name"], invite_token=None
-            )
+        team_obj = Team(
+            id=team["id"], event_id=evt_01.id, name=team["name"], invite_token=None
         )
+        db.add(team_obj)
         db.flush()
         # Enforce team members from 1-3
         team_members_list = (team.get("members") or [])[:3]
@@ -826,6 +825,8 @@ def seed(db: Session) -> None:
             user = _user(db, user_id, email, local)
             _member(db, evt_01.id, user.id, "participant")
             db.add(TeamMember(team_id=team["id"], user_id=user.id))
+            if index == 0:
+                team_obj.leader_id = user.id
 
     for project in data.get("projects") or []:
         prj_id = project["id"]
@@ -1070,6 +1071,8 @@ def seed(db: Session) -> None:
 
                 _member(db, eid, u.id, "participant")
                 db.add(TeamMember(team_id=team.id, user_id=u.id))
+                if m_idx == 1:
+                    team.leader_id = u.id
 
             # Associate with a Track
             assigned_track = track_objs[(p_idx - 1) % len(track_objs)]
@@ -1171,7 +1174,7 @@ def _write_toml(db: Session) -> None:
 base_url = "http://localhost:8080"
 
 [tiers]
-claimed = ["T1", "T2"]
+claimed = ["T1", "T2", "T3", "T4"]
 pitch = "Run your hackathon without the spreadsheet chaos."
 
 [auth]

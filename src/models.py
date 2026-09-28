@@ -24,6 +24,7 @@ class User(Base):
 
     memberships: Mapped[list[EventMember]] = relationship(back_populates="user")
     team_memberships: Mapped[list[TeamMember]] = relationship(back_populates="user")
+    join_requests: Mapped[list[TeamJoinRequest]] = relationship(back_populates="user", cascade="all, delete-orphan")
 
 
 class Event(Base):
@@ -43,6 +44,10 @@ class Event(Base):
     results_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     results_published: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     community_voting_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    community_voting_mode: Mapped[str] = mapped_column(String, default="none", nullable=False)
+
+    min_team_size: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    max_team_size: Mapped[int] = mapped_column(Integer, default=4, nullable=False)
 
     banner_image_path: Mapped[str | None] = mapped_column(String, nullable=True)
     description_markdown: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -200,10 +205,23 @@ class Team(Base):
     event_id: Mapped[str] = mapped_column(ForeignKey("events.id"), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String, nullable=False)
     invite_token: Mapped[str | None] = mapped_column(String, unique=True, nullable=True)
+    leader_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True)
 
     event: Mapped[Event] = relationship(back_populates="teams")
-    members: Mapped[list[TeamMember]] = relationship(back_populates="team")
+    members: Mapped[list[TeamMember]] = relationship(back_populates="team", cascade="all, delete-orphan")
     project: Mapped[Project | None] = relationship(back_populates="team", uselist=False)
+    leader: Mapped[User | None] = relationship(foreign_keys=[leader_id])
+    join_requests: Mapped[list[TeamJoinRequest]] = relationship(back_populates="team", cascade="all, delete-orphan")
+
+    def get_leader(self, db) -> User | None:
+        if self.leader_id:
+            u = db.get(User, self.leader_id)
+            if u:
+                return u
+        first_member = db.query(TeamMember).filter_by(team_id=self.id).order_by(TeamMember.id.asc()).first()
+        if first_member:
+            return db.get(User, first_member.user_id)
+        return None
 
 
 class TeamMember(Base):
@@ -216,6 +234,23 @@ class TeamMember(Base):
 
     team: Mapped[Team] = relationship(back_populates="members")
     user: Mapped[User] = relationship(back_populates="team_memberships")
+
+
+class TeamJoinRequest(Base):
+    __tablename__ = "team_join_requests"
+    __table_args__ = (UniqueConstraint("team_id", "user_id", name="uq_team_join_request"),)
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    team_id: Mapped[str] = mapped_column(ForeignKey("teams.id"), nullable=False, index=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    event_id: Mapped[str] = mapped_column(ForeignKey("events.id"), nullable=False, index=True)
+    status: Mapped[str] = mapped_column(String, default="pending", nullable=False)  # pending, accepted, declined, cancelled
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=func.now(), nullable=False)
+
+    team: Mapped[Team] = relationship(back_populates="join_requests")
+    user: Mapped[User] = relationship(back_populates="join_requests")
+    event: Mapped[Event] = relationship()
+
 
 
 class Project(Base):
@@ -349,4 +384,68 @@ class Comment(Base):
 
     user: Mapped[User] = relationship()
     project: Mapped[Project] = relationship(back_populates="comments")
+    event: Mapped[Event] = relationship()
+
+
+class WebhookSubscription(Base):
+    __tablename__ = "webhook_subscriptions"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    event_id: Mapped[str] = mapped_column(ForeignKey("events.id"), nullable=False, index=True)
+    target_url: Mapped[str] = mapped_column(String, nullable=False)
+    secret: Mapped[str] = mapped_column(String, nullable=False)
+    events: Mapped[str] = mapped_column(String, default="*", nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=func.now(), nullable=False)
+
+    event: Mapped[Event] = relationship()
+
+
+class WebhookDelivery(Base):
+    __tablename__ = "webhook_deliveries"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    subscription_id: Mapped[str] = mapped_column(ForeignKey("webhook_subscriptions.id"), nullable=False, index=True)
+    event_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    event_name: Mapped[str] = mapped_column(String, nullable=False)
+    payload_json: Mapped[str] = mapped_column(Text, nullable=False)
+    response_status: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    response_body: Mapped[str | None] = mapped_column(Text, nullable=True)
+    delivered_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=func.now(), nullable=False)
+    success: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+
+class Certificate(Base):
+    __tablename__ = "certificates"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    event_id: Mapped[str] = mapped_column(ForeignKey("events.id"), nullable=False, index=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    recipient_name: Mapped[str] = mapped_column(String, nullable=False)
+    recipient_type: Mapped[str] = mapped_column(String, nullable=False)  # "participant" or "judge"
+    title: Mapped[str] = mapped_column(String, nullable=False)
+    track_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    placement: Mapped[str | None] = mapped_column(String, nullable=True)
+    verification_code: Mapped[str] = mapped_column(String, unique=True, nullable=False, index=True)
+    issued_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=func.now(), nullable=False)
+    metadata_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    user: Mapped[User] = relationship()
+    event: Mapped[Event] = relationship()
+
+
+class JudgeRecord(Base):
+    __tablename__ = "judge_records"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    event_id: Mapped[str] = mapped_column(ForeignKey("events.id"), nullable=False, index=True)
+    judge_id: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    judge_name: Mapped[str] = mapped_column(String, nullable=False)
+    event_name: Mapped[str] = mapped_column(String, nullable=False)
+    scores_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    tracks_judged: Mapped[str] = mapped_column(String, default="", nullable=False)
+    issued_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=func.now(), nullable=False)
+    signature: Mapped[str] = mapped_column(String, nullable=False)
+
+    user: Mapped[User] = relationship()
     event: Mapped[Event] = relationship()

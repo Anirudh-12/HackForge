@@ -1,0 +1,70 @@
+{% extends "base_public.html" %}
+
+{% block title %}Verify Certificate — HackForge{% endblock %}
+
+{% block content %}
+<div style="max-width: 680px; margin: 48px auto; padding: 0 20px;">
+  <div style="background: var(--surface, #1e293b); border: 1px solid var(--border, #334155); border-radius: 16px; padding: 40px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);">
+    
+    {% if certificate and is_valid %}
+      <div style="text-align: center; margin-bottom: 28px;">
+        <div style="display: inline-flex; align-items: center; justify-content: center; width: 64px; height: 64px; border-radius: 50%; background: rgba(34, 197, 94, 0.15); color: #4ade80; margin-bottom: 16px; border: 2px solid rgba(34, 197, 94, 0.4);">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        </div>
+        <h1 style="font-size: 24px; font-weight: 800; color: #ffffff; margin-bottom: 6px;">Verified Certificate</h1>
+        <p style="color: #94a3b8; font-size: 14px;">This credential is confirmed authentic by the HackForge verification engine.</p>
+      </div>
+
+      <div style="background: #090d16; border: 1px solid #1e293b; border-radius: 10px; padding: 20px; margin-bottom: 24px;">
+        <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 14px;">
+          <span style="color: #94a3b8;">Recipient</span>
+          <span style="font-weight: 600; color: #fbbf24; font-size: 16px;">{{ certificate.recipient_name }}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 14px;">
+          <span style="color: #94a3b8;">Award Title</span>
+          <span style="font-weight: 600; color: #f8fafc;">{{ certificate.title }}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 14px;">
+          <span style="color: #94a3b8;">Event</span>
+          <span style="font-weight: 600; color: #38bdf8;">{{ certificate.event.name }}</span>
+        </div>
+        {% if certificate.track_name %}
+        <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 14px;">
+          <span style="color: #94a3b8;">Track</span>
+          <span style="color: #cbd5e1;">{{ certificate.track_name }}</span>
+        </div>
+        {% endif %}
+        <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px;">
+          <span style="color: #94a3b8;">Issue Date</span>
+          <span style="color: #cbd5e1;">{{ certificate.issued_at.strftime('%B %d, %Y') }}</span>
+        </div>
+      </div>
+
+      <div style="text-align: center; margin-bottom: 24px;">
+        <span style="font-size: 12px; font-family: monospace; color: #94a3b8;">
+          Verification Code: <strong style="color: #fbbf24;">{{ certificate.verification_code }}</strong>
+        </span>
+      </div>
+
+      <div style="display: flex; justify-content: center; gap: 12px;">
+        <a href="/api/certificates/{{ certificate.id }}/download" class="btn btn-primary" style="text-decoration: none;">
+          Download SVG
+        </a>
+      </div>
+
+    {% else %}
+      <div style="text-align: center; padding: 20px 0;">
+        <div style="display: inline-flex; align-items: center; justify-content: center; width: 64px; height: 64px; border-radius: 50%; background: rgba(239, 68, 68, 0.15); color: #f87171; margin-bottom: 16px; border: 2px solid rgba(239, 68, 68, 0.4);">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </div>
+        <h1 style="font-size: 24px; font-weight: 800; color: #ffffff; margin-bottom: 6px;">Certificate Not Found</h1>
+        <p style="color: #f87171; font-size: 14px;">The specified certificate verification code does not match any valid record.</p>
+      </div>
+    {% endif %}
+
+    <div style="text-align: center; margin-top: 24px;">
+      <a href="/projects" class="btn btn-ghost" style="text-decoration: none;">&larr; Back to HackForge</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

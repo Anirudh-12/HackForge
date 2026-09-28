@@ -24,11 +24,29 @@ router = APIRouter()
 
 
 @router.get("/login")
-def login_form(request: Request, next: str = "/", user: User | None = Depends(get_current_user), db: Session = Depends(get_db)):
+def login_form(
+    request: Request,
+    next: str = "/",
+    warning: str = "",
+    notice: str = "",
+    user: User | None = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     if user:
         return RedirectResponse(home_for(db, user), status_code=303)
-    return templates.TemplateResponse(request=request, name="login.html", context=
-        base_context(request=request, event=default_event(db), user=None, role="visitor", next=next, error=None),
+    return templates.TemplateResponse(
+        request=request,
+        name="login.html",
+        context=base_context(
+            request=request,
+            event=default_event(db),
+            user=None,
+            role="visitor",
+            next=next,
+            error=None,
+            warning=warning,
+            notice=notice,
+        ),
     )
 
 
@@ -196,8 +214,14 @@ def update_profile(
 
     return RedirectResponse("/profile#settings", status_code=303)
 
+@router.get("/logout")
 @router.post("/logout")
-def logout():
-    response = RedirectResponse("/", status_code=303)
+def logout(user: User | None = Depends(get_current_user)):
+    if not user:
+        return RedirectResponse(
+            "/login?warning=You are already logged out. Please sign in if you want to access your workspace.",
+            status_code=303,
+        )
+    response = RedirectResponse("/login?notice=You have been successfully logged out.", status_code=303)
     response.delete_cookie("session", path="/")
     return response

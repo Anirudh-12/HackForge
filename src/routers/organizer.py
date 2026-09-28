@@ -67,6 +67,10 @@ def create_event(
     judging_open: str = Form(""),
     judging_close: str = Form(""),
     results_date: str = Form(""),
+    min_team_size: int = Form(1),
+    max_team_size: int = Form(4),
+    community_voting_mode: str = Form("none"),
+    community_voting_prize: str = Form(""),
     tracks_json: str = Form(""),
     prizes_json: str = Form(""),
     side_quests_json: str = Form(""),
@@ -76,21 +80,50 @@ def create_event(
 ):
     desc = description.strip()
 
+    dt_event_starts = _dt(event_starts)
+    dt_event_ends = _dt(event_ends)
+    dt_reg_open = _dt(registrations_open)
+    dt_reg_close = _dt(registrations_close)
+    dt_sub_open = _dt(submissions_open)
+    dt_sub_close = _dt(submissions_close)
+    dt_judge_open = _dt(judging_open)
+    dt_judge_close = _dt(judging_close)
+    dt_results = _dt(results_date)
+
+    if dt_event_starts and dt_event_ends and dt_event_starts > dt_event_ends:
+        raise HTTPException(status_code=400, detail="Event start date cannot be after event end date.")
+    if dt_reg_open and dt_reg_close and dt_reg_open > dt_reg_close:
+        raise HTTPException(status_code=400, detail="Registration opening date cannot be after registration closing date.")
+    if dt_sub_open and dt_sub_close and dt_sub_open > dt_sub_close:
+        raise HTTPException(status_code=400, detail="Submission opening date cannot be after submission closing date.")
+    if dt_judge_open and dt_judge_close and dt_judge_open > dt_judge_close:
+        raise HTTPException(status_code=400, detail="Judging opening date cannot be after judging closing date.")
+
+    min_size = max(1, min_team_size)
+    max_size = max(min_size, max_team_size)
+    voting_enabled = community_voting_mode in ("separate_prize", "tie_breaker")
+    voting_prize_json = json.dumps({"prize": community_voting_prize.strip()}) if community_voting_prize.strip() else None
+
     event = Event(
         id=new_id("evt"),
         name=name.strip(),
         tagline=tagline.strip() or None,
         description_markdown=desc or None,
-        event_starts=_dt(event_starts),
-        event_ends=_dt(event_ends),
-        registrations_open=_dt(registrations_open),
-        registrations_close=_dt(registrations_close),
-        submissions_open=_dt(submissions_open),
-        submissions_close=_dt(submissions_close),
-        judging_open=_dt(judging_open),
-        judging_close=_dt(judging_close),
-        results_date=_dt(results_date),
+        event_starts=dt_event_starts,
+        event_ends=dt_event_ends,
+        registrations_open=dt_reg_open,
+        registrations_close=dt_reg_close,
+        submissions_open=dt_sub_open,
+        submissions_close=dt_sub_close,
+        judging_open=dt_judge_open,
+        judging_close=dt_judge_close,
+        results_date=dt_results,
         results_published=False,
+        min_team_size=min_size,
+        max_team_size=max_size,
+        community_voting_enabled=voting_enabled,
+        community_voting_mode=community_voting_mode,
+        community_voting_prize_json=voting_prize_json,
         prizes_json=prizes_json.strip() or None,
         side_quests_json=side_quests_json.strip() or None,
     )
@@ -535,6 +568,25 @@ def results_page(
 
     results = compute_results(db, event.id)
 
+    # Check reviews completion metrics
+    projects = db.query(Project).filter(Project.event_id == event_id, Project.is_draft == False, Project.is_disqualified == False).all()
+    judge_tracks = db.query(JudgeTrack).filter_by(event_id=event_id).all()
+    track_judges = {}
+    for jt in judge_tracks:
+        track_judges.setdefault(jt.track_id, []).append(jt.judge_id)
+    scores = db.query(Score).filter_by(event_id=event_id).all()
+    scored_pairs = set((s.project_id, s.judge_id) for s in scores)
+
+    total_assigned = 0
+    total_completed = 0
+    for p in projects:
+        p_judges = track_judges.get(p.track_id, [])
+        total_assigned += len(p_judges)
+        total_completed += sum(1 for j in p_judges if (p.id, j) in scored_pairs)
+
+    judging_complete = (total_assigned == 0) or (total_completed >= total_assigned)
+    reviews_awaiting = max(0, total_assigned - total_completed)
+
     return templates.TemplateResponse(
         request=request,
         name="organizer/results.html",
@@ -545,8 +597,75 @@ def results_page(
             user=user,
             role="organizer",
             results=results,
+            judging_complete=judging_complete,
+            total_assigned=total_assigned,
+            total_completed=total_completed,
+            reviews_awaiting=reviews_awaiting,
         ),
     )
+
+
+@router.post("/organizer/{event_id}/results/publish")
+def publish_results_endpoint(
+    event_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_role("organizer", "admin")),
+):
+    event = db.get(Event, event_id)
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    # Enforce rule: Organizers cannot publish results before all reviews/judges complete!
+    projects = db.query(Project).filter(Project.event_id == event_id, Project.is_draft == False, Project.is_disqualified == False).all()
+    judge_tracks = db.query(JudgeTrack).filter_by(event_id=event_id).all()
+    track_judges = {}
+    for jt in judge_tracks:
+        track_judges.setdefault(jt.track_id, []).append(jt.judge_id)
+    scores = db.query(Score).filter_by(event_id=event_id).all()
+    scored_pairs = set((s.project_id, s.judge_id) for s in scores)
+
+    total_assigned = 0
+    total_completed = 0
+    for p in projects:
+        p_judges = track_judges.get(p.track_id, [])
+        total_assigned += len(p_judges)
+        total_completed += sum(1 for j in p_judges if (p.id, j) in scored_pairs)
+
+    if total_assigned > 0 and total_completed < total_assigned:
+        remaining = total_assigned - total_completed
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot publish results: Judging is still in progress ({remaining} of {total_assigned} reviews remaining). All judges must complete their evaluations before official results can be published.",
+        )
+
+    event.results_published = True
+    db.add(
+        AuditLog(
+            event_id=event.id,
+            actor_id=user.id,
+            message=f"{user.name} published official judging results",
+            created_at=utcnow(),
+        )
+    )
+    db.commit()
+
+    try:
+        from src.webhooks import dispatch_webhook
+
+        dispatch_webhook(
+            event.id,
+            "results.published",
+            {
+                "event_id": event.id,
+                "event_name": event.name,
+                "published_by": user.name,
+                "published_at": utcnow().isoformat(),
+            },
+        )
+    except Exception:
+        pass
+
+    return RedirectResponse(f"/organizer/{event.id}/results", status_code=303)
 
 
 @router.get("/api/export.csv")
