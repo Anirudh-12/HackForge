@@ -35,27 +35,34 @@ def init_db() -> None:
 
     from sqlalchemy import text
     with engine.connect() as conn:
-        try:
-            res = conn.execute(text("PRAGMA table_info(events)")).fetchall()
-            existing_cols = {row[1] for row in res}
-            new_cols = [
-                ("tagline", "TEXT"),
-                ("event_starts", "DATETIME"),
-                ("event_ends", "DATETIME"),
-                ("registrations_open", "DATETIME"),
-                ("registrations_close", "DATETIME"),
-                ("results_date", "DATETIME"),
-                ("prizes_json", "TEXT"),
-                ("side_quests_json", "TEXT"),
-                ("location", "TEXT"),
-                ("format", "TEXT"),
-            ]
-            for col_name, col_type in new_cols:
-                if col_name not in existing_cols:
-                    conn.execute(text(f"ALTER TABLE events ADD COLUMN {col_name} {col_type}"))
-            conn.commit()
-        except Exception:
-            pass
+        for table_name, table in Base.metadata.tables.items():
+            try:
+                res = conn.execute(text(f"PRAGMA table_info('{table_name}')")).fetchall()
+                if not res:
+                    continue
+                existing_cols = {row[1] for row in res}
+                for col in table.columns:
+                    if col.name not in existing_cols:
+                        col_type = col.type.compile(engine.dialect)
+                        default_clause = ""
+                        if col.default is not None and hasattr(col.default, "arg"):
+                            arg = col.default.arg
+                            if isinstance(arg, bool):
+                                default_clause = f" DEFAULT {1 if arg else 0}"
+                            elif isinstance(arg, (int, float)):
+                                default_clause = f" DEFAULT {arg}"
+                            elif isinstance(arg, str):
+                                escaped = arg.replace("'", "''")
+                                default_clause = f" DEFAULT '{escaped}'"
+                        elif "BOOLEAN" in str(col_type).upper():
+                            default_clause = " DEFAULT 0"
+                        
+                        conn.execute(
+                            text(f'ALTER TABLE "{table_name}" ADD COLUMN "{col.name}" {col_type}{default_clause}')
+                        )
+                conn.commit()
+            except Exception:
+                pass
 
         try:
             res = conn.execute(text("PRAGMA table_info(teams)")).fetchall()

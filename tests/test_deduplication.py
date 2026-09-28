@@ -1,7 +1,7 @@
 import pytest
 from src.auth import make_session_token
 from src.db import SessionLocal
-from src.models import Event, Track, RubricCriteria, Team, Project, PairwiseComparison
+from src.models import Event, Track, RubricCriteria, Team, Project, PairwiseComparison, User, EventMember
 
 def test_prevent_duplicate_event_creation(client, auth_cookies):
     # Try creating an event with a name that already exists (evt_01 name: "Sample Hack 2026")
@@ -24,22 +24,36 @@ def test_prevent_duplicate_track_creation(client, auth_cookies):
     assert "already exists" in resp.text.lower()
 
 def test_prevent_duplicate_rubric_creation(client, auth_cookies):
-    # evt_06 is upcoming so rubric editing is unlocked
+    # evt_06 is upcoming so rubric editing is unlocked. "Scalability" is an existing rubric name.
     resp = client.post(
         "/organizer/evt_06/rubric",
-        data={"name": "Architecture & Scalability", "weight": "10"},
+        data={"name": "Scalability", "weight": "10"},
         cookies=auth_cookies["organizer"],
     )
     assert resp.status_code == 400
     assert "already exists" in resp.text.lower()
 
 def test_prevent_duplicate_team_name_in_event(client):
-    # Create valid session cookie for usr_bob who doesn't lead a team in evt_01
-    bob_cookie = {"session": make_session_token("usr_bob")}
+    db = SessionLocal()
+    u = db.get(User, "usr_test_dedup")
+    if not u:
+        u = User(id="usr_test_dedup", name="Test Dedup", email="test_dedup@hackforge.dev")
+        db.add(u)
+    m = db.query(EventMember).filter_by(event_id="evt_08", user_id="usr_test_dedup").first()
+    if not m:
+        db.add(EventMember(event_id="evt_08", user_id="usr_test_dedup", role="participant"))
+    db.commit()
+    # Get an existing team name in evt_08
+    existing_team = db.query(Team).filter_by(event_id="evt_08").first()
+    assert existing_team is not None
+    team_name = existing_team.name
+    db.close()
+
+    cookie = {"session": make_session_token("usr_test_dedup")}
     resp = client.post(
-        "/participant/evt_01/team",
-        data={"action": "create", "name": "AmberSwitch"},
-        cookies=bob_cookie,
+        "/participant/evt_08/team",
+        data={"action": "create", "name": team_name},
+        cookies=cookie,
     )
     assert resp.status_code == 400
     assert "already exists in this hackathon" in resp.text

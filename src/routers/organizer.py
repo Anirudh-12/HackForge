@@ -1112,6 +1112,11 @@ def add_rubric_criteria(
             status_code=400, detail="Criterion weight must be at least 1%"
         )
 
+    rname = name.strip()
+    existing_rub = db.query(RubricCriteria).filter(RubricCriteria.event_id == event_id, func.lower(RubricCriteria.name) == rname.lower()).first()
+    if existing_rub:
+        raise HTTPException(status_code=400, detail=f"Rubric criteria '{rname}' already exists in this event.")
+
     current_criteria = db.query(RubricCriteria).filter_by(event_id=event_id).all()
     current_total = sum(c.weight for c in current_criteria)
     if current_total + weight > 100:
@@ -1120,11 +1125,6 @@ def add_rubric_criteria(
             status_code=400,
             detail=f"Total rubric weight cannot exceed 100%. Current total is {current_total}%, so remaining available weight is {remaining}%.",
         )
-
-    rname = name.strip()
-    existing_rub = db.query(RubricCriteria).filter(RubricCriteria.event_id == event_id, func.lower(RubricCriteria.name) == rname.lower()).first()
-    if existing_rub:
-        raise HTTPException(status_code=400, detail=f"Rubric criteria '{rname}' already exists in this event.")
 
     db.add(
         RubricCriteria(

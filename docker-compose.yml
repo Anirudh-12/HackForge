@@ -5,6 +5,7 @@ services:
       - "8080:8080"
     environment:
       SESSION_SECRET: hackforge-dev-secret
+      DATA_DIR: /app/data
       DATABASE_URL: sqlite:////app/data/hackforge.db
     volumes:
       - ./fixtures.json:/app/fixtures.json:ro
