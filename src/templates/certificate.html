@@ -1,6 +1,6 @@
 {% extends "base_app.html" if user else "base_public.html" %}
 
-{% block title %}Certificate of {{ 'Judging' if recipient_type == 'judge' else 'Participation' }} — HackForge{% endblock %}
+{% block title %}{% if certificate %}Certificate of {{ 'Judging' if recipient_type == 'judge' else 'Participation' }}{% else %}Certificate Status{% endif %} — HackForge{% endblock %}
 
 {% block content %}
 <style>
@@ -159,12 +159,39 @@
       </div>
     </div>
   {% else %}
-    <div style="text-align: center; padding: 60px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px;">
-      <h2 style="font-size: 22px; color: #fff; margin-bottom: 8px;">No Certificate Issued Yet</h2>
-      <p style="color: #94a3b8; max-width: 500px; margin: 0 auto 24px;">
-        Certificates for this hackathon have not been generated yet by the event organizer. Once generated, your official verified credential will appear here.
-      </p>
-      <a href="/projects" class="btn btn-primary" style="text-decoration: none;">Browse Projects</a>
+    <div style="text-align: center; padding: 60px 24px; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; max-width: 600px; margin: 0 auto; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3);">
+      {% if recipient_type == 'participant' and not has_submitted_project %}
+        <div style="width: 64px; height: 64px; border-radius: 50%; background: rgba(245, 158, 11, 0.15); border: 2px solid rgba(245, 158, 11, 0.4); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 20px; font-size: 28px;">
+          📝
+        </div>
+        <h2 style="font-size: 22px; font-weight: 700; color: #ffffff; margin-bottom: 10px;">Project Submission Required</h2>
+        <p style="color: #94a3b8; font-size: 14px; line-height: 1.6; margin-bottom: 24px;">
+          Participation certificates are only issued to participants whose team has successfully submitted a project. Draft projects or unsubmitted entries do not qualify for an official certificate.
+        </p>
+        <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+          <a href="/participant/{{ event.id }}/submit" class="btn btn-primary" style="text-decoration: none; padding: 10px 20px;">
+            Submit Your Project
+          </a>
+          <a href="/participant/{{ event.id }}/team" class="btn btn-ghost" style="text-decoration: none; border: 1px solid var(--border); padding: 10px 20px;">
+            View Team
+          </a>
+        </div>
+      {% else %}
+        <div style="width: 64px; height: 64px; border-radius: 50%; background: rgba(56, 189, 248, 0.15); border: 2px solid rgba(56, 189, 248, 0.4); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 20px; font-size: 28px;">
+          ⏳
+        </div>
+        <h2 style="font-size: 22px; font-weight: 700; color: #ffffff; margin-bottom: 10px;">Certificate Pending Issuance</h2>
+        <p style="color: #94a3b8; font-size: 14px; line-height: 1.6; margin-bottom: 24px;">
+          {% if recipient_type == 'participant' %}
+            Your team's project has been submitted! Official verified participation certificates will be generated and issued by the organizer after event review.
+          {% else %}
+            Certificates for this hackathon have not been generated yet by the event organizer. Once generated, your official verified credential will appear here.
+          {% endif %}
+        </p>
+        <a href="/participant/{{ event.id }}/dashboard" class="btn btn-primary" style="text-decoration: none; padding: 10px 20px;">
+          Return to Dashboard
+        </a>
+      {% endif %}
     </div>
   {% endif %}
 </div>

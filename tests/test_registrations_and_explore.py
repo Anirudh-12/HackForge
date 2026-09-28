@@ -93,3 +93,20 @@ def test_explore_hackathons_dropdowns_and_values(client: TestClient, auth_cookie
     assert 'data-format=' in response.text
     assert 'data-prize=' in response.text
     assert 'data-start=' in response.text
+
+
+def test_registrations_sidebar_collapsible_items_and_placement(client: TestClient, auth_cookies):
+    cookies = auth_cookies["participant"]
+    response = client.get("/participant/registrations", cookies=cookies)
+    assert response.status_code == 200
+
+    # Ensure Current Hackathon sidebar buttons have spans and data-tooltips
+    for label in ["Overview", "Team", "Find a Team", "Submission", "Certificate", "API &amp; Docs"]:
+        assert f"<span>{label}</span>" in response.text
+    for tooltip in ["Overview", "Team", "Find a Team", "Submission", "Certificate", "API &amp; Docs"]:
+        assert f'data-tooltip="{tooltip}"' in response.text
+
+    # Ensure collapse toggle button exists inside sidebar
+    assert 'id="sidebarCollapseBtn"' in response.text
+    assert "toggleSidebar()" in response.text
+

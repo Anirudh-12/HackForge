@@ -272,10 +272,31 @@ def test_webhook(
 # ---------------------------------------------------------------------------
 
 
+def _is_certificate_eligible(db: Session, cert: Certificate) -> bool:
+    """Participation certificates are only valid/issued if the participant's team submitted an eligible project."""
+    if cert.recipient_type == "participant":
+        team = user_team(db, cert.user_id, cert.event_id)
+        if not team:
+            return False
+        proj = (
+            db.query(Project)
+            .filter(
+                Project.team_id == team.id,
+                Project.event_id == cert.event_id,
+                Project.is_draft.is_(False),
+                Project.is_disqualified.is_(False),
+            )
+            .first()
+        )
+        if not proj:
+            return False
+    return True
+
+
 @router.post(
     "/api/events/{event_id}/certificates/generate",
     summary="Generate Event Certificates",
-    description="Bulk generates verifiable participation and judging certificates for all participants and judges in the event.",
+    description="Bulk generates verifiable participation (for participants with submitted projects) and judging certificates for all judges in the event.",
 )
 def generate_event_certificates(
     event_id: str,
@@ -289,7 +310,18 @@ def generate_event_certificates(
 
     created_count = 0
 
-    # 1. Generate for Participants
+    # 1. Purge any obsolete/ineligible participant certificates (where no submitted project exists)
+    existing_participant_certs = (
+        db.query(Certificate)
+        .filter(Certificate.event_id == event_id, Certificate.recipient_type == "participant")
+        .all()
+    )
+    for c in existing_participant_certs:
+        if not _is_certificate_eligible(db, c):
+            db.delete(c)
+    db.flush()
+
+    # 2. Generate for Participants ONLY if their team submitted a project
     participant_members = (
         db.query(EventMember)
         .options(joinedload(EventMember.user))
@@ -298,6 +330,23 @@ def generate_event_certificates(
     )
 
     for pm in participant_members:
+        team = user_team(db, pm.user_id, event_id)
+        if not team:
+            continue
+
+        proj = (
+            db.query(Project)
+            .filter(
+                Project.team_id == team.id,
+                Project.event_id == event_id,
+                Project.is_draft.is_(False),
+                Project.is_disqualified.is_(False),
+            )
+            .first()
+        )
+        if not proj:
+            continue
+
         existing = (
             db.query(Certificate)
             .filter(
@@ -308,12 +357,7 @@ def generate_event_certificates(
             .first()
         )
         if not existing:
-            team = user_team(db, pm.user_id, event_id)
-            track_name = None
-            if team:
-                proj = db.query(Project).filter_by(team_id=team.id).first()
-                if proj and proj.track:
-                    track_name = proj.track.name
+            track_name = proj.track.name if proj.track else None
 
             code = f"CERT-PRT-{uuid.uuid4().hex[:8].upper()}"
             cert = Certificate(
@@ -398,7 +442,7 @@ def get_certificate_data(
     db: Session = Depends(get_db),
 ):
     cert = db.get(Certificate, cert_id)
-    if not cert:
+    if not cert or not _is_certificate_eligible(db, cert):
         raise HTTPException(status_code=404, detail="Certificate not found")
 
     base = str(request.base_url).rstrip("/")
@@ -432,7 +476,7 @@ def download_certificate_svg(
         .filter(Certificate.id == cert_id)
         .first()
     )
-    if not cert:
+    if not cert or not _is_certificate_eligible(db, cert):
         raise HTTPException(status_code=404, detail="Certificate not found")
 
     event_name = cert.event.name if cert.event else "HackForge Hackathon"
@@ -681,6 +725,9 @@ def public_verify_certificate(
         .filter(Certificate.verification_code == code.upper().strip())
         .first()
     )
+
+    if cert and not _is_certificate_eligible(db, cert):
+        cert = None
 
     return templates.TemplateResponse(
         request=request,
@@ -1064,18 +1111,37 @@ def participant_certificate_view(
     db: Session = Depends(get_db),
     user: User = Depends(require_login),
 ):
-    cert = (
-        db.query(Certificate)
-        .options(joinedload(Certificate.event))
-        .filter(
-            Certificate.event_id == event_id,
-            Certificate.user_id == user.id,
-            Certificate.recipient_type == "participant",
-        )
-        .first()
-    )
-
     event = db.get(Event, event_id) or default_event(db)
+
+    # Check if participant belongs to a team with a submitted project
+    team = user_team(db, user.id, event_id)
+    has_submitted_project = False
+    if team:
+        proj = (
+            db.query(Project)
+            .filter(
+                Project.team_id == team.id,
+                Project.event_id == event_id,
+                Project.is_draft.is_(False),
+                Project.is_disqualified.is_(False),
+            )
+            .first()
+        )
+        if proj:
+            has_submitted_project = True
+
+    cert = None
+    if has_submitted_project:
+        cert = (
+            db.query(Certificate)
+            .options(joinedload(Certificate.event))
+            .filter(
+                Certificate.event_id == event_id,
+                Certificate.user_id == user.id,
+                Certificate.recipient_type == "participant",
+            )
+            .first()
+        )
 
     return templates.TemplateResponse(
         request=request,
@@ -1087,6 +1153,7 @@ def participant_certificate_view(
             role="participant",
             certificate=cert,
             recipient_type="participant",
+            has_submitted_project=has_submitted_project,
         ),
     )
 
@@ -1126,5 +1193,6 @@ def judge_certificate_view(
             role="judge",
             certificate=cert,
             recipient_type="judge",
+            has_submitted_project=True,
         ),
     )

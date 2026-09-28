@@ -12,7 +12,7 @@
   .pairwise-card {
     flex: 1;
     background: var(--surface);
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: 24px;
     display: flex;
@@ -26,7 +26,8 @@
   }
   .pairwise-card:hover:not(.animating-out) {
     transform: translateY(-4px);
-    box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    border-color: rgba(var(--accent-rgb), 0.35);
   }
   .project-img {
     width: 100%;
@@ -45,6 +46,7 @@
   .project-title {
     font-size: 1.5rem;
     margin: 0 0 8px 0;
+    color: var(--text-primary);
   }
   .project-desc {
     color: var(--text-muted);
@@ -73,17 +75,18 @@
     font-size: 1rem;
     color: var(--text-muted);
     background: transparent;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border);
     border-radius: 8px;
     cursor: pointer;
     font-weight: 500;
-    transition: background 0.2s;
+    transition: background 0.2s, color 0.2s;
     display: flex;
     align-items: center;
     gap: 8px;
   }
   .skip-btn:hover {
-    background: rgba(0,0,0,0.05);
+    background: var(--surface-2);
+    color: var(--text-primary);
   }
 </style>
 
@@ -123,7 +126,7 @@
         <span style="font-size: 0.8rem; font-weight: 600; padding: 3px 8px; border-radius: 4px; background: rgba(var(--primary-rgb), 0.1); color: var(--primary);">
           Score: {{ p1_stats.score }}/10
         </span>
-        <span style="font-size: 0.8rem; padding: 3px 8px; border-radius: 4px; background: var(--surface-hover, #f8fafc); border: 1px solid var(--border-color); color: var(--text-muted);">
+        <span style="font-size: 0.8rem; padding: 3px 8px; border-radius: 4px; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-muted);">
           ELO {{ p1_stats.elo|round|int }} ({{ p1_stats.wins }}W - {{ p1_stats.losses }}L)
         </span>
       </div>
@@ -158,7 +161,7 @@
         <span style="font-size: 0.8rem; font-weight: 600; padding: 3px 8px; border-radius: 4px; background: rgba(var(--primary-rgb), 0.1); color: var(--primary);">
           Score: {{ p2_stats.score }}/10
         </span>
-        <span style="font-size: 0.8rem; padding: 3px 8px; border-radius: 4px; background: var(--surface-hover, #f8fafc); border: 1px solid var(--border-color); color: var(--text-muted);">
+        <span style="font-size: 0.8rem; padding: 3px 8px; border-radius: 4px; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-muted);">
           ELO {{ p2_stats.elo|round|int }} ({{ p2_stats.wins }}W - {{ p2_stats.losses }}L)
         </span>
       </div>

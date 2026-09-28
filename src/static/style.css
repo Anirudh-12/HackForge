@@ -21,6 +21,10 @@
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   --sidebar: 240px;
   --sidebar-collapsed: 68px;
+  --border-color: var(--border);
+  --text-color: var(--text-primary);
+  --bg-muted: var(--surface-2);
+  --surface-hover: var(--surface-2);
   color-scheme: light;
 }
 
@@ -150,16 +154,25 @@ a:hover { color: var(--accent); }
   top: 0;
   height: 100vh;
   overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1),
               padding 0.25s ease;
   z-index: 95;
   box-sizing: border-box;
 }
 
+.sidebar::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
 .sidebar-header {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
   margin-bottom: 20px;
   padding: 0 4px;
   transition: all 0.2s ease;
@@ -374,6 +387,7 @@ a:hover { color: var(--accent); }
   margin: 4px auto;
   border-radius: var(--radius);
   position: relative;
+  font-size: 0 !important;
 }
 
 .app-shell.sidebar-collapsed .sidebar-nav a span {
@@ -434,6 +448,10 @@ html.sidebar-init-collapsed .app-shell .sidebar .brand-text,
 html.sidebar-init-collapsed .app-shell .sidebar .sidebar-user-info,
 html.sidebar-init-collapsed .app-shell .sidebar .sidebar-nav a span {
   display: none !important;
+}
+
+html.sidebar-init-collapsed .app-shell .sidebar .sidebar-nav a {
+  font-size: 0 !important;
 }
 
 /* Mobile Sidebar Behavior */

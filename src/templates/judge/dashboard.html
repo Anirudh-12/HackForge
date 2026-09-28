@@ -5,7 +5,7 @@
 <style>
   .judge-dashboard {
     display: grid;
-    grid-template-columns: 1fr 300px;
+    grid-template-columns: 1fr 320px;
     gap: 2rem;
     align-items: start;
     padding-bottom: 2rem;
@@ -25,11 +25,13 @@
   
   .welcome-section h1 {
     font-size: 2rem;
+    font-weight: 700;
     margin-bottom: 0.25rem;
+    color: var(--text-primary);
   }
   .welcome-section p {
     color: var(--text-muted);
-    font-size: 1rem;
+    font-size: 0.95rem;
   }
 
   .metrics-grid {
@@ -39,39 +41,48 @@
   }
 
   .metric-card {
-    background: #fff;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius, 10px);
     padding: 1.25rem;
     display: flex;
     flex-direction: column;
     position: relative;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+    box-shadow: var(--shadow);
+    transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+  }
+  .metric-card:hover {
+    border-color: rgba(var(--accent-rgb), 0.35);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
   }
   .metric-card .icon {
     position: absolute;
     top: 1.25rem;
     right: 1.25rem;
     color: var(--text-muted);
-    opacity: 0.5;
+    opacity: 0.6;
   }
   .metric-card .value {
     font-size: 2rem;
     font-weight: 700;
     line-height: 1.2;
     margin-bottom: 0.25rem;
+    color: var(--text-primary);
   }
   .metric-card .label {
     color: var(--text-muted);
     font-size: 0.875rem;
+    font-weight: 500;
   }
 
   .controls-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 1px solid var(--border-color);
-    padding-bottom: 1px; /* space for active tab border */
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 1px;
+    gap: 1rem;
+    flex-wrap: wrap;
   }
 
   .tabs {
@@ -91,33 +102,55 @@
     margin-bottom: -1px;
   }
   .tab-btn:hover {
-    color: var(--text-color);
+    color: var(--text-primary);
   }
   .tab-btn.active {
     color: var(--primary);
     border-bottom-color: var(--primary);
+    font-weight: 600;
   }
 
   .filters {
     display: flex;
-    gap: 1rem;
+    gap: 0.75rem;
     align-items: center;
   }
   .search-input {
     padding: 0.5rem 1rem 0.5rem 2.5rem;
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius, 6px);
     font-size: 0.875rem;
-    background: #fff url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="%2394a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>') no-repeat 0.75rem center;
+    background: var(--surface) url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="%2394a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>') no-repeat 0.75rem center;
+    color: var(--text-primary);
     width: 240px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .search-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.15);
+  }
+  .search-input::placeholder {
+    color: var(--text-muted);
   }
   .track-select {
     padding: 0.5rem 1rem;
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius, 6px);
     font-size: 0.875rem;
-    background-color: #fff;
+    background-color: var(--surface);
+    color: var(--text-primary);
     cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .track-select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.15);
+  }
+  .track-select option {
+    background-color: var(--surface);
+    color: var(--text-primary);
   }
 
   .project-list {
@@ -126,18 +159,19 @@
     gap: 1rem;
   }
   .project-card {
-    background: #fff;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius, 8px);
     padding: 1.25rem;
     display: flex;
     gap: 1.5rem;
     align-items: center;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.02);
-    transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow: var(--shadow);
+    transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
   }
   .project-card:hover {
-    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+    border-color: rgba(var(--accent-rgb), 0.35);
     transform: translateY(-1px);
   }
   .project-img {
@@ -167,8 +201,11 @@
   .project-title {
     font-size: 1.125rem;
     font-weight: 600;
-    color: var(--text-color);
+    color: var(--text-primary);
     text-decoration: none;
+  }
+  .project-title:hover {
+    color: var(--primary);
   }
   .project-desc {
     font-size: 0.875rem;
@@ -200,8 +237,9 @@
     border-radius: 12px;
     font-size: 0.75rem;
     font-weight: 500;
-    background: #ecfdf5;
-    color: #10b981;
+    background: rgba(var(--accent-rgb), 0.12);
+    color: var(--accent);
+    border: 1px solid rgba(var(--accent-rgb), 0.25);
   }
   .project-actions {
     display: flex;
@@ -215,28 +253,31 @@
     border-radius: 12px;
     font-size: 0.75rem;
     font-weight: 500;
-    background: #f1f5f9;
+    background: var(--surface-2);
     color: var(--text-muted);
+    border: 1px solid var(--border);
   }
   .status-badge.reviewed {
-    background: #ecfdf5;
-    color: #10b981;
+    background: rgba(34, 197, 94, 0.15);
+    color: var(--success, #22c55e);
+    border-color: rgba(34, 197, 94, 0.3);
   }
 
   /* Sidebar Cards */
   .sidebar-card {
-    background: #fff;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius, 10px);
     padding: 1.5rem;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+    box-shadow: var(--shadow);
   }
   .sidebar-card h3 {
     font-size: 1rem;
-    margin-bottom: 1rem;
+    margin: 0 0 1rem 0;
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    color: var(--text-primary);
   }
   
   .progress-header {
@@ -248,14 +289,15 @@
   .progress-bar-bg {
     width: 100%;
     height: 8px;
-    background: #e2e8f0;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
     border-radius: 4px;
     overflow: hidden;
     position: relative;
   }
   .progress-bar-fill {
     height: 100%;
-    background: var(--primary);
+    background: linear-gradient(90deg, var(--primary), var(--accent));
     border-radius: 4px;
     transition: width 0.5s ease;
   }
@@ -282,7 +324,7 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    color: var(--text-color);
+    color: var(--text-primary);
   }
   .dot {
     width: 8px;
@@ -311,6 +353,7 @@
     font-size: 0.875rem;
     font-weight: 600;
     margin: 0 0 0.125rem 0;
+    color: var(--text-primary);
   }
   .date-info p {
     font-size: 0.8125rem;
@@ -349,9 +392,18 @@
   <div class="dashboard-main">
     
     <div class="welcome-section">
-      <div class="text-sm text-muted mb-2 text-uppercase" style="font-weight: 600; letter-spacing: 0.5px;">JUDGE DASHBOARD</div>
-      <h1>Good morning, {{ user.name.split(' ')[0] }}.</h1>
-      <p>Here are your judging assignments for {{ event.name }}.</p>
+      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+        <span style="font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted);">JUDGE DASHBOARD</span>
+        {% if user and ('organizer' in user.name.lower() or role == 'organizer') %}
+          <span style="font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: rgba(var(--accent-rgb), 0.15); color: var(--accent); border: 1px solid rgba(var(--accent-rgb), 0.3);">Organizer Preview</span>
+        {% endif %}
+      </div>
+      <h1><span id="judgeGreetingTime">Welcome</span>, {% if user and user.name.lower() == 'organizer' %}Judge{% elif user %}{{ user.name.split(' ')[0] }}{% else %}Judge{% endif %}.</h1>
+      {% if user and user.name.lower() == 'organizer' %}
+        <p>You are previewing the judge portal as an event organizer. Here are your assigned projects for {{ event.name }}.</p>
+      {% else %}
+        <p>Here are your judging assignments for {{ event.name }}.</p>
+      {% endif %}
     </div>
 
     <div class="metrics-grid">
@@ -428,7 +480,7 @@
                 <span style="font-size: 0.95rem; font-weight: 700; color: var(--primary);">Score: {{ project_scores[p.id] }}/10</span>
               {% endif %}
               {% if project_pairwise_stats.get(p.id) and (project_pairwise_stats[p.id].wins + project_pairwise_stats[p.id].losses) > 0 %}
-                <span style="font-size: 0.75rem; color: var(--text-muted); background: #f8fafc; padding: 2px 6px; border-radius: 4px; border: 1px solid var(--border-color);">
+                <span style="font-size: 0.75rem; color: var(--text-muted); background: var(--surface-2); padding: 2px 6px; border-radius: 4px; border: 1px solid var(--border);">
                   ELO {{ project_pairwise_stats[p.id].elo|round|int }} • {{ project_pairwise_stats[p.id].wins }}W - {{ project_pairwise_stats[p.id].losses }}L
                 </span>
               {% endif %}
@@ -441,12 +493,12 @@
         </div>
       </div>
       {% else %}
-      <div class="empty-state" style="padding: 3rem; text-align: center; color: var(--text-muted); border: 1px dashed var(--border-color); border-radius: 8px;">
-        <p>No projects assigned to you yet.</p>
+      <div class="empty-state" style="padding: 3rem; text-align: center; color: var(--text-muted); background: var(--surface); border: 1px dashed var(--border); border-radius: var(--radius, 8px);">
+        <p style="margin: 0; font-size: 0.95rem;">No projects assigned to you yet.</p>
       </div>
       {% endfor %}
       
-      <div x-show="projectsList.length > 0 && Array.from(document.querySelectorAll('.project-card')).every(el => el.style.display === 'none')" style="display: none; padding: 3rem; text-align: center; color: var(--text-muted); border: 1px dashed var(--border-color); border-radius: 8px;" id="no-results-msg">
+      <div x-show="projectsList.length > 0 && Array.from(document.querySelectorAll('.project-card')).every(el => el.style.display === 'none')" style="display: none; padding: 3rem; text-align: center; color: var(--text-muted); background: var(--surface); border: 1px dashed var(--border); border-radius: var(--radius, 8px);" id="no-results-msg">
         No projects match your current filters.
       </div>
     </div>
@@ -461,7 +513,7 @@
       <div class="progress-bar-bg">
         <div class="progress-bar-fill" style="width: {{ metrics.completion_pct }}%;"></div>
       </div>
-      <div style="text-align: right; margin-top: 0.5rem; font-size: 0.875rem; font-weight: 600;">{{ metrics.completion_pct }}%</div>
+      <div style="text-align: right; margin-top: 0.5rem; font-size: 0.875rem; font-weight: 600; color: var(--text-primary);">{{ metrics.completion_pct }}%</div>
     </div>
 
     <div class="sidebar-card">
@@ -526,12 +578,26 @@
         Judging Guidelines
       </h3>
       <p style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 1rem;">Read the event rubric, evaluation criteria and other guidelines before reviewing.</p>
-      <a href="#" class="btn btn-secondary" style="width: 100%; justify-content: center; background: white; border: 1px solid var(--border-color);">View Guidelines</a>
+      <a href="/organizer/{{ event.id }}/rubric" class="btn btn-secondary" style="width: 100%; justify-content: center; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-primary); text-decoration: none;">View Guidelines</a>
     </div>
   </div>
 </div>
 
 <script>
+  // Dynamic time-of-day greeting
+  (function() {
+    const el = document.getElementById('judgeGreetingTime');
+    if (!el) return;
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) {
+      el.textContent = 'Good morning';
+    } else if (hour >= 12 && hour < 17) {
+      el.textContent = 'Good afternoon';
+    } else {
+      el.textContent = 'Good evening';
+    }
+  })();
+
   function dashboardData() {
     // Generate a set of scored project IDs to use in the frontend filtering
     const scoredIds = new Set([

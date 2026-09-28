@@ -6,9 +6,18 @@
   <title>{% block title %}Hackforge{% endblock %}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/style.css?v=2">
+  <link rel="stylesheet" href="/static/style.css?v=3">
   <style>
     /* Immediate inline styling to prevent any Hackforge text flash or stale cache */
+    .sidebar {
+      scrollbar-width: none !important;
+      -ms-overflow-style: none !important;
+    }
+    .sidebar::-webkit-scrollbar {
+      display: none !important;
+      width: 0 !important;
+      height: 0 !important;
+    }
     .app-shell.sidebar-collapsed .brand-text,
     .app-shell.sidebar-collapsed .topbar-brand-title,
     .app-shell.sidebar-collapsed .sidebar-user-info,
@@ -20,6 +29,18 @@
       height: 0 !important;
       overflow: hidden !important;
       pointer-events: none !important;
+    }
+    .app-shell.sidebar-collapsed .sidebar-nav a {
+      font-size: 0 !important;
+    }
+    .app-shell.sidebar-collapsed .nav-section {
+      height: 1px !important;
+      padding: 0 !important;
+      margin: 12px 6px !important;
+      background: var(--border) !important;
+      color: transparent !important;
+      font-size: 0 !important;
+      overflow: hidden !important;
     }
   </style>
   <script>
@@ -148,37 +169,55 @@
               <div class="sidebar-user-name">{{ user.name.split(' ')[0] }}</div>
             </div>
           </div>
-          <a href="/participant/home" {% if request and 'participant/home' in request.url.path and '#registered' not in request.url.fragment|default('') %}class="active"{% endif %}>
+          <a href="/participant/home" {% if request and 'participant/home' in request.url.path and '#registered' not in request.url.fragment|default('') %}class="active"{% endif %} title="Home" data-tooltip="Home">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="margin-right: 10px;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
             <span>Home</span>
           </a>
-          <a href="/explore" {% if request and 'explore' in request.url.path %}class="active"{% endif %}>
+          <a href="/explore" {% if request and 'explore' in request.url.path %}class="active"{% endif %} title="Explore Hackathons" data-tooltip="Explore Hackathons">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="margin-right: 10px;"><circle cx="12" cy="12" r="10"></circle><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon></svg>
             <span>Explore Hackathons</span>
           </a>
-          <a href="/participant/registrations" {% if request and 'participant/registrations' in request.url.path %}class="active"{% endif %}>
+          <a href="/participant/registrations" {% if request and 'participant/registrations' in request.url.path %}class="active"{% endif %} title="My Registrations" data-tooltip="My Registrations">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="margin-right: 10px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
             <span>My Registrations</span>
           </a>
-          <a href="/profile" {% if request and request.url.path == '/profile' %}class="active"{% endif %}>
+          <a href="/profile" {% if request and request.url.path == '/profile' %}class="active"{% endif %} title="Profile" data-tooltip="Profile">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="margin-right: 10px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
             <span>Profile</span>
           </a>
           
           <div class="nav-section">DISCOVER</div>
-          <a href="/projects" {% if request and '/projects' in request.url.path and '/organizer/' not in request.url.path %}class="active"{% endif %}>
+          <a href="/projects" {% if request and '/projects' in request.url.path and '/organizer/' not in request.url.path %}class="active"{% endif %} title="Project Gallery" data-tooltip="Project Gallery">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 10px;"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
             <span>Project Gallery</span>
           </a>
           
           {% if event and request and 'participant/home' not in request.url.path and 'explore' not in request.url.path and 'projects' not in request.url.path and 'profile' not in request.url.path %}
           <div class="nav-section">CURRENT HACKATHON</div>
-          <a href="/participant/{{ event.id }}/dashboard" {% if request and 'dashboard' in request.url.path %}class="active"{% endif %}>Overview</a>
-          <a href="/participant/{{ event.id }}/team" {% if request and 'team' in request.url.path %}class="active"{% endif %}>Team</a>
-          <a href="/participant/{{ event.id }}/matchmaking" {% if request and 'matchmaking' in request.url.path %}class="active"{% endif %}>Find a Team</a>
-          <a href="/participant/{{ event.id }}/submit" {% if request and 'submit' in request.url.path %}class="active"{% endif %}>Submission</a>
-          <a href="/participant/{{ event.id }}/certificate" {% if request and 'certificate' in request.url.path %}class="active"{% endif %}>Certificate</a>
-          <a href="/api/docs?role=participant" {% if request and 'api/docs' in request.url.path %}class="active"{% endif %}>API &amp; Docs</a>
+          <a href="/participant/{{ event.id }}/dashboard" {% if request and 'dashboard' in request.url.path %}class="active"{% endif %} title="Overview" data-tooltip="Overview">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 10px;"><rect x="3" y="3" width="7" height="9"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="16" width="7" height="5"></rect></svg>
+            <span>Overview</span>
+          </a>
+          <a href="/participant/{{ event.id }}/team" {% if request and 'team' in request.url.path %}class="active"{% endif %} title="Team" data-tooltip="Team">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 10px;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+            <span>Team</span>
+          </a>
+          <a href="/participant/{{ event.id }}/matchmaking" {% if request and 'matchmaking' in request.url.path %}class="active"{% endif %} title="Find a Team" data-tooltip="Find a Team">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="margin-right: 10px;"><circle cx="9" cy="7" r="4"></circle><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="19" cy="11" r="2"></circle><path d="M19 17v-1a2 2 0 0 0-1-1.73"></path><line x1="16" y1="11" x2="22" y2="11"></line><line x1="19" y1="8" x2="19" y2="14"></line></svg>
+            <span>Find a Team</span>
+          </a>
+          <a href="/participant/{{ event.id }}/submit" {% if request and 'submit' in request.url.path %}class="active"{% endif %} title="Submission" data-tooltip="Submission">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 10px;"><path d="M22 2L11 13"></path><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+            <span>Submission</span>
+          </a>
+          <a href="/participant/{{ event.id }}/certificate" {% if request and 'certificate' in request.url.path %}class="active"{% endif %} title="Certificate" data-tooltip="Certificate">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 10px;"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>
+            <span>Certificate</span>
+          </a>
+          <a href="/api/docs?role=participant" {% if request and 'api/docs' in request.url.path %}class="active"{% endif %} title="API &amp; Docs" data-tooltip="API &amp; Docs">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="margin-right: 10px;"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+            <span>API &amp; Docs</span>
+          </a>
           {% endif %}
         {% endif %}
       </nav>
@@ -227,57 +266,6 @@
           {% endif %}
         </div>
         <div style="display: flex; align-items: center; gap: 12px; position: relative;">
-          <!-- Theme Toggle -->
-          <button id="themeToggleBtn" class="theme-toggle-btn" title="Toggle dark/light mode">
-            <svg id="themeIconSun" style="display: none;" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
-            <svg id="themeIconMoon" style="display: none;" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
-          </button>
-          <script>
-            function initThemeToggle() {
-              const btn = document.getElementById('themeToggleBtn');
-              const sun = document.getElementById('themeIconSun');
-              const moon = document.getElementById('themeIconMoon');
-              
-              function updateIcon() {
-                const isDark = document.documentElement.getAttribute('data-theme') === 'dark' || 
-                              (!document.documentElement.hasAttribute('data-theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
-                if (isDark) {
-                  sun.style.display = 'block';
-                  moon.style.display = 'none';
-                } else {
-                  sun.style.display = 'none';
-                  moon.style.display = 'block';
-                }
-              }
-              updateIcon();
-              
-              btn.addEventListener('click', () => {
-                const current = document.documentElement.getAttribute('data-theme');
-                const isSystemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                let nextTheme = 'light';
-                
-                if (current === 'dark') {
-                  nextTheme = 'light';
-                } else if (current === 'light') {
-                  nextTheme = 'dark';
-                } else {
-                  nextTheme = isSystemDark ? 'light' : 'dark';
-                }
-                
-                document.documentElement.setAttribute('data-theme', nextTheme);
-                localStorage.setItem('hackforge_theme', nextTheme);
-                updateIcon();
-              });
-              
-              window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-                if (!document.documentElement.hasAttribute('data-theme')) {
-                  updateIcon();
-                }
-              });
-            }
-            initThemeToggle();
-          </script>
-          
           {% if user %}
             <!-- Notifications Dropdown -->
             <div style="position: relative;">
@@ -357,6 +345,12 @@
                 }
               });
             </script>
+
+            <!-- Theme Toggle -->
+            <button id="themeToggleBtn" class="theme-toggle-btn" title="Toggle dark/light mode">
+              <svg id="themeIconSun" style="display: none;" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+              <svg id="themeIconMoon" style="display: none;" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+            </button>
             
             <!-- Profile Icon Dropdown -->
             <div style="cursor: pointer; display: flex; align-items: center;" onclick="const d = document.getElementById('profileDropdown'); d.style.display = d.style.display === 'none' ? 'block' : 'none'; event.stopPropagation();">
@@ -395,10 +389,62 @@
               });
             </script>
           {% else %}
+            <!-- Theme Toggle -->
+            <button id="themeToggleBtn" class="theme-toggle-btn" title="Toggle dark/light mode">
+              <svg id="themeIconSun" style="display: none;" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+              <svg id="themeIconMoon" style="display: none;" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+            </button>
             <!-- Not Logged In -->
             <a href="/login" class="btn btn-ghost" style="text-decoration: none;">Sign in</a>
             <a href="/register" class="btn btn-primary" style="text-decoration: none;">Sign up</a>
           {% endif %}
+          
+          <script>
+            function initThemeToggle() {
+              const btn = document.getElementById('themeToggleBtn');
+              if (!btn) return;
+              const sun = document.getElementById('themeIconSun');
+              const moon = document.getElementById('themeIconMoon');
+              
+              function updateIcon() {
+                const isDark = document.documentElement.getAttribute('data-theme') === 'dark' || 
+                              (!document.documentElement.hasAttribute('data-theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+                if (isDark) {
+                  sun.style.display = 'block';
+                  moon.style.display = 'none';
+                } else {
+                  sun.style.display = 'none';
+                  moon.style.display = 'block';
+                }
+              }
+              updateIcon();
+              
+              btn.addEventListener('click', () => {
+                const current = document.documentElement.getAttribute('data-theme');
+                const isSystemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                let nextTheme = 'light';
+                
+                if (current === 'dark') {
+                  nextTheme = 'light';
+                } else if (current === 'light') {
+                  nextTheme = 'dark';
+                } else {
+                  nextTheme = isSystemDark ? 'light' : 'dark';
+                }
+                
+                document.documentElement.setAttribute('data-theme', nextTheme);
+                localStorage.setItem('hackforge_theme', nextTheme);
+                updateIcon();
+              });
+              
+              window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+                if (!document.documentElement.hasAttribute('data-theme')) {
+                  updateIcon();
+                }
+              });
+            }
+            initThemeToggle();
+          </script>
         </div>
       </div>
       <div class="content">

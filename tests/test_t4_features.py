@@ -2,13 +2,16 @@ from __future__ import annotations
 
 import json
 
+from src.auth import make_session_token
 from src.db import SessionLocal
 from src.models import (
     Certificate,
     Event,
+    EventMember,
     JudgeRecord,
     Project,
     Team,
+    TeamMember,
     User,
     WebhookSubscription,
 )
@@ -224,3 +227,126 @@ def test_bulk_export_and_import(client: TestClient, auth_cookies):
             db.delete(team)
     db.commit()
     db.close()
+
+
+def test_participation_certificate_only_for_submitted_projects(client: TestClient, auth_cookies):
+    import uuid
+    db = SessionLocal()
+    eid = "evt_01"
+
+    # 1. Create a user who HAS submitted a project
+    u_sub = User(id=f"u_sub_{uuid.uuid4().hex[:6]}", email=f"sub_{uuid.uuid4().hex[:4]}@example.com", name="Submitted Participant")
+    # 2. Create a user who has a team and draft project (NOT submitted)
+    u_draft = User(id=f"u_draft_{uuid.uuid4().hex[:6]}", email=f"draft_{uuid.uuid4().hex[:4]}@example.com", name="Draft Participant")
+    # 3. Create a user who has a team with NO project at all
+    u_noproj = User(id=f"u_noproj_{uuid.uuid4().hex[:6]}", email=f"noproj_{uuid.uuid4().hex[:4]}@example.com", name="NoProj Participant")
+    # 4. Create a user who has NO team at all
+    u_noteam = User(id=f"u_noteam_{uuid.uuid4().hex[:6]}", email=f"noteam_{uuid.uuid4().hex[:4]}@example.com", name="NoTeam Participant")
+
+    t_sub = Team(id=f"t_{uuid.uuid4().hex[:6]}", event_id=eid, name="Submitted Team", leader_id=u_sub.id)
+    t_draft = Team(id=f"t_{uuid.uuid4().hex[:6]}", event_id=eid, name="Draft Team", leader_id=u_draft.id)
+    t_noproj = Team(id=f"t_{uuid.uuid4().hex[:6]}", event_id=eid, name="NoProj Team", leader_id=u_noproj.id)
+
+    p_sub = Project(
+        id=f"p_sub_{uuid.uuid4().hex[:6]}",
+        event_id=eid,
+        team_id=t_sub.id,
+        title="Fully Submitted App",
+        summary="A real submission",
+        cover_image_path="/static/covers/sample.png",
+        is_draft=False,
+        is_disqualified=False,
+    )
+    p_draft = Project(
+        id=f"p_draft_{uuid.uuid4().hex[:6]}",
+        event_id=eid,
+        team_id=t_draft.id,
+        title="Draft App In Progress",
+        summary="Not yet submitted",
+        cover_image_path="/static/covers/sample.png",
+        is_draft=True,
+        is_disqualified=False,
+    )
+
+    try:
+        for u in [u_sub, u_draft, u_noproj, u_noteam]:
+            db.add(u)
+            db.add(EventMember(event_id=eid, user_id=u.id, role="participant"))
+        db.flush()
+
+        db.add_all([t_sub, t_draft, t_noproj])
+        db.flush()
+
+        db.add(TeamMember(team_id=t_sub.id, user_id=u_sub.id))
+        db.add(TeamMember(team_id=t_draft.id, user_id=u_draft.id))
+        db.add(TeamMember(team_id=t_noproj.id, user_id=u_noproj.id))
+
+        db.add_all([p_sub, p_draft])
+        db.commit()
+
+        # Generate certificates as organizer
+        resp = client.post(f"/api/events/{eid}/certificates/generate", cookies=auth_cookies["organizer"])
+        assert resp.status_code == 200
+        assert resp.json()["success"] is True
+
+        # Check Certificate records in DB
+        cert_sub = db.query(Certificate).filter_by(event_id=eid, user_id=u_sub.id, recipient_type="participant").first()
+        cert_draft = db.query(Certificate).filter_by(event_id=eid, user_id=u_draft.id, recipient_type="participant").first()
+        cert_noproj = db.query(Certificate).filter_by(event_id=eid, user_id=u_noproj.id, recipient_type="participant").first()
+        cert_noteam = db.query(Certificate).filter_by(event_id=eid, user_id=u_noteam.id, recipient_type="participant").first()
+
+        # ONLY u_sub should have received a certificate!
+        assert cert_sub is not None, "Submitted participant MUST receive a certificate"
+        assert cert_draft is None, "Participant with draft project MUST NOT receive a certificate"
+        assert cert_noproj is None, "Participant with no project MUST NOT receive a certificate"
+        assert cert_noteam is None, "Participant with no team MUST NOT receive a certificate"
+
+        # Verify endpoint works for submitted user
+        v_resp = client.get(f"/verify/certificate/{cert_sub.verification_code}")
+        assert v_resp.status_code == 200
+        assert "Verified Certificate" in v_resp.text
+        assert u_sub.name in v_resp.text
+
+        # Verify certificate HTML page for submitted user
+        sub_cookie = {"session": make_session_token(u_sub.id)}
+        page_sub = client.get(f"/participant/{eid}/certificate", cookies=sub_cookie)
+        assert page_sub.status_code == 200
+        assert "Certificate of Participation" in page_sub.text
+        assert u_sub.name in page_sub.text
+
+        # Verify certificate HTML page for draft/unsubmitted user shows submission required notice
+        draft_cookie = {"session": make_session_token(u_draft.id)}
+        page_draft = client.get(f"/participant/{eid}/certificate", cookies=draft_cookie)
+        assert page_draft.status_code == 200
+        assert "Project Submission Required" in page_draft.text
+        assert 'class="cert-paper"' not in page_draft.text
+        assert "Official Hackathon Record of Achievement" not in page_draft.text
+        assert "Verification ID:" not in page_draft.text
+
+        # Verify certificate HTML page for user without team
+        noteam_cookie = {"session": make_session_token(u_noteam.id)}
+        page_noteam = client.get(f"/participant/{eid}/certificate", cookies=noteam_cookie)
+        assert page_noteam.status_code == 200
+        assert "Project Submission Required" in page_noteam.text
+
+    finally:
+        # Clean up created test entities
+        c = db.query(Certificate).filter_by(event_id=eid, user_id=u_sub.id).first()
+        if c:
+            db.delete(c)
+        for p in [p_sub, p_draft]:
+            p_obj = db.get(Project, p.id)
+            if p_obj:
+                db.delete(p_obj)
+        for t in [t_sub, t_draft, t_noproj]:
+            t_obj = db.get(Team, t.id)
+            if t_obj:
+                db.delete(t_obj)
+        for u in [u_sub, u_draft, u_noproj, u_noteam]:
+            db.query(EventMember).filter_by(event_id=eid, user_id=u.id).delete()
+            u_obj = db.get(User, u.id)
+            if u_obj:
+                db.delete(u_obj)
+        db.commit()
+        db.close()
+
