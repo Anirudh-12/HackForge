@@ -895,4 +895,75 @@ h2 { font-size: 20px; }
   display: none !important;
 }
 
+/* Skills Tag / Pill Input Component */
+.skills-tag-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  min-height: 48px;
+  cursor: text;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.skills-tag-container:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb, 37, 99, 235), 0.2);
+}
+.skills-pill-tag {
+  background: rgba(var(--accent-rgb, 37, 99, 235), 0.12);
+  color: var(--accent);
+  border: 1px solid rgba(var(--accent-rgb, 37, 99, 235), 0.28);
+  border-radius: 9999px;
+  padding: 4px 10px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  user-select: none;
+  animation: skillPop 0.15s ease-out;
+}
+@keyframes skillPop {
+  from { opacity: 0; transform: scale(0.85); }
+  to { opacity: 1; transform: scale(1); }
+}
+.skills-pill-tag .skill-remove-btn {
+  cursor: pointer;
+  opacity: 0.65;
+  font-size: 1.1rem;
+  line-height: 1;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  transition: opacity 0.15s, color 0.15s, transform 0.15s;
+}
+.skills-pill-tag .skill-remove-btn:hover {
+  opacity: 1;
+  color: var(--danger, #ef4444);
+  transform: scale(1.15);
+}
+.skills-pill-input {
+  border: none;
+  outline: none;
+  background: transparent;
+  flex: 1;
+  min-width: 140px;
+  padding: 4px 0;
+  font-size: 0.92rem;
+  color: var(--text-primary);
+}
+.skills-pill-input::placeholder {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+
 

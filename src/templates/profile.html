@@ -238,7 +238,7 @@
       <p style="margin: 4px 0 0 0; font-size: 13px; color: var(--text-muted);">Update your personal details, bio, and social connections.</p>
     </div>
 
-    <form method="post" action="/profile">
+    <form method="post" action="/profile" id="profile-settings-form">
       <div class="form-group" style="margin-bottom: 18px;">
         <label style="font-weight: 500; margin-bottom: 6px; display: block;">Full Name</label>
         <input type="text" name="name" class="input" value="{{ user.name }}" required>
@@ -250,8 +250,15 @@
       </div>
 
       <div class="form-group" style="margin-bottom: 18px;">
-        <label style="font-weight: 500; margin-bottom: 6px; display: block;">Skills (comma separated)</label>
-        <input type="text" name="skills" class="input" value="{{ user.skills or '' }}" placeholder="Python, React, FastAPI, Machine Learning, UI/UX...">
+        <label style="font-weight: 500; margin-bottom: 6px; display: block;">Skills &amp; Technologies</label>
+        <div class="skills-tag-container" id="profile-skills-box" onclick="document.getElementById('profile-skills-input').focus()">
+          <div id="profile-skills-list" style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center;"></div>
+          <input type="text" id="profile-skills-input" class="skills-pill-input" placeholder="Type a skill and press comma or Enter (e.g. React, Python)..." autocomplete="off">
+        </div>
+        <input type="hidden" name="skills" id="profile-skills-hidden" value="{{ user.skills or '' }}">
+        <span style="font-size: 12px; color: var(--text-muted); margin-top: 6px; display: flex; align-items: center; gap: 4px; flex-wrap: wrap;">
+          Separate skills by pressing <kbd style="background: var(--surface-2, rgba(0,0,0,0.06)); border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; font-size: 11px; font-family: inherit;">Enter</kbd> or typing a comma <kbd style="background: var(--surface-2, rgba(0,0,0,0.06)); border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; font-size: 11px; font-family: inherit;">,</kbd>. Press <kbd style="background: var(--surface-2, rgba(0,0,0,0.06)); border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; font-size: 11px; font-family: inherit;">Backspace</kbd> to delete.
+        </span>
       </div>
 
       <div class="form-group" style="margin-bottom: 18px;">
@@ -338,6 +345,76 @@
     border-bottom-color: var(--accent);
     font-weight: 600;
   }
+
+  /* Skills Tag Input */
+  .skills-tag-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    min-height: 48px;
+    cursor: text;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .skills-tag-container:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(var(--accent-rgb, 37, 99, 235), 0.2);
+  }
+  .skills-pill-tag {
+    background: rgba(var(--accent-rgb, 37, 99, 235), 0.12);
+    color: var(--accent);
+    border: 1px solid rgba(var(--accent-rgb, 37, 99, 235), 0.28);
+    border-radius: 9999px;
+    padding: 4px 10px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    user-select: none;
+    animation: skillPop 0.15s ease-out;
+  }
+  @keyframes skillPop {
+    from { opacity: 0; transform: scale(0.85); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  .skills-pill-tag .skill-remove-btn {
+    cursor: pointer;
+    opacity: 0.65;
+    font-size: 1.1rem;
+    line-height: 1;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    width: 16px;
+    height: 16px;
+    transition: opacity 0.15s, color 0.15s, transform 0.15s;
+  }
+  .skills-pill-tag .skill-remove-btn:hover {
+    opacity: 1;
+    color: var(--danger, #ef4444);
+    transform: scale(1.15);
+  }
+  .skills-pill-input {
+    border: none;
+    outline: none;
+    background: transparent;
+    flex: 1;
+    min-width: 160px;
+    padding: 4px 0;
+    font-size: 0.92rem;
+    color: var(--text-primary);
+  }
+  .skills-pill-input::placeholder {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+  }
 </style>
 
 <script>
@@ -360,12 +437,122 @@
     history.replaceState(null, null, '#' + tabName);
   }
 
-  // Handle URL hash on page load
-  window.addEventListener('DOMContentLoaded', () => {
+  // Comma & Enter segmented skills logic for profile settings
+  function initProfileSkills() {
+    const skillsList = [];
+    const skillsInput = document.getElementById('profile-skills-input');
+    const skillsContainer = document.getElementById('profile-skills-list');
+    const skillsHidden = document.getElementById('profile-skills-hidden');
+    const form = document.getElementById('profile-settings-form');
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.innerText = text;
+      return div.innerHTML;
+    }
+
+    function renderSkills() {
+      if (!skillsContainer || !skillsHidden) return;
+      skillsContainer.innerHTML = '';
+      skillsList.forEach((skill, idx) => {
+        const tag = document.createElement('span');
+        tag.className = 'skills-pill-tag';
+        tag.innerHTML = `<span>${escapeHtml(skill)}</span><span class="skill-remove-btn" title="Remove ${escapeHtml(skill)}" aria-label="Remove skill">&times;</span>`;
+        tag.querySelector('.skill-remove-btn').addEventListener('click', (e) => {
+          e.stopPropagation();
+          removeSkill(idx);
+        });
+        skillsContainer.appendChild(tag);
+      });
+      skillsHidden.value = skillsList.join(', ');
+    }
+
+    function addSkill(val) {
+      if (!val) return;
+      const parts = val.split(',');
+      let added = false;
+      parts.forEach(p => {
+        const trimmed = p.trim();
+        if (trimmed && !skillsList.some(s => s.toLowerCase() === trimmed.toLowerCase())) {
+          skillsList.push(trimmed);
+          added = true;
+        }
+      });
+      if (added) {
+        renderSkills();
+      }
+      if (skillsInput) skillsInput.value = '';
+    }
+
+    function removeSkill(idx) {
+      skillsList.splice(idx, 1);
+      renderSkills();
+      if (skillsInput) skillsInput.focus();
+    }
+
+    // Populate initial skills from hidden field
+    if (skillsHidden && skillsHidden.value) {
+      skillsHidden.value.split(',').forEach(s => {
+        const trimmed = s.trim();
+        if (trimmed && !skillsList.some(item => item.toLowerCase() === trimmed.toLowerCase())) {
+          skillsList.push(trimmed);
+        }
+      });
+      renderSkills();
+    }
+
+    if (skillsInput) {
+      skillsInput.addEventListener('keydown', (e) => {
+        if (e.key === ',' || e.key === 'Enter') {
+          e.preventDefault();
+          addSkill(skillsInput.value);
+        } else if (e.key === 'Backspace' && !skillsInput.value && skillsList.length > 0) {
+          removeSkill(skillsList.length - 1);
+        }
+      });
+
+      skillsInput.addEventListener('input', (e) => {
+        if (skillsInput.value.includes(',')) {
+          addSkill(skillsInput.value);
+        }
+      });
+
+      skillsInput.addEventListener('paste', (e) => {
+        e.preventDefault();
+        const paste = (e.clipboardData || window.clipboardData).getData('text');
+        addSkill(paste);
+      });
+
+      skillsInput.addEventListener('blur', () => {
+        if (skillsInput.value.trim()) {
+          addSkill(skillsInput.value);
+        }
+      });
+    }
+
+    if (form) {
+      form.addEventListener('submit', () => {
+        if (skillsInput && skillsInput.value.trim()) {
+          addSkill(skillsInput.value);
+        }
+      });
+    }
+  }
+
+  // Handle URL hash and skills init on page load
+  function onPageReady() {
+    initProfileSkills();
+
     const hash = window.location.hash.replace('#', '').toLowerCase();
     if (['overview', 'projects', 'activity', 'settings'].includes(hash)) {
       switchProfileTab(hash);
     }
-  });
+  }
+
+  if (document.readyState === 'loading') {
+    window.addEventListener('DOMContentLoaded', onPageReady);
+  } else {
+    onPageReady();
+  }
 </script>
 {% endblock %}
