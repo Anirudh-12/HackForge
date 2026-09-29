@@ -88,6 +88,37 @@
   color-scheme: light;
 }
 
+/* Global form elements theme support */
+select,
+input,
+textarea,
+option,
+optgroup {
+  color-scheme: inherit;
+}
+
+[data-theme="dark"] select,
+[data-theme="dark"] input,
+[data-theme="dark"] textarea,
+[data-theme="dark"] option,
+[data-theme="dark"] optgroup {
+  color-scheme: dark !important;
+  background-color: var(--surface) !important;
+  color: var(--text-primary) !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) select,
+  :root:not([data-theme="light"]) input,
+  :root:not([data-theme="light"]) textarea,
+  :root:not([data-theme="light"]) option,
+  :root:not([data-theme="light"]) optgroup {
+    color-scheme: dark !important;
+    background-color: var(--surface) !important;
+    color: var(--text-primary) !important;
+  }
+}
+
 /* Dark mode toggle button */
 .theme-toggle-btn {
   background: none;

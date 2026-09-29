@@ -77,11 +77,14 @@ def test_explore_hackathons_dropdowns_and_values(client: TestClient, auth_cookie
     assert 'value="this_week"' in response.text
     assert 'value="this_month"' in response.text
 
-    # 6. All status
-    assert 'id="filterStatus"' in response.text
-    assert 'value="upcoming"' in response.text
-    assert 'value="ongoing"' in response.text
-    assert 'value="past"' in response.text
+    # 6. Status filter tabs (All, Upcoming, Ongoing, Past)
+    assert 'data-filter="all"' in response.text
+    assert 'data-filter="upcoming"' in response.text
+    assert 'data-filter="ongoing"' in response.text
+    assert 'data-filter="past"' in response.text
+    assert "All Hackathons" in response.text
+    assert "Upcoming" in response.text
+    assert "Ongoing" in response.text
 
     # 7. Sort by Start date (soonest)
     assert 'id="filterSort"' in response.text
