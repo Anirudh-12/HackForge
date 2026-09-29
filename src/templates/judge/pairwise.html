@@ -111,6 +111,14 @@
         <span style="color: var(--primary); font-weight: 700;">({{ metrics.completion_pct }}%)</span>
       </div>
     {% endif %}
+    {% if total_comparisons is defined and total_comparisons > 0 %}
+      <form method="post" action="/judge/{{ event.id }}/pairwise/reset" style="margin: 0;" onsubmit="return confirm('Are you sure you want to reset all your pairwise comparisons? This will clear your comparison history and associated pairwise scores.');">
+        <button type="submit" class="btn btn-secondary" id="btn-reset-pairwise" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.3); background: rgba(239, 68, 68, 0.05); display: flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; cursor: pointer;">
+          <svg style="width: 14px; height: 14px;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+          Reset Comparisons
+        </button>
+      </form>
+    {% endif %}
   </div>
 </div>
 
@@ -194,11 +202,19 @@
   </div>
 {% endif %}
 
-<div style="margin-top: 32px; display: flex; justify-content: center; gap: 24px; align-items: center;">
+<div style="margin-top: 32px; display: flex; justify-content: center; gap: 24px; align-items: center; flex-wrap: wrap;">
   <a href="/judge/{{ event.id }}/dashboard" style="color: var(--text-muted); text-decoration: none; font-weight: 500;">&larr; Back to Dashboard</a>
   <button id="btn-skip" class="skip-btn" onclick="nextPair()">
     Tie / Skip <span class="key-hint" style="background: rgba(0,0,0,0.1); color: var(--text-muted);">↓</span>
   </button>
+  {% if total_comparisons is defined and total_comparisons > 0 %}
+    <form method="post" action="/judge/{{ event.id }}/pairwise/reset" style="margin: 0;" onsubmit="return confirm('Are you sure you want to reset all your pairwise comparisons? This will clear your comparison history and associated pairwise scores.');">
+      <button type="submit" class="skip-btn" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.25); background: rgba(239, 68, 68, 0.04);">
+        <svg style="width: 13px; height: 13px; display: inline-block; vertical-align: middle; margin-right: 4px;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+        Reset Comparisons
+      </button>
+    </form>
+  {% endif %}
 </div>
 
 <script>

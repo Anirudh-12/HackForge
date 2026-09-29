@@ -486,6 +486,15 @@
               {% endif %}
             </div>
             <a href="/judge/{{ event.id }}/project/{{ p.id }}" class="btn btn-secondary">Edit Score &rarr;</a>
+          {% elif recused_project_ids is defined and p.id in recused_project_ids %}
+            <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
+              <span class="status-badge" style="background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); font-weight: 600;">
+                <svg style="width:12px;height:12px;display:inline-block;margin-right:4px;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>
+                Recused (Conflict)
+              </span>
+              <span style="font-size: 0.75rem; color: var(--text-muted);">No score submitted</span>
+            </div>
+            <a href="/judge/{{ event.id }}/project/{{ p.id }}" class="btn btn-secondary">Edit / Unrecuse &rarr;</a>
           {% else %}
             <span class="status-badge">Not reviewed yet</span>
             <a href="/judge/{{ event.id }}/project/{{ p.id }}" class="btn btn-primary">Review Project &rarr;</a>
@@ -605,6 +614,13 @@
         '{{ id }}',
       {% endfor %}
     ]);
+    const recusedIds = new Set([
+      {% if recused_project_ids is defined %}
+      {% for id in recused_project_ids %}
+        '{{ id }}',
+      {% endfor %}
+      {% endif %}
+    ]);
 
     return {
       activeTab: 'needs_review',
@@ -616,7 +632,8 @@
       showProject(id, track, title, team) {
         // Tab filtering
         const isScored = scoredIds.has(id);
-        if (this.activeTab === 'needs_review' && isScored) return false;
+        const isRecused = recusedIds.has(id);
+        if (this.activeTab === 'needs_review' && (isScored || isRecused)) return false;
         if (this.activeTab === 'reviewed' && !isScored) return false;
         
         // Track filtering
