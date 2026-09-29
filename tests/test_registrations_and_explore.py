@@ -42,6 +42,10 @@ def test_sidebar_and_dashboard_links(client: TestClient, auth_cookies):
     assert 'href="/participant/registrations"' in response.text
     # Registrations stat card must redirect to /participant/registrations
     assert '<a href="/participant/registrations" class="stat-card"' in response.text
+    # "View all" above upcoming deadlines must link to /participant/registrations?sort=deadline
+    assert 'href="/participant/registrations?sort=deadline"' in response.text
+    # Upcoming Deadlines stat card must redirect to /participant/registrations?sort=deadline
+    assert '<a href="/participant/registrations?sort=deadline" class="stat-card"' in response.text
 
 
 def test_explore_hackathons_dropdowns_and_values(client: TestClient, auth_cookies):

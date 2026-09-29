@@ -759,7 +759,17 @@
         if (!deadA && !deadB) return 0;
         if (!deadA) return 1;
         if (!deadB) return -1;
-        return new Date(deadA).getTime() - new Date(deadB).getTime();
+        const timeA = new Date(deadA).getTime();
+        const timeB = new Date(deadB).getTime();
+        const now = Date.now();
+        const aUpcoming = timeA >= now;
+        const bUpcoming = timeB >= now;
+        // Prioritize upcoming deadlines soonest-first
+        if (aUpcoming && bUpcoming) return timeA - timeB;
+        if (aUpcoming && !bUpcoming) return -1;
+        if (!aUpcoming && bUpcoming) return 1;
+        // Expired deadlines ordered most-recently closed first
+        return timeB - timeA;
       } else if (sortVal === 'name') {
         return (a.getAttribute('data-name') || '').localeCompare(b.getAttribute('data-name') || '');
       }
@@ -772,6 +782,40 @@
     if (noFoundElem) {
       noFoundElem.style.display = (visibleCount === 0 && cards.length > 0) ? 'block' : 'none';
     }
+  }
+
+  // Handle URL query parameters or hash on initial load (e.g. ?sort=deadline or #deadlines)
+  function initFromUrl() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const hash = window.location.hash;
+    let sortParam = urlParams.get('sort');
+    if (!sortParam && hash === '#deadlines') {
+      sortParam = 'deadline';
+    }
+    const tabParam = urlParams.get('tab');
+    const qParam = urlParams.get('q');
+
+    if (sortParam && document.getElementById('regSortSelect')) {
+      document.getElementById('regSortSelect').value = sortParam;
+    }
+    if (qParam && document.getElementById('regSearchInput')) {
+      document.getElementById('regSearchInput').value = qParam;
+    }
+    if (tabParam) {
+      const targetTab = document.querySelector(`.filter-tab[data-tab="${tabParam}"]`);
+      if (targetTab) {
+        document.querySelectorAll('.filter-tab').forEach(b => b.classList.remove('active'));
+        targetTab.classList.add('active');
+        activeTab = tabParam;
+      }
+    }
+    applyRegFilters();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initFromUrl);
+  } else {
+    initFromUrl();
   }
 </script>
 {% endblock %}

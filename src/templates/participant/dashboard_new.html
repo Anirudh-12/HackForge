@@ -266,15 +266,15 @@
             <p class="stat-label">Submission{% if total_submissions != 1 %}s{% endif %}</p>
           </div>
         </div>
-        <div class="stat-card">
+        <a href="/participant/registrations?sort=deadline" class="stat-card" style="text-decoration: none; color: inherit; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">
           <div class="stat-icon" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b;">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
           </div>
           <div>
             <h3 class="stat-value">{{ upcoming_deadlines|length }}</h3>
-            <p class="stat-label">Upcoming Deadlines</p>
+            <p class="stat-label" style="display: flex; align-items: center; gap: 4px;">Upcoming Deadlines <span style="font-size: 0.75rem;">&rarr;</span></p>
           </div>
-        </div>
+        </a>
       </div>
       
       <div class="section-header">
@@ -329,9 +329,9 @@
         {% endfor %}
       </div>
       
-      <div class="section-header">
+      <div class="section-header" id="upcoming-deadlines">
         <h2>Upcoming Deadlines</h2>
-        <a href="#" style="font-size: 0.9rem; color: var(--primary); text-decoration: none;">View all &rarr;</a>
+        <a href="/participant/registrations?sort=deadline" style="font-size: 0.9rem; color: var(--primary); text-decoration: none; font-weight: 500;">View all &rarr;</a>
       </div>
       
       <div class="deadline-list">
@@ -341,11 +341,15 @@
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
           </div>
           <div style="flex-grow: 1;">
-            <div style="font-weight: 500;">{{ event.name }} &mdash; <span style="font-weight: normal; color: var(--text-muted);">Submission deadline</span></div>
+            <div style="font-weight: 500;">
+              <a href="/participant/{{ event.id }}/dashboard" style="color: inherit; text-decoration: none; font-weight: 600;">{{ event.name }}</a>
+              &mdash; <span style="font-weight: normal; color: var(--text-muted);">Submission deadline</span>
+            </div>
             <div style="font-size: 0.85rem; color: var(--text-muted);">{{ event.submissions_close.strftime('%b %d, %Y - %H:%M UTC') }}</div>
           </div>
-          <div>
+          <div style="display: flex; align-items: center; gap: 8px;">
             <div class="badge" style="background: rgba(239, 68, 68, 0.1); color: #ef4444;">Due soon</div>
+            <a href="/participant/{{ event.id }}/dashboard" class="btn btn-outline" style="font-size: 0.8rem; padding: 4px 10px; text-decoration: none;">View &rarr;</a>
           </div>
         </div>
         {% else %}
@@ -390,7 +394,6 @@
       <div>
         <div class="section-header">
           <h2>Recent Activity</h2>
-          <a href="#" style="font-size: 0.9rem; color: var(--primary); text-decoration: none;">View all &rarr;</a>
         </div>
         <div class="card" style="padding: 16px;">
           <div class="activity-list">
