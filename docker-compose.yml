@@ -8,6 +8,7 @@ services:
       DATA_DIR: /app/data
       DATABASE_URL: sqlite:////app/data/hackforge.db
     volumes:
+      - ./src:/app/src
       - ./fixtures.json:/app/fixtures.json:ro
       - portal-data:/app/data
 

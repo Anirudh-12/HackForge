@@ -1,6 +1,26 @@
 from __future__ import annotations
 
+import logging
+import os
 from pathlib import Path
+
+class _UvicornHostFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        replacement_host = os.environ.get("DISPLAY_HOST", "localhost")
+        if isinstance(record.args, tuple) and len(record.args) >= 3:
+            if record.args[1] == "0.0.0.0":
+                args = list(record.args)
+                args[1] = replacement_host
+                record.args = tuple(args)
+        if isinstance(record.msg, str) and "0.0.0.0" in record.msg:
+            record.msg = record.msg.replace("0.0.0.0", replacement_host)
+        if hasattr(record, "color_message") and isinstance(record.color_message, str) and "0.0.0.0" in record.color_message:
+            record.color_message = record.color_message.replace("0.0.0.0", replacement_host)
+        return True
+
+_host_filter = _UvicornHostFilter()
+logging.getLogger("uvicorn.error").addFilter(_host_filter)
+logging.getLogger("uvicorn").addFilter(_host_filter)
 
 from fastapi import FastAPI, Request
 from fastapi.openapi.utils import get_openapi

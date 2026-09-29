@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -1155,7 +1156,11 @@ def _print_logins(db: Session) -> None:
         ("participant", "prt_1"),
         ("admin", "adm_1"),
     ]
+    port = os.environ.get("PORT", "8080")
+    base_url = os.environ.get("BASE_URL", f"http://localhost:{port}")
     print("\n================ HACKFORGE SEEDED ================")
+    print(f"  Portal URL:  {base_url}")
+    print(f"  API Docs:    {base_url}/docs\n")
     print("Test Logins (any password accepted for fixture/seed accounts):")
     for label, user_id in rows:
         user = db.get(User, user_id)

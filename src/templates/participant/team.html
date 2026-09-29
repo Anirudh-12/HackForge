@@ -56,6 +56,13 @@
 </div>
 {% endif %}
 
+{% if event_completed %}
+<div style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.25); color: #dc2626; padding: 12px 18px; border-radius: var(--radius); margin-bottom: 24px; max-width: 600px; display: flex; align-items: center; gap: 10px;">
+  <span style="font-size: 1.2rem;">🏁</span>
+  <span>This hackathon has concluded. Team rosters are finalized.</span>
+</div>
+{% endif %}
+
 {% if team %}
   <div class="team-card">
     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px;">
@@ -128,12 +135,16 @@
             </div>
           </div>
           <div style="display: flex; gap: 8px;">
+            {% if event_completed %}
+            <span style="font-size: 0.8rem; color: var(--text-muted); background: var(--surface); padding: 4px 10px; border: 1px solid var(--border); border-radius: 6px;">Concluded</span>
+            {% else %}
             <form method="post" action="/participant/{{ event.id }}/requests/{{ req.id }}/decline" style="margin: 0;">
               <button type="submit" class="btn btn-secondary" style="padding: 5px 12px; font-size: 0.8rem; color: #ef4444; border-color: rgba(239,68,68,0.3);">Decline</button>
             </form>
             <form method="post" action="/participant/{{ event.id }}/requests/{{ req.id }}/accept" style="margin: 0;">
               <button type="submit" class="btn btn-primary" style="padding: 5px 14px; font-size: 0.8rem; background: #16a34a; border-color: #16a34a;">Accept</button>
             </form>
+            {% endif %}
           </div>
         </div>
         {% endfor %}
@@ -141,7 +152,11 @@
     </div>
     {% endif %}
 
-    {% if team.members|length < (event.max_team_size or 4) %}
+    {% if event_completed %}
+      <div style="margin-top: 24px; padding: 14px; background: rgba(var(--primary-rgb), 0.05); border: 1px solid var(--border); color: var(--text-muted); border-radius: var(--radius); text-align: center; font-size: 0.9rem; font-weight: 500;">
+        🏁 This hackathon has concluded. Team rosters are finalized and invitations are disabled.
+      </div>
+    {% elif team.members|length < (event.max_team_size or 4) %}
       <div class="invite-box">
         <div style="font-weight: 500; color: var(--primary);">Invite Members</div>
         <p style="margin: 0; font-size: 0.9rem; color: var(--text-muted);">Share this link with your friends so they can join your team instantly (up to {{ event.max_team_size or 4 }} members).</p>
@@ -172,6 +187,11 @@
     <h2 style="margin: 0 0 12px 0;">You aren't in a team yet</h2>
     <p style="color: var(--text-muted); margin: 0 0 32px 0;">Create a new team and invite your friends, or use the Matchmaking board to find one.</p>
     
+    {% if event_completed %}
+    <div style="padding: 16px; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.25); color: #dc2626; border-radius: var(--radius); margin-bottom: 20px; font-size: 0.9rem; font-weight: 500;">
+      Team formation is closed because this hackathon has concluded.
+    </div>
+    {% else %}
     <form method="post" style="max-width: 300px; margin: 0 auto; text-align: left;">
       <input type="hidden" name="action" value="create">
       <div style="margin-bottom: 16px;">
@@ -180,6 +200,7 @@
       </div>
       <button class="btn btn-primary" type="submit" style="width: 100%;">Create New Team</button>
     </form>
+    {% endif %}
     
     <div style="margin-top: 24px; font-size: 0.9rem; color: var(--text-muted);">
       Looking for a team? <a href="/participant/{{ event.id }}/matchmaking" style="color: var(--accent); text-decoration: none; font-weight: 500;">Go to Matchmaking</a>

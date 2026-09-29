@@ -73,7 +73,23 @@
   }
 
   /* Two-column grid for teams + hackers */
-  .mm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+  .mm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: start; }
+
+  /* Independent scroll container with CSS Scroll Snap for Open Teams */
+  #teamsList {
+    max-height: calc(100vh - 220px);
+    min-height: 400px;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    scroll-snap-type: y mandatory;
+    scroll-behavior: smooth;
+    scroll-padding-top: 8px;
+    padding-right: 8px;
+  }
+  #teamsList::-webkit-scrollbar { width: 6px; }
+  #teamsList::-webkit-scrollbar-track { background: transparent; }
+  #teamsList::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  #teamsList::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
 
   .mm-section-header {
     display: flex; justify-content: space-between; align-items: center;
@@ -82,7 +98,7 @@
   .mm-section-header h2 { margin: 0; font-size: 1.05rem; font-weight: 700; }
   .mm-count { font-size: 0.8rem; color: var(--text-muted); background: var(--border); padding: 2px 8px; border-radius: 10px; }
 
-  /* Team card */
+  /* Team card snap point */
   .team-card {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -91,7 +107,11 @@
     margin-bottom: 12px;
     transition: all 0.18s ease;
     position: relative;
+    scroll-snap-align: start;
+    scroll-margin-top: 8px;
+    scroll-snap-stop: normal;
   }
+  .team-card:last-child { margin-bottom: 0; }
   .team-card:hover { border-color: var(--accent); box-shadow: 0 4px 16px rgba(37,99,235,0.1); }
   .team-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
   .team-card h3 { margin: 0; font-size: 0.95rem; font-weight: 700; }
@@ -127,6 +147,22 @@
     cursor: default !important;
   }
 
+  /* Hacker list scroll container */
+  #hackersList {
+    max-height: calc(100vh - 220px);
+    min-height: 400px;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    scroll-snap-type: y proximity;
+    scroll-behavior: smooth;
+    scroll-padding-top: 8px;
+    padding-right: 8px;
+  }
+  #hackersList::-webkit-scrollbar { width: 6px; }
+  #hackersList::-webkit-scrollbar-track { background: transparent; }
+  #hackersList::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  #hackersList::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
   /* Hacker card */
   .hacker-card {
     background: var(--surface);
@@ -138,7 +174,10 @@
     align-items: center;
     gap: 14px;
     transition: all 0.18s ease;
+    scroll-snap-align: start;
+    scroll-margin-top: 8px;
   }
+  .hacker-card:last-child { margin-bottom: 0; }
   .hacker-card:hover { border-color: var(--accent); box-shadow: 0 4px 16px rgba(37,99,235,0.08); }
   .hacker-avatar { width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0; }
   .hacker-info { flex: 1; min-width: 0; }
@@ -180,6 +219,9 @@
   .empty-state svg { opacity: 0.3; margin-bottom: 12px; }
 
   @media (max-width: 900px) { .mm-layout { grid-template-columns: 1fr; } }
+  @media (max-width: 768px) {
+    #teamsList, #hackersList { max-height: 480px; }
+  }
   @media (max-width: 600px) { .mm-grid { grid-template-columns: 1fr; } }
 </style>
 
@@ -187,6 +229,15 @@
   <h1>Find a Team</h1>
   <p>Match with other hackers and form the ultimate squad.</p>
 </div>
+
+{% if event_completed %}
+<div style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.25); color: #dc2626; padding: 14px 18px; border-radius: 10px; margin-bottom: 24px; display: flex; align-items: center; gap: 12px; font-weight: 500; font-size: 0.92rem;">
+  <span style="font-size: 1.3rem;">🏁</span>
+  <div>
+    <strong>This hackathon has concluded.</strong> Team formation, join requests, and member invitations are locked.
+  </div>
+</div>
+{% endif %}
 
 <div class="mm-top-grid" style="display: grid; grid-template-columns: 1fr 340px; gap: 24px; margin-bottom: 20px;">
   <!-- Status / Settings card -->
@@ -196,35 +247,44 @@
       My Matchmaking Status
     </h2>
     <form method="post" action="/participant/{{ event.id }}/matchmaking" id="mmStatusForm">
-      <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin-bottom: 18px; padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg);">
+      <label style="display: flex; align-items: center; gap: 10px; {% if event_completed %}opacity: 0.65; cursor: not-allowed;{% else %}cursor: pointer;{% endif %} margin-bottom: 18px; padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg);">
         <input type="checkbox" name="looking_for_team" value="true" id="lookingCheck"
                {% if membership and membership.looking_for_team %}checked{% endif %}
+               {% if event_completed %}disabled{% endif %}
                style="width: 16px; height: 16px; accent-color: var(--accent);">
         <span style="font-weight: 600;">I am actively looking for a team</span>
       </label>
 
       <div>
         <label style="display: block; margin-bottom: 8px; font-weight: 600; font-size: 0.88rem;">Skills Offered</label>
-        <div class="skill-input-wrap" id="skillsWrap" onclick="document.getElementById('skillInput').focus()">
+        <div class="skill-input-wrap" id="skillsWrap" {% if not event_completed %}onclick="document.getElementById('skillInput').focus()"{% else %}style="opacity: 0.7; cursor: not-allowed;"{% endif %}>
           {% if membership and membership.skills_offered %}
             {% for sk in membership.skills_offered.split(',') %}
               {% if sk.strip() %}
               <span class="skill-pill">
                 {{ sk.strip() }}
-                <span class="rm" onclick="removePill(this, '{{ sk.strip() }}')">&times;</span>
+                {% if not event_completed %}<span class="rm" onclick="removePill(this, '{{ sk.strip() }}')">&times;</span>{% endif %}
               </span>
               {% endif %}
             {% endfor %}
           {% endif %}
+          {% if not event_completed %}
           <input type="text" id="skillInput" placeholder="Add a skill..." autocomplete="off"
                  onkeydown="handleSkillInput(event)" />
+          {% endif %}
         </div>
         <input type="hidden" name="skills_offered" id="skillsHidden"
                value="{{ membership.skills_offered if membership and membership.skills_offered else '' }}">
+        {% if not event_completed %}
         <p style="color: var(--text-muted); font-size: 0.78rem; margin: 6px 0 0 0;">Press Enter or comma to add a skill</p>
+        {% endif %}
       </div>
 
+      {% if not event_completed %}
       <button type="submit" class="btn btn-primary" style="margin-top: 18px;">Update Status</button>
+      {% else %}
+      <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 14px;">Matchmaking status updates are closed for finished hackathons.</div>
+      {% endif %}
     </form>
   </div>
 
@@ -283,12 +343,16 @@
           </div>
         </div>
         <div style="display: flex; gap: 6px; flex-shrink: 0;">
+          {% if event_completed %}
+          <span style="font-size: 0.75rem; color: var(--text-muted); background: var(--surface); padding: 4px 8px; border: 1px solid var(--border); border-radius: 6px;">Concluded</span>
+          {% else %}
           <form method="post" action="/participant/{{ event.id }}/requests/{{ req.id }}/decline" style="margin: 0;">
             <button type="submit" class="btn btn-secondary" style="padding: 5px 9px; font-size: 0.75rem; color: #ef4444; border-color: rgba(239,68,68,0.3);">Decline</button>
           </form>
           <form method="post" action="/participant/{{ event.id }}/requests/{{ req.id }}/accept" style="margin: 0;">
             <button type="submit" class="btn btn-primary" style="padding: 5px 12px; font-size: 0.75rem; background: #16a34a; border-color: #16a34a;">Accept</button>
           </form>
+          {% endif %}
         </div>
       </div>
       {% endfor %}
@@ -437,7 +501,11 @@
 
       {% if not team %}
       <div style="display: flex; gap: 10px; margin-top: 12px; align-items: center;" id="action-wrap-{{ t.id }}">
-        {% if t.id in requested_team_ids %}
+        {% if event_completed %}
+        <button type="button" class="btn btn-secondary" style="flex: 1; font-size: 0.85rem; opacity: 0.65; cursor: not-allowed; background: var(--surface); color: var(--text-muted); border-color: var(--border);" disabled title="This hackathon has concluded">
+          Hackathon Concluded
+        </button>
+        {% elif t.id in requested_team_ids %}
         <div style="display: flex; gap: 8px; align-items: center; width: 100%;">
           <button type="button" class="btn btn-requested" id="btn-req-{{ t.id }}" style="flex: 1; font-size: 0.85rem; background: rgba(34, 197, 94, 0.12); color: #16a34a; border: 1px solid rgba(34, 197, 94, 0.35); font-weight: 600; cursor: default; display: flex; align-items: center; justify-content: center; gap: 6px;" disabled>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
@@ -507,7 +575,7 @@
         </div>
         {% endif %}
       </div>
-      {% if team %}
+      {% if team and not event_completed %}
       <form method="post" action="/participant/{{ event.id }}/invite_user" style="margin: 0; flex-shrink: 0;">
         <input type="hidden" name="target_user_id" value="{{ member.user.id }}">
         <button type="submit" class="btn btn-secondary" style="font-size: 0.82rem; padding: 7px 14px; white-space: nowrap;">Invite to Team</button>
