@@ -174,7 +174,7 @@ HackForge includes a dual scoring engine: a multi-criteria weighted rubric norma
     Converts pairwise ELO ratings into standard Score records (clamped to [1, 10])
 ```
 
-For full mathematical proofs, divide-by-zero proofs, and variance derivations, refer to [`JUDGING.md`](file:///c:/Users/aksha/OneDrive/Documents/Hackathon%20Site/HackForge/JUDGING.md).
+For full mathematical proofs, divide-by-zero proofs, and variance derivations, refer to [`JUDGING.md`](JUDGING.md).
 
 ---
 

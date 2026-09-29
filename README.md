@@ -94,7 +94,7 @@ Output:
 ```
 DOGFOOD 2026 acceptance report
 portal: http://localhost:8080
-claimed: T1 T2
+claimed: T1 T2 T3 T4
 fixtures: fixtures.json
 
 T1  gallery is public ................. PASS
@@ -105,7 +105,9 @@ T2  judge cannot see peer scores ...... PASS
 T2  participant blocked ............... PASS
 T2  csv export works .................. PASS
 
-claimed T1 T2, verified T1 T2
+claimed T1 T2 T3 T4, verified T1 T2
+note: claimed but not verified: T3 T4
+
 ```
 
 ### Comprehensive Pytest Suite
@@ -147,9 +149,9 @@ tests/test_voting.py::test_results_hidden_during_voting_window PASSED    [100%]
 
 HackForge tackles three bonus challenges:
 
-1. **Normalization Proof (Hard)**: Complete mathematical formulation and edge-case proofs for per-track Z-score standardization ($\mu, \sigma$ baseline at 50, scaling factor 15) documented rigorously in [`JUDGING.md`](file:///c:/Users/aksha/OneDrive/Documents/Hackathon%20Site/HackForge/JUDGING.md).
+1. **Normalization Proof (Hard)**: Complete mathematical formulation and edge-case proofs for per-track Z-score standardization ($\mu, \sigma$ baseline at 50, scaling factor 15) documented rigorously in [`JUDGING.md`](JUDGING.md).
 2. **Pairwise Mode (Hard)**: Bradley-Terry log-odds estimator using dynamic ELO calculations ($K=32$, baseline $1500$) for side-by-side comparative judging in `src/queries.py` and visualized in the Organizer Results table.
-3. **Threat Model (Medium)**: Comprehensive analysis of attack surfaces including Sybil identities, ballot stuffing, self-voting collusion, score snooping, and timing attacks in [`THREAT-MODEL.md`](file:///c:/Users/aksha/OneDrive/Documents/Hackathon%20Site/HackForge/THREAT-MODEL.md).
+3. **Threat Model (Medium)**: Comprehensive analysis of attack surfaces including Sybil identities, ballot stuffing, self-voting collusion, score snooping, and timing attacks in [`THREAT-MODEL.md`](THREAT-MODEL.md).
 
 ---
 
@@ -161,8 +163,8 @@ HackForge tackles three bonus challenges:
 - **Authentication:** Stateless, cryptographically signed HMAC-SHA256 session cookies (`user_id.signature`).
 - **Security:** Strict route-level isolation (`public`, `participant`, `judge`, `organizer`, `admin`). Peer judge score inspection is rejected at the API layer with HTTP 403.
 
-For the complete architectural design and data flow, see [`ARCHITECTURE.md`](file:///c:/Users/aksha/OneDrive/Documents/Hackathon%20Site/HackForge/ARCHITECTURE.md).  
-For the database schema, foreign keys, and indexes, see [`DATA-MODEL.md`](file:///c:/Users/aksha/OneDrive/Documents/Hackathon%20Site/HackForge/DATA-MODEL.md).
+For the complete architectural design and data flow, see [`ARCHITECTURE.md`](ARCHITECTURE.md).  
+For the database schema, foreign keys, and indexes, see [`DATA-MODEL.md`](DATA-MODEL.md).
 
 ---
 
@@ -178,4 +180,4 @@ We believe in engineering honesty over marketing inflation:
 
 ## 📄 License
 
-HackForge is released under the **MIT License**. You are free to fork, self-host, and run your own hackathons with zero restrictions. See [`LICENSE`](file:///c:/Users/aksha/OneDrive/Documents/Hackathon%20Site/HackForge/LICENSE).
+HackForge is released under the **MIT License**. You are free to fork, self-host, and run your own hackathons with zero restrictions. See [`LICENSE`](LICENSE).
