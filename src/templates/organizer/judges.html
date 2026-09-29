@@ -3,12 +3,7 @@
 {% block content %}
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
   <h1 style="margin: 0;">Judges</h1>
-  <div style="display: flex; gap: 12px;">
-    <form method="post" action="/organizer/{{ event.id }}/judges/auto-assign" style="margin: 0;" onsubmit="return confirm('This will redistribute projects evenly among all judges. Continue?');">
-      <button type="submit" class="btn btn-secondary">Auto-Assign Projects</button>
-    </form>
-    <button class="btn btn-primary" onclick="document.getElementById('inviteJudgeModal').showModal()">+ Invite Judge</button>
-  </div>
+  <button class="btn btn-primary" onclick="document.getElementById('inviteJudgeModal').showModal()">+ Invite Judge</button>
 </div>
 
 <table class="data-table">
@@ -23,14 +18,24 @@
     <td>{{ j.user.name }}</td>
     <td>{{ j.user.email }}</td>
     <td>
-      {% for t in j.tracks %}
-      <span class="badge">{{ t.name }}</span>
-      {% endfor %}
+      {% if j.tracks %}
+        {% for t in j.tracks %}
+        <span class="badge">{{ t.name }}</span>
+        {% endfor %}
+      {% else %}
+        <span class="badge" style="background: var(--surface-2); color: var(--text-muted);">All Tracks (Open)</span>
+      {% endif %}
     </td>
     <td>
       <form method="post" action="/organizer/{{ event.id }}/judges/{{ j.user.id }}/remove" style="display:inline;">
         <button class="btn btn-secondary" type="submit">Remove</button>
       </form>
+    </td>
+  </tr>
+  {% else %}
+  <tr>
+    <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 32px;">
+      No judges assigned yet. Click "+ Invite Judge" to invite your first judge.
     </td>
   </tr>
   {% endfor %}
@@ -49,9 +54,13 @@
   <tr>
     <td>{{ inv.invitation.email }}</td>
     <td>
-      {% for t in inv.tracks %}
-      <span class="badge">{{ t.name }}</span>
-      {% endfor %}
+      {% if inv.tracks %}
+        {% for t in inv.tracks %}
+        <span class="badge">{{ t.name }}</span>
+        {% endfor %}
+      {% else %}
+        <span class="badge" style="background: var(--surface-2); color: var(--text-muted);">All Tracks (Open)</span>
+      {% endif %}
     </td>
     <td><span class="badge" style="background: var(--warning); color: #fff;">Pending</span></td>
     <td>
@@ -71,8 +80,10 @@
   </div>
   
   <form method="post" action="/organizer/{{ event.id }}/judges">
+    {% if all_tracks %}
     <div id="inviteStep1">
       <label>Assign to Tracks</label>
+      <p style="font-size: 13px; color: var(--text-muted); margin: 0 0 12px 0;">Select one or more tracks this judge is qualified to evaluate.</p>
       <div style="margin-bottom: 16px; max-height: 200px; overflow-y: auto; border: 1px solid var(--border); padding: 12px; border-radius: var(--radius);">
         {% for t in all_tracks %}
         <label style="margin: 0 0 8px 0; font-weight: normal; display: flex; align-items: center; gap: 8px;">
@@ -95,6 +106,16 @@
         <button class="btn btn-primary" type="submit">Send Invite</button>
       </div>
     </div>
+    {% else %}
+    <div>
+      <p style="font-size: 13px; color: var(--text-muted); margin: 0 0 16px 0;">This hackathon runs in Open Innovation mode (no tracks). Invited judges will evaluate all submissions.</p>
+      <label>Email Address</label>
+      <input type="email" name="email" required style="margin-bottom: 24px;">
+      <div class="row-actions" style="justify-content: flex-end;">
+        <button class="btn btn-primary" type="submit">Send Invite</button>
+      </div>
+    </div>
+    {% endif %}
   </form>
 </dialog>
 
