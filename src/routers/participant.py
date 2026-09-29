@@ -138,7 +138,7 @@ def participant_home(
         name="participant/dashboard_new.html",
         context=base_context(
             request=request,
-            event=default_event(db),
+            event=None,
             user=user,
             role="participant",
             event_statuses=event_statuses,
@@ -257,7 +257,7 @@ def participant_registrations(
         name="participant/registrations.html",
         context=base_context(
             request=request,
-            event=default_event(db),
+            event=None,
             user=user,
             role="participant",
             registrations=registrations,

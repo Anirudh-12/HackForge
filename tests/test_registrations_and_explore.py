@@ -97,18 +97,36 @@ def test_explore_hackathons_dropdowns_and_values(client: TestClient, auth_cookie
 
 def test_registrations_sidebar_collapsible_items_and_placement(client: TestClient, auth_cookies):
     cookies = auth_cookies["participant"]
+
+    # 1. On /participant/registrations (global account-level page):
     response = client.get("/participant/registrations", cookies=cookies)
     assert response.status_code == 200
 
-    # Ensure Current Hackathon sidebar buttons have spans and data-tooltips
-    for label in ["Overview", "Team", "Find a Team", "Submission", "Certificate", "API &amp; Docs"]:
+    # Ensure Current Hackathon sidebar buttons and section are NOT visible on registrations page
+    assert "CURRENT HACKATHON" not in response.text
+    assert '<div style="font-weight: 500;">Sample Hack 2026</div>' not in response.text
+
+    # Global participant items are visible
+    for label in ["Home", "Explore Hackathons", "My Registrations", "Profile"]:
         assert f"<span>{label}</span>" in response.text
-    for tooltip in ["Overview", "Team", "Find a Team", "Submission", "Certificate", "API &amp; Docs"]:
-        assert f'data-tooltip="{tooltip}"' in response.text
 
     # Ensure collapse toggle button exists inside sidebar
     assert 'id="sidebarCollapseBtn"' in response.text
     assert "toggleSidebar()" in response.text
+
+    # 2. When entering a specific hackathon workspace (/participant/evt_01/dashboard):
+    ws_res = client.get("/participant/evt_01/dashboard", cookies=cookies)
+    assert ws_res.status_code == 200
+
+    # Topbar displays the active event name
+    assert '<div style="font-weight: 500;">Sample Hack 2026</div>' in ws_res.text
+
+    # Sidebar displays the Current Hackathon items
+    assert "CURRENT HACKATHON" in ws_res.text
+    for label in ["Overview", "Team", "Find a Team", "Submission", "Certificate", "API &amp; Docs"]:
+        assert f"<span>{label}</span>" in ws_res.text
+    for tooltip in ["Overview", "Team", "Find a Team", "Submission", "Certificate", "API &amp; Docs"]:
+        assert f'data-tooltip="{tooltip}"' in ws_res.text
 
 
 def test_cannot_register_for_completed_hackathon(client: TestClient, auth_cookies):

@@ -109,6 +109,13 @@
   
   <!-- Left Column: Progress -->
   <div>
+    <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+      <a href="/participant/home" style="color: var(--text-muted); text-decoration: none;">Dashboard</a>
+      <span>/</span>
+      <a href="/participant/registrations" style="color: var(--text-muted); text-decoration: none;">My Registrations</a>
+      <span>/</span>
+      <span style="color: var(--text-primary); font-weight: 500;">{{ event.name }}</span>
+    </div>
     <div class="event-header">
       <h1>{{ event.name }}</h1>
       <p>Your event workspace.</p>
